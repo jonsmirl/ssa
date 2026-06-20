@@ -1,4 +1,4 @@
-"""Assertions for hierarchical routing — incl. a numerical check of the theory (see paper)'s
+"""Assertions for hierarchical routing — incl. a numerical check of the recursive-radius bound's
 recursive radius bound (subtree_radius_bound)."""
 import numpy as np
 from ssa.core import clustered_keys

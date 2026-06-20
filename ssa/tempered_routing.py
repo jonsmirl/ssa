@@ -1,8 +1,8 @@
 """
 The routing-temperature sweep — the hidden gain, measured.
 
-the second-cumulant routing result / `longctx_probe.py` showed the second cumulant rescues long-range routing where
-the centroid fails. the tempered-routing result generalizes that to a temperature family: route clusters by
+`longctx_probe.py` showed the second cumulant rescues long-range routing where the centroid
+fails. Tempered routing generalizes that to a temperature family: route clusters by
 the tempered (escort) score `β⁻¹·log Σ_{j∈b} e^{β⟨q,k_j⟩}`, which is the centroid at β→0, the cumulant
 score at β=1, and the cluster's exact best key (oracle) at β→∞ — with best-key bias `(log n)/β` that
 SHRINKS as β grows. So routing at β>1 should recover MORE of the dense top-1 than the β=1 cumulant.

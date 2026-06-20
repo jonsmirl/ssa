@@ -1,4 +1,4 @@
-"""Numerically check the tempered-routing identities + the theory (see paper) sandwich (CPU)."""
+"""Numerically check the tempered-routing identities + the log-sum-exp sandwich (CPU)."""
 import numpy as np
 from ssa.tempered_routing import _tempered
 
