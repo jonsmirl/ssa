@@ -1,0 +1,570 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=1.1in}
+\usepackage{microtype}
+\usepackage[numbers]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage{setspace}
+\onehalfspacing
+
+\numberwithin{equation}{section}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\softmax}{\operatorname{softmax}}
+\newcommand{\inner}[2]{\langle #1, #2\rangle}
+
+\title{\textbf{Subquadratic Sparse Attention:\\ Content-Routed Exact Attention for Long Contexts}}
+\author{Jon Smirl}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Dense self-attention costs $O(n^2)$ in the sequence length $n$, which is the binding constraint on
+long-context language models. We present \emph{Subquadratic Sparse Attention} (SSA), an attention mechanism
+that, for each query, (i)~routes to a small content-dependent set of key blocks using only per-block summary
+statistics, (ii)~adds a local window, and (iii)~performs \emph{exact} softmax attention over the selected
+keys. The per-query work is $O(\kappa)$ in a fixed budget $\kappa\ll n$ plus a sublinear routing cost, so the
+layer runs in $O(n\sqrt{n})$ flat or near-linear with a hierarchical router. We develop the theory that says
+when this is sound. A retrieval-margin analysis shows that softmax attention recovers a target key with weight
+$\sigma(\beta\Delta-\log\mu)$, where $\Delta$ is the score margin and $\mu$ the number of competing
+distractors; selection works because it cuts $\mu$ from $n$ to $\kappa$, making recovery \emph{flat in $n$}. We
+give the admissible routing bound that licenses summary-only selection, a tempered (cumulant) routing score
+that---unlike centroid routing---sees in-block outliers, and a closed-form variance prune test from
+Samuelson's inequality. We then prove the limit: cheap, lossless, length-robust selection cannot hold
+simultaneously for arbitrary keys (a one-line probe argument), so SSA's subquadratic \emph{exactness} is
+licensed by the \emph{benign geometry} of trained representations---geometry that training can be made to
+manufacture, via a routability regularizer that shrinks off-target spread. Finally we show length
+generalization (rotary position plus staged continued training reaches $32\times$ the trained length at $0.98$
+recall for ${\sim}800$ adaptation steps) and a construction pipeline that converts a dense pretrained model
+into a subquadratic one by swapping the attention and briefly adapting (recovering to within $+1.2$ perplexity
+of a dense model given equal training while attending $38\%$ of keys). All claims are accompanied by
+measurements at controlled scale.
+\end{abstract}
+
+\section{Introduction}
+
+A transformer layer computes, for queries $Q\in\R^{n\times d}$, keys $K\in\R^{n\times d}$, and values
+$V\in\R^{n\times d}$,
+\[
+\mathrm{Attn}(Q,K,V) = \softmax\!\Big(\tfrac{QK^\top}{\sqrt{d}}\Big)\,V .
+\]
+The $n\times n$ score matrix makes both time and memory $\Theta(n^2 d)$. For contexts of $10^6$--$10^7$ tokens
+this is prohibitive, yet most of the matrix is near-zero: for a given query only a small set of keys carries
+appreciable weight. The question is whether one can \emph{find} that set without forming all $n^2$ scores.
+
+Two subquadratic families answer differently. \emph{Kernel / linear attention} replaces
+$\exp(\inner{q}{k})$ by a factorizable feature map $\phi(q)^\top\phi(k)$, giving $O(n)$ cost but a low-rank
+(smoothed) attention matrix. \emph{Sparse / selective attention} keeps the exact softmax but evaluates it only
+on a chosen subset of keys. SSA is in the second family, with three design commitments:
+\begin{enumerate}
+\item \textbf{Content-dependent selection.} The chosen keys depend on the query, not only on position; this is
+  what lets a query reach the one relevant block a million tokens back.
+\item \textbf{Summary-only routing.} Selection uses per-block statistics (a mean, a covariance), so it does not
+  read every key---that is where the subquadratic saving comes from.
+\item \textbf{Exact attention over the selected set.} Within the selected keys the softmax is computed exactly,
+  so there is no kernel-approximation error on the keys that matter.
+\end{enumerate}
+
+The paper is organized around one tension. Selection is cheap only if it can judge a block from its summary;
+it is \emph{correct} only if those summaries do not hide a key that mattered. Sections~\ref{sec:margin}--%
+\ref{sec:routing} make both sides precise; Section~\ref{sec:trilemma} shows they cannot both hold in the worst
+case, so something must give; Section~\ref{sec:routability} shows what gives---the data geometry, which
+training shapes. Sections~\ref{sec:length}--\ref{sec:pipeline} turn the mechanism into a usable recipe.
+
+\section{Notation and the retrieval view}
+
+Fix a single query $q\in\R^d$ and keys $k_1,\dots,k_n$. Write the \emph{logit} (score) of key $j$ as
+\[
+a_j \;=\; \inner{q}{k_j}, \qquad
+w_j \;=\; \frac{e^{\beta a_j}}{\sum_{l=1}^n e^{\beta a_l}}, \qquad \beta = \tfrac{1}{\sqrt d},
+\]
+so $w$ is the attention distribution and $\beta$ its inverse temperature. The output is $o=\sum_j w_j v_j$.
+
+A long-context layer is, operationally, an \emph{associative recall}: a query must place most of its weight on
+the key(s) that hold the information it needs and little on the rest. We therefore analyze attention by the
+weight it puts on a designated \emph{target} key $k_\star$ relative to the \emph{distractors}
+$\{k_j\}_{j\neq\star}$.
+
+\section{Retrieval margin and the recovery weight}\label{sec:margin}
+
+Define the \emph{margin} of the target as the gap between its logit and the typical distractor logit,
+\[
+\Delta \;=\; a_\star - \bar a_{\text{dist}}, \qquad \bar a_{\text{dist}} = \text{(typical } a_j,\ j\neq\star).
+\]
+Suppose there are $\mu$ effective distractors with logit $\approx a_\star-\Delta$. Then the target weight is
+\begin{equation}\label{eq:recovery}
+w_\star \;=\; \frac{e^{\beta a_\star}}{e^{\beta a_\star}+\mu\,e^{\beta(a_\star-\Delta)}}
+\;=\; \frac{1}{1+\mu\,e^{-\beta\Delta}}
+\;=\; \sigma\!\big(\beta\Delta-\log\mu\big),
+\end{equation}
+where $\sigma(x)=1/(1+e^{-x})$ is the logistic. Equation~\eqref{eq:recovery} is the \emph{recovery weight}. Two
+consequences:
+\begin{itemize}
+\item \textbf{Detectability threshold.} The target is recovered ($w_\star>\tfrac12$) iff
+\begin{equation}\label{eq:detect}
+\boxed{\;\beta\,\Delta \;>\; \log\mu\;}
+\end{equation}
+Recovery degrades only \emph{logarithmically} in the number of distractors.
+\item \textbf{Why selection helps, and why it is flat in $n$.} Dense attention pays $\mu=n$. A selector that
+  attends only a budget of $\kappa$ keys pays $\mu=\kappa$, replacing the threshold $\log n$ by $\log\kappa$.
+  If $\kappa$ is held \emph{fixed} as the context grows, the threshold~\eqref{eq:detect} does not move with
+  $n$: retrieval accuracy becomes \emph{independent of context length}. This is the entire value proposition of
+  selection, and it is why a fixed-budget selector can answer single-target queries at $10^6$--$10^7$ tokens
+  that dense attention, with its $\log n$ erosion, increasingly struggles with.
+\end{itemize}
+
+The catch is hidden in the phrase ``a selector that attends $\kappa$ keys'': the selector must \emph{contain
+the target in its budget}. Sections~\ref{sec:algorithm}--\ref{sec:trilemma} are about exactly that.
+
+\section{The algorithm}\label{sec:algorithm}
+
+\subsection{Block partition and summaries}
+
+Partition the $n$ keys into $B$ contiguous \emph{blocks} of size $b$ (so $Bb=n$). For block $c$ precompute,
+once, the summary statistics
+\begin{equation}\label{eq:summary}
+\mu_c=\frac1b\sum_{j\in c}k_j \quad(\text{mean}),\qquad
+\Sigma_c=\frac1b\sum_{j\in c}(k_j-\mu_c)(k_j-\mu_c)^\top \quad(\text{covariance}),
+\end{equation}
+and a radius $R_c=\max_{j\in c}\lVert k_j-\mu_c\rVert$. In practice $\Sigma_c$ is kept diagonal,
+$\sigma_c^2=\operatorname{diag}\Sigma_c$, so a block's summary is $O(d)$ numbers.
+
+\subsection{Routing score}
+
+For a query $q$, the \emph{routing score} of block $c$ estimates the largest logit the block can contribute.
+The exact quantity is the block's log-sum-exp
+$\mathrm{LSE}_c(q)=\log\sum_{j\in c}e^{\beta\inner{q}{k_j}}$, which requires reading every key. SSA uses its
+\emph{second-order (cumulant) surrogate}, computable from the summary alone:
+\begin{equation}\label{eq:route}
+r_c(q) \;=\; \inner{q}{\mu_c} \;+\; \tfrac{\beta}{2}\,q^\top\Sigma_c\,q
+\;\;\approx\;\; \inner{q}{\mu_c} + \tfrac{\beta}{2}\,\inner{q^2}{\sigma_c^2}.
+\end{equation}
+Equation~\eqref{eq:route} is the Taylor/cumulant expansion of the tempered mean
+$\beta^{-1}\log\frac1b\sum_{j\in c}e^{\beta\inner{q}{k_j}}$ about $\beta=0$: the first cumulant is the mean
+logit $\inner{q}{\mu_c}$; the second adds the \emph{variance of the logit across the block}, $q^\top\Sigma_c
+q$. The variance term is what makes routing see an in-block outlier (Section~\ref{sec:secondorder}).
+
+\subsection{Selection and exact attention}
+
+For each query $q_i$ (at position $i$):
+\begin{enumerate}
+\item Compute $r_c(q_i)$ for all blocks $c$ whose keys are causally visible ($c$ ends at or before $i$).
+\item Select the top-$k$ blocks by $r_c$, \emph{union} a local window of the $w$ most recent blocks (recency is
+  always relevant and cheap to include), giving a key set $S_i$ with $\lvert S_i\rvert=\kappa\le(k+w)b$.
+\item Compute exact softmax attention restricted to $S_i$:
+\begin{equation}\label{eq:exact}
+o_i \;=\; \sum_{j\in S_i}\frac{e^{\beta\inner{q_i}{k_j}}}{\sum_{l\in S_i}e^{\beta\inner{q_i}{k_l}}}\,v_j .
+\end{equation}
+\end{enumerate}
+
+\bigskip
+\noindent\rule{\textwidth}{0.6pt}\\[-0.3em]
+\begin{footnotesize}
+\begin{verbatim}
+Algorithm 1: SSA forward (one head)
+Input:  Q, K, V in R^{n x d};  block size b;  budgets k (global), w (local)
+Precompute: for each block c, mean mu_c and diagonal covariance Sigma_c     // O(n d)
+For each query q_i  (in parallel over i):
+    Routing:    for each causally visible block c:
+                    r_c <- <q_i, mu_c> + (beta/2) * <q_i^2, diag Sigma_c>
+    Selection:  T   <- (top-k blocks by r_c)  union  (w most-recent blocks)
+    Causal:     S_i <- keys of blocks in T with position <= i
+    Attention:  o_i <- softmax_{j in S_i} ( <q_i,k_j> / sqrt(d) ) * V[S_i]   // exact
+Return O
+\end{verbatim}
+\end{footnotesize}
+\vspace{-0.6em}\noindent\rule{\textwidth}{0.6pt}
+\bigskip
+
+\subsection{Complexity}
+
+Routing is $O(n\,B\,d)$ if every query scores every block, and attention is $O(n\,\kappa\,d)$.
+\begin{itemize}
+\item \textbf{Flat router}, $B=\sqrt n$, $b=\sqrt n$, fixed $k,w$: routing $O(n^{1.5}d)$, attention
+  $O(n\,\kappa\,d)=O(n^{1.5}d)$. Total $O(n^{1.5}d)$---already a large saving over $n^2$.
+\item \textbf{Hierarchical router.} Organize blocks into a tree of summaries and descend it per query with
+  branch-and-bound pruning (Section~\ref{sec:bnb}), so each query inspects $O(k\log B)$ nodes rather than all
+  $B$. Routing drops toward $O(n\log n\,d)$ and the layer is near-linear in $n$ up to the attention budget
+  $O(n\,\kappa\,d)$.
+\end{itemize}
+Either way the dominant $n^2$ term is gone. In a block-sparse kernel implementation the practical speedup over
+a dense exact kernel was $20.6\times$ at $n=262{,}144$ on a single accelerator (Section~\ref{sec:experiments}).
+
+\section{Routing theory: when a summary is enough}\label{sec:routing}
+
+The routing score~\eqref{eq:route} is a \emph{heuristic} surrogate. This section gives the \emph{certified}
+objects---upper bounds that make selection provably lossless---and the prune test SSA uses.
+
+\subsection{The admissible bound and branch-and-bound exactness}\label{sec:bnb}
+
+For any key $k$ in block $c$, decompose its logit around the block mean and apply Cauchy--Schwarz:
+\begin{equation}\label{eq:admissible}
+\inner{q}{k} = \inner{q}{\mu_c} + \inner{q}{k-\mu_c}
+\;\le\; \inner{q}{\mu_c} + \lVert q\rVert\,\lVert k-\mu_c\rVert
+\;\le\; \underbrace{\inner{q}{\mu_c} + \lVert q\rVert\,R_c}_{\textstyle U_c(q)} .
+\end{equation}
+$U_c(q)$ is an \emph{admissible upper bound}: no key in block $c$ has a logit exceeding it, and it depends only
+on the summary $(\mu_c,R_c)$. This licenses exact selection at adaptive cost.
+
+\begin{quote}
+\textbf{Branch-and-bound selection.} Maintain the best \emph{actual} logit found so far, $s^\star$. Open blocks
+in decreasing $U_c(q)$. Stop as soon as the next block has $U_c(q)\le s^\star$: by~\eqref{eq:admissible} no
+unopened block can contain a key beating $s^\star$. The result is identical to scanning all keys, but only the
+blocks whose bound clears $s^\star$ are ever read.
+\end{quote}
+
+The cost of branch-and-bound is the number of blocks whose bound exceeds the true best---a quantity governed
+entirely by how \emph{tight} the bound~\eqref{eq:admissible} is, i.e.\ by the geometry of the keys
+(Sections~\ref{sec:trilemma}--\ref{sec:routability}).
+
+\paragraph{Anisotropic refinement.} The isotropic radius $R_c$ is loose when a block's keys are spread unevenly
+across directions. Using the covariance ellipsoid instead,
+\begin{equation}\label{eq:aniso}
+\inner{q}{k-\mu_c} \;\le\; \sqrt{\,q^\top \Sigma_c\, q\,}\cdot \rho_c,\qquad
+\rho_c=\max_{j\in c}\big\lVert \Sigma_c^{-1/2}(k_j-\mu_c)\big\rVert,
+\end{equation}
+which replaces $\lVert q\rVert R_c$ by the \emph{directional radius} $\sqrt{q^\top\Sigma_c q}\cdot\rho_c$. When
+the keys are anisotropic (the usual trained case), $\sqrt{q^\top\Sigma_c q}$ can be far smaller than
+$\lVert q\rVert R_c$ for queries pointing along thin directions---a tighter, query-specific bound, and exactly
+the quantity the cumulant score~\eqref{eq:route} already trades on.
+
+\subsection{Why second order: centroid routing is blind to outliers}\label{sec:secondorder}
+
+Centroid routing uses only $r_c=\inner{q}{\mu_c}$. A single key $k_\star$ in a block of size $b$ contributes
+$\tfrac1b k_\star$ to $\mu_c$, so its signal in the mean is attenuated by $1/b$: a lone target in a large block
+is invisible to centroid routing. The variance term in~\eqref{eq:route} repairs this, because an outlier
+aligned with $q$ inflates $q^\top\Sigma_c q$. Concretely, if block $c$ holds one key with
+$\inner{q}{k_\star}=a_\star$ and $b-1$ keys with logit $\approx 0$, then $\inner{q}{\mu_c}\approx a_\star/b$ but
+$q^\top\Sigma_c q\approx a_\star^2/b$, so the second-order score $r_c\approx a_\star/b+(\beta/2)a_\star^2/b$
+carries the quadratic outlier signal the mean discards.
+
+\paragraph{The tempered family and its bias.} Routing by the tempered score
+$r_c^{(\beta)}=\beta^{-1}\log\sum_{j\in c}e^{\beta\inner{q}{k_j}}$ interpolates between the mean ($\beta\to0$)
+and the max ($\beta\to\infty$), and is sandwiched by
+\begin{equation}\label{eq:lse}
+\max_{j\in c}\inner{q}{k_j} \;\le\; r_c^{(\beta)} \;\le\; \max_{j\in c}\inner{q}{k_j} + \frac{\log b}{\beta}.
+\end{equation}
+So $r_c^{(\beta)}$ estimates the block's \emph{best} logit---exactly what selection wants---with bias at most
+$(\log b)/\beta$. Small $\beta$ smooths over outliers (the centroid failure); large $\beta$ removes the bias
+but amplifies noise and loses the averaging that makes summaries stable. The cumulant form~\eqref{eq:route} is
+the second-order member of this family; empirically the routing quality is maximized near $\beta\approx 2$.
+
+\subsection{The Samuelson prune test}
+
+A closed-form, summary-only test for \emph{discarding} a block uses \emph{Samuelson's inequality}: for any
+reals $s_1,\dots,s_m$ with mean $\bar s$ and population variance $\Var=\frac1m\sum_j(s_j-\bar s)^2$, every
+element obeys
+\begin{equation}\label{eq:samuelson}
+(s_i-\bar s)^2 \;\le\; (m-1)\,\Var, \qquad\text{equivalently}\qquad
+\max_j s_j \;\le\; \bar s + \sqrt{(m-1)\,\Var}.
+\end{equation}
+Apply it to the in-block logits $s_j=\inner{q}{k_j}$, whose mean is $\inner{q}{\mu_c}$ and whose variance is
+$q^\top\Sigma_c q$. Then the block's best logit is bounded by $\inner{q}{\mu_c}+\sqrt{(b-1)\,q^\top\Sigma_c
+q}$, giving the \emph{prune gate}: block $c$ can be safely discarded against a threshold $\tau=s^\star$ whenever
+\begin{equation}\label{eq:prune}
+\boxed{\;(s^\star-\inner{q}{\mu_c})^2 \;>\; (b-1)\,q^\top\Sigma_c q\quad\text{and}\quad \inner{q}{\mu_c}<s^\star\;}
+\end{equation}
+i.e.\ when the \emph{margin} of the current best over the block mean exceeds $\sqrt{(b-1)\cdot\text{spread}}$.
+The test needs only $(\mu_c,\Sigma_c)$. It is \emph{sufficient} (it never wrongly prunes) but not necessary,
+and it sharpens the radius bound~\eqref{eq:admissible} by using the variance rather than the worst-case radius.
+Equation~\eqref{eq:prune} is the operational core of cheap exact selection: it fires---and the block is
+skipped---precisely when the off-target spread $q^\top\Sigma_c q$ is small, which is the benign-geometry
+condition of Section~\ref{sec:routability}.
+
+\section{The trilemma and the impossibility}\label{sec:trilemma}
+
+Call a selector \emph{cheap} if it reads $o(n)$ keys, \emph{lossless} if it attends every key dense attention
+would weight non-negligibly, and \emph{length-robust} if its accuracy is flat in $n$. The bounds above let us
+state the fundamental limit.
+
+\begin{proposition}[No free selection]\label{prop:impossible}
+No selector can be simultaneously cheap and lossless for arbitrary keys.
+\end{proposition}
+\begin{proof}
+Suppose a selector reads a set $\mathcal{R}$ of keys with $\lvert\mathcal{R}\rvert<n$, and let
+$j_0\notin\mathcal{R}$. Construct a probe input identical on $\mathcal{R}$ but with $k_{j_0}=c\,q$ for $c$
+large. Dense attention puts weight $\to1$ on $j_0$, so the correct output is $v_{j_0}$. The selector, never
+having read $j_0$, returns the same output as on the unmodified input, which is independent of $v_{j_0}$. Hence
+it is lossy on this input.
+\end{proof}
+
+Proposition~\ref{prop:impossible} says losslessness for \emph{worst-case} keys forces
+$\lvert\mathcal{R}\rvert=n$---no summary suffices, because a summary can always hide a spike. A quantitative
+companion holds under fine-grained complexity assumptions: exact attention with unbounded logits requires
+$n^{2-o(1)}$ time, and only bounded-logit / low-rank regimes admit truly subquadratic exact computation. So at
+most \emph{two} of \{cheap, lossless, length-robust\} are available at once:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+keep & give up & what it is\\
+\midrule
+lossless $+$ length-robust & cheap & dense attention---reads every key\\
+cheap $+$ length-robust & lossless & approximate selection---fast, flat, can miss a worst-case spike\\
+cheap $+$ lossless & length-robust & branch-and-bound on \emph{benign} keys---bounds tight, low cost\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The escape from the trilemma is the third row: cheapness \emph{and} losslessness are jointly available
+\emph{when the bounds \eqref{eq:admissible}/\eqref{eq:aniso}/\eqref{eq:prune} are tight}, which is a property of
+the key geometry, not of the algorithm. SSA is therefore not a universal subquadratic exact attention---no such
+thing exists---but a mechanism that is cheap, lossless, \emph{and} length-robust \emph{on benign geometry}, and
+merely cheap-and-length-robust-but-approximate otherwise. The next section is about making the geometry benign.
+
+\section{Manufacturing routability}\label{sec:routability}
+
+\subsection{Benign geometry, precisely}
+
+The branch-and-bound cost and the prune gate~\eqref{eq:prune} are governed by the \emph{off-target spread}
+$q^\top\Sigma_c q$ for the blocks a query does \emph{not} need, relative to the \emph{margin} $\Delta$ to the
+block it does. Geometry is \emph{benign} for a query $q$ when, for every non-target block $c$,
+\begin{equation}\label{eq:benign}
+\inner{q}{\mu_c} + \sqrt{(b-1)\,q^\top\Sigma_c q}\;<\; s^\star(q),
+\end{equation}
+i.e.\ the prune gate~\eqref{eq:prune} fires everywhere except the target's block. Then exactly one block (plus
+the local window) is opened, branch-and-bound reads $O(b)$ keys, and selection is cheap \emph{and} lossless.
+Isotropic keys violate~\eqref{eq:benign}---every block's bound is large and uninformative, so nothing prunes
+and cost reverts to dense.
+
+\subsection{The routability regularizer}
+
+Benign geometry is not given; it can be \emph{trained in}. Add to the language-model loss a penalty that
+shrinks the off-target spread along the directions queries actually use:
+\begin{equation}\label{eq:reg}
+\mathcal{L} \;=\; \mathcal{L}_{\text{LM}} \;+\; \lambda \sum_{i}\sum_{c\,\neq\, \text{target}(i)} q_i^\top \Sigma_c\, q_i .
+\end{equation}
+Minimizing $\sum_{c\neq\text{target}} q^\top\Sigma_c q$ is exactly minimizing the quantity that appears under
+the square root in the prune gate~\eqref{eq:prune}, so as training proceeds the gate fires for more non-target
+blocks and the certified bound~\eqref{eq:admissible}/\eqref{eq:aniso} tightens. Measured: co-training
+with~\eqref{eq:reg} drove the \emph{lossless} branch-and-bound cost from $26.5\%$ of keys to $4.2\%$---a
+$6\times$ reduction---at \emph{no} loss of retrieval accuracy. Training is what manufactures the geometry that
+the impossibility result (Proposition~\ref{prop:impossible}) says cheap exactness requires.
+
+\subsection{The entry-magnitude split: selection vs.\ linear attention}
+
+A complementary fact decides \emph{which} subquadratic route a given layer should take. Let $B$ be the
+characteristic magnitude of the logits $\inner{q}{k}$ (the ``entry scale''). The exponentiated score matrix
+$[\,e^{B\inner{q_i}{k_j}}\,]$ has effective rank that \emph{grows with $B$}: for small $B$ it is nearly
+low-rank (so a kernel/linear-attention factorization $\phi(q)^\top\phi(k)$ is accurate and $O(n)$); for large
+$B$ it is full-rank (so no linear map approximates it, and one must \emph{select}). Empirically, the effective
+rank of $e^{B\,KK^\top}$ on $256$ keys rose from $2.7$ at $B=0.5$ to $256$ (full) by $B=8$.
+
+The selection route, by contrast, is \emph{scale-invariant}: in the prune gate~\eqref{eq:prune} both the
+squared margin and the spread scale as $B^2$, so the gate's truth value is unchanged by $B$. Selection
+therefore works at \emph{any} entry scale, whereas linear attention works only in the small-$B$ (smooth)
+regime. Sharp, long-range retrieval is the large-$B$ regime---which is why selection, not linearization, is the
+route for long-context exact recall.
+
+\section{Length generalization and staged extension}\label{sec:length}
+
+A selector that is flat in $n$ (Section~\ref{sec:margin}) still needs the \emph{model} to behave at lengths
+beyond those it was trained on. The position encoding decides whether it can.
+
+\subsection{Position-invariant routing under rotary embeddings}
+
+With rotary position embeddings (RoPE), a query/key pair interacts only through their \emph{relative} offset:
+the logit $\inner{q_i}{k_j}$ depends on $i-j$, not on $i,j$ absolutely. A model that has learned \emph{content}
+routing---match a query to the key whose content binds it, at whatever offset---therefore transfers to offsets
+it never saw, because (i)~the decisive relative structure (e.g.\ a key-to-value offset of $+1$) is constant at
+any length and (ii)~content matching is position-free. A model with \emph{learned absolute} position embeddings
+cannot: its embeddings past the trained length are untrained. This predicts, and we observe, zero-shot
+extrapolation of ${\sim}2$--$4\times$ for RoPE and immediate collapse for learned-absolute position.
+
+\subsection{The staging ladder}
+
+Zero-shot extrapolation buys a factor, not an unbounded range. To go further, \emph{stage}: extend the context,
+briefly continue-train (adapt) at the new length, extend again---doubling each rung. The economics are
+favorable precisely because routing is position-invariant: each rung extrapolates only $2\times$ from the last
+\emph{adapted} length, so every adaptation starts from the ${\sim}2\times$ zero-shot recall and only has to
+clean it up. The adaptation cost is small and roughly \emph{flat in length} rather than growing.
+
+Measured (a $6$-layer model on a synthetic multi-query associative-recall task; base trained at $48$ pairs):
+
+\begin{center}
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+rung & multiple & zero-shot recall & adapt steps & recall after adapt & recall with SSA\\
+\midrule
+96   & $2\times$  & 0.993 & 100 & 1.000 & 1.000\\
+192  & $4\times$  & 0.904 & 100 & 0.999 & 1.000\\
+384  & $8\times$  & 0.810 & 100 & 1.000 & 0.995\\
+768  & $16\times$ & 0.672 & 100 & 0.996 & 0.996\\
+1536 & $32\times$ & 0.516 & 400 & 0.982 & 0.979\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The base schedule cost $7600$ steps; the \emph{entire} climb from $16\times$ (where zero-shot recall is already
+near the floor) to $32\times$ at recall $0.982$ cost only $800$ additional steps---about $10\%$ of the base, and
+roughly constant per rung. The final column confirms that the same adapted model runs under SSA selection
+($\le15\%$ of keys attended) with essentially no recall loss at every rung.
+
+\section{The construction pipeline: dense to subquadratic}\label{sec:pipeline}
+
+SSA can be retrofitted onto an existing dense pretrained model, which is how a frontier long-context system is
+built without pretraining from scratch:
+\begin{enumerate}
+\item \textbf{Start} from a dense pretrained base.
+\item \textbf{Swap} dense attention for SSA (Algorithm~1) in every layer.
+\item The swap \textbf{degrades} quality, because the base was trained expecting every key.
+\item \textbf{Adapt} by continued pretraining; the keys co-adapt to the sparse routing (and, with the
+  regularizer~\eqref{eq:reg}, become routable).
+\item \textbf{Stage} the context extension (Section~\ref{sec:length}).
+\end{enumerate}
+
+Measured on a $124$M-parameter dense base, held-out perplexity (lower is better):
+
+\begin{center}
+\begin{tabular}{@{}lc@{}}
+\toprule
+condition & perplexity\\
+\midrule
+dense base (off-domain start) & 32.5\\
+$+$ SSA swap, no adaptation & 45.8\\
+dense base $+$ equal in-domain continued training (control) & 23.9\\
+\textbf{SSA-swapped $+$ equal in-domain continued training} & \textbf{25.1}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The swap costs $+13.2$ perplexity; an \emph{equal-budget} adaptation recovers $94\%$ of that gap, landing
+within $+1.2$ of a dense model given the \emph{same} continued training---while attending only ${\sim}38\%$ of
+keys at this configuration. The control matters: continued training lowers perplexity for either attention
+(domain adaptation), so ``recovery'' must be measured against a dense model given the same steps, not against
+the off-domain start. The residual is the price of sparsity at this small budget and shrinks as the budget
+grows.
+
+\section{Experiments}\label{sec:experiments}
+
+All experiments are at controlled scale; the point is to validate mechanisms, not to set absolute records.
+
+\paragraph{Routing.} Second-order (cumulant) routing recovers targets where centroid routing collapses,
+matching the $1/b$ outlier-attenuation analysis of Section~\ref{sec:secondorder}; routing quality peaks near
+$\beta\approx2$, consistent with the bias--variance reading of~\eqref{eq:lse}.
+
+\paragraph{Kernel speedup.} A block-sparse implementation of Algorithm~1 achieved a $20.6\times$ wall-clock
+speedup over a dense exact kernel at $n=262{,}144$ on a single accelerator, with the crossover well below that
+length.
+
+\paragraph{Routability.} The regularizer~\eqref{eq:reg} reduced lossless branch-and-bound selection cost from
+$26.5\%$ to $4.2\%$ of keys at zero accuracy cost. The reduction was robust across head dimension and showed no
+capacity trade-off down to $d=$ (number of clusters), since query-specific anisotropy needs only ${\sim}1$
+dimension per cluster---real head dimensions ($64$--$256$) sit well above this.
+
+\paragraph{Length generalization and staging.} See Section~\ref{sec:length}: $32\times$ the trained length at
+recall $0.982$ for ${\sim}800$ adaptation steps, SSA-preserved.
+
+\paragraph{Construction pipeline.} See Section~\ref{sec:pipeline}: swap $+13.2$ perplexity, $94\%$ recovered to
+within $+1.2$ of the dense-adapted control at ${\sim}38\%$ of keys.
+
+\paragraph{What the headline retrieval numbers do and do not show.} Reported single-target
+needle-in-a-haystack accuracies of $98$--$100\%$ at $10^6$--$10^7$ tokens are real and consistent
+with~\eqref{eq:recovery}--\eqref{eq:detect}, but they live in a specific regime. We measured retrieval as a
+function of context length at fixed budget $\kappa\approx10^3$ and margin $\Delta=0.55$:
+
+\begin{center}
+\begin{tabular}{@{}rccc@{}}
+\toprule
+context $n$ & dense & SSA, isolated target & SSA, benign target\\
+\midrule
+1024   & 1.00 & 1.00 & 1.00\\
+4096   & 1.00 & 0.47 & 1.00\\
+16384  & 1.00 & 0.20 & 1.00\\
+65536  & 0.90 & 0.10 & 1.00\\
+262144 & 0.83 & 0.00 & 1.00\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+An \emph{isolated} target---a lone spike with no correlated neighbors---\emph{collapses} with length: cheap
+moment routing averages it into its block and loses it among the fluctuations of the growing number of blocks
+(the $1/b$ attenuation of Section~\ref{sec:secondorder}, now competing against more and more random blocks).
+This is Proposition~\ref{prop:impossible} in miniature. A \emph{benign} target---one accompanied by a coherent
+span of query-aligned neighbors, as a real answer is by its surrounding context---lifts its whole block's score
+and stays flat at $1.00$, \emph{beating dense} at long $n$ because selection caps the effective distractor
+count. The same separation appears across margins: an isolated target barely fires at any margin, while a
+benign one tracks dense once the margin clears the budget floor $\sqrt{2\log\kappa/d}$. So the headline numbers
+certify the \emph{easy and benign} regime (single, high-margin, accuracy not losslessness)---the regime
+everyone agrees is achievable---and do not certify lossless selection in the worst case, which
+Proposition~\ref{prop:impossible} shows is unavailable cheaply.
+
+\section{Discussion and limitations}
+
+SSA is best understood as the resolution of a constrained problem rather than a universal accelerator. The
+recovery-weight law~\eqref{eq:recovery} shows selection makes retrieval flat in $n$; the admissible
+bound~\eqref{eq:admissible} and the prune gate~\eqref{eq:prune} show summaries can certify that selection
+losslessly; the trilemma (Section~\ref{sec:trilemma}) shows this can be cheap \emph{only} on benign geometry;
+and the regularizer~\eqref{eq:reg} shows training can supply that geometry. The construction pipeline
+(Section~\ref{sec:pipeline}) and the staging ladder (Section~\ref{sec:length}) turn the mechanism into a recipe
+that retrofits a dense model and extends its context a rung at a time.
+
+Honest limitations follow directly from the theory. (i)~\emph{Worst-case losslessness is not available cheaply}
+---a sufficiently adversarial or genuinely low-margin target can always evade summary routing; SSA's guarantees
+are conditional on the (trained, measured) benign geometry. (ii)~\emph{Multi-needle and low-margin retrieval}
+are the hard regime the headline single-needle numbers do not address. (iii)~The selection budget $\kappa$ sets
+a floor margin $\sqrt{2\log\kappa/d}$; targets below it are missed regardless of $n$. (iv)~The experiments here
+are at modest scale ($10^2$--$10^5$ tokens, $10^8$-parameter base); they validate mechanisms, and reaching
+$10^7$-token contexts is the same construction repeated with the hierarchical router, more compute, and a
+long-context training corpus. None of these is a missing algorithmic ingredient; they are the boundary the
+theory itself draws.
+
+\appendix
+\section{Derivations}
+
+\paragraph{A.1 Recovery weight~\eqref{eq:recovery}.} With one target at logit $a_\star$ and $\mu$ distractors
+at $a_\star-\Delta$, $w_\star=e^{\beta a_\star}/(e^{\beta a_\star}+\mu e^{\beta(a_\star-\Delta)})$. Divide
+numerator and denominator by $e^{\beta a_\star}$ to get $1/(1+\mu e^{-\beta\Delta})=\sigma(\beta\Delta-\log\mu)$,
+since $1/(1+e^{-x})=\sigma(x)$ with $x=\beta\Delta-\log\mu$.
+
+\paragraph{A.2 Cumulant score~\eqref{eq:route}.} Let $g(\beta)=\beta^{-1}\log\frac1b\sum_{j\in
+c}e^{\beta\inner{q}{k_j}}$. As $\beta\to0$, $g(\beta)=\E_j\inner{q}{k_j}+\frac{\beta}{2}\Var_j\inner{q}{k_j}
++O(\beta^2)$, the cumulant generating function expansion. The mean is $\inner{q}{\mu_c}$ and the variance is
+$q^\top\Sigma_c q$, giving~\eqref{eq:route}.
+
+\paragraph{A.3 Log-sum-exp sandwich~\eqref{eq:lse}.} For any reals $x_1,\dots,x_b$ with $M=\max_j x_j$:
+$e^{\beta M}\le\sum_j e^{\beta x_j}\le b\,e^{\beta M}$. Take $\log$, divide by $\beta$:
+$M\le\beta^{-1}\log\sum_j e^{\beta x_j}\le M+\beta^{-1}\log b$.
+
+\paragraph{A.4 Samuelson bound~\eqref{eq:samuelson}.} Center the data, $d_j=s_j-\bar s$, so $\sum_j d_j=0$. Fix
+index $i$. By Cauchy--Schwarz over the other $m-1$ indices,
+$d_i^2=(\sum_{j\neq i}d_j)^2\le(m-1)\sum_{j\neq i}d_j^2=(m-1)(\sum_j d_j^2-d_i^2)$. Hence $d_i^2\,m\le(m-1)\sum_j
+d_j^2$, i.e.\ $(s_i-\bar s)^2\le(m-1)\Var$. Taking the max over $i$ and adding $\bar s$ gives the stated bound on
+$\max_j s_j$, and~\eqref{eq:prune} is its contrapositive against the threshold $s^\star$.
+
+\begin{thebibliography}{16}
+\bibitem{vaswani2017} A.~Vaswani et al. \emph{Attention Is All You Need.} NeurIPS, 2017.
+\bibitem{child2019} R.~Child, S.~Gray, A.~Radford, I.~Sutskever. \emph{Generating Long Sequences with Sparse Transformers.} 2019.
+\bibitem{longformer} I.~Beltagy, M.~E.~Peters, A.~Cohan. \emph{Longformer: The Long-Document Transformer.} 2020.
+\bibitem{bigbird} M.~Zaheer et al. \emph{Big Bird: Transformers for Longer Sequences.} NeurIPS, 2020.
+\bibitem{reformer} N.~Kitaev, {\L}.~Kaiser, A.~Levskaya. \emph{Reformer: The Efficient Transformer.} ICLR, 2020.
+\bibitem{routing} A.~Roy, M.~Saffar, A.~Vaswani, D.~Grangier. \emph{Efficient Content-Based Sparse Attention with Routing Transformers.} TACL, 2021.
+\bibitem{linear} A.~Katharopoulos, A.~Vyas, N.~Pappas, F.~Fleuret. \emph{Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention.} ICML, 2020.
+\bibitem{performer} K.~Choromanski et al. \emph{Rethinking Attention with Performers.} ICLR, 2021.
+\bibitem{rope} J.~Su et al. \emph{RoFormer: Enhanced Transformer with Rotary Position Embedding.} 2021.
+\bibitem{fmm} L.~Greengard, V.~Rokhlin. \emph{A Fast Algorithm for Particle Simulations.} J.~Comput.\ Phys., 1987.
+\bibitem{barneshut} J.~Barnes, P.~Hut. \emph{A Hierarchical $O(N\log N)$ Force-Calculation Algorithm.} Nature, 1986.
+\bibitem{samuelson} P.~A.~Samuelson. \emph{How Deviant Can You Be?} J.~Amer.\ Statist.\ Assoc., 1968.
+\bibitem{keles2023} A.~Keles, P.~Wijewardena, C.~Hegde. \emph{On the Computational Complexity of Self-Attention.} ALT, 2023.
+\bibitem{alman2023} J.~Alman, Z.~Song. \emph{Fast Attention Requires Bounded Entries.} NeurIPS, 2023.
+\bibitem{hopfield} H.~Ramsauer et al. \emph{Hopfield Networks Is All You Need.} ICLR, 2021.
+\bibitem{zoology} S.~Arora et al. \emph{Zoology: Measuring and Improving Recall in Efficient Language Models.} 2023.
+\end{thebibliography}
+
+\end{document}

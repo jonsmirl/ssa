@@ -1,0 +1,8 @@
+numpy>=1.24
+torch>=2.2
+# Optional: only needed for the real-model probe scripts (ssa_swap, real_keys,
+# longctx_keys, longctx_probe, gemma_keys), which download pretrained models.
+transformers>=4.40
+datasets>=2.18
+# Optional: test runner
+pytest>=7.0

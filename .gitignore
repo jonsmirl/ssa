@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Model checkpoints / large artifacts (regenerable by ssa_checkpoint.py)
+*.pt
+*.bin
+*.safetensors
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+paper/*.pdf
+
+# OS
+.DS_Store
