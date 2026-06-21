@@ -21,7 +21,7 @@ venv/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
-paper/*.pdf
+# Note: paper/subquadratic_attention.pdf is committed (linked from the README)
 
 # OS
 .DS_Store

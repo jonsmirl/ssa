@@ -10,9 +10,9 @@ work is `O(κ)` in a fixed budget `κ ≪ n` plus a sublinear routing cost, so t
 near-linear with a hierarchical router.
 
 The full writeup — algorithm, all the supporting math, and the measured results — is in
-[`paper/subquadratic_attention.tex`](paper/subquadratic_attention.tex) (and a Markdown copy,
-[`paper/subquadratic_attention.md`](paper/subquadratic_attention.md)). This README is the short version plus
-how to run everything.
+[`paper/subquadratic_attention.pdf`](paper/subquadratic_attention.pdf) (compiled PDF), with the
+[LaTeX source](paper/subquadratic_attention.tex) and a [Markdown copy](paper/subquadratic_attention.md)
+alongside it. This README is the short version plus how to run everything.
 
 ## The idea in one screen
 
