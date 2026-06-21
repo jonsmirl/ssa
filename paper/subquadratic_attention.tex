@@ -36,24 +36,24 @@
 \begin{abstract}
 \noindent
 Dense self-attention costs $O(n^2)$ in the sequence length $n$, which is the binding constraint on
-long-context language models. We present \emph{Subquadratic Sparse Attention} (SSA), an attention mechanism
+long-context language models. This paper presents \emph{Subquadratic Sparse Attention} (SSA), an attention mechanism
 that, for each query, (i)~routes to a small content-dependent set of key blocks using only per-block summary
 statistics, (ii)~adds a local window, and (iii)~performs \emph{exact} softmax attention over the selected
 keys. The per-query work is $O(\kappa)$ in a fixed budget $\kappa\ll n$ plus a sublinear routing cost, so the
-layer runs in $O(n\sqrt{n})$ flat or near-linear with a hierarchical router. We develop the theory that says
+layer runs in $O(n\sqrt{n})$ flat or near-linear with a hierarchical router. A supporting theory establishes
 when this is sound. A retrieval-margin analysis shows that softmax attention recovers a target key with weight
 $\sigma(\beta\Delta-\log\mu)$, where $\Delta$ is the score margin and $\mu$ the number of competing
-distractors; selection works because it cuts $\mu$ from $n$ to $\kappa$, making recovery \emph{flat in $n$}. We
-give the admissible routing bound that licenses summary-only selection, a tempered (cumulant) routing score
+distractors; selection works because it cuts $\mu$ from $n$ to $\kappa$, making recovery \emph{flat in $n$}.
+The analysis gives the admissible routing bound that licenses summary-only selection, a tempered (cumulant) routing score
 that---unlike centroid routing---sees in-block outliers, and a closed-form variance prune test from
-Samuelson's inequality. We then prove the limit: cheap, lossless, length-robust selection cannot hold
+Samuelson's inequality. The limit is then proved: cheap, lossless, length-robust selection cannot hold
 simultaneously for arbitrary keys (a one-line probe argument), so SSA's subquadratic \emph{exactness} is
 licensed by the \emph{benign geometry} of trained representations---geometry that training can be made to
-manufacture, via a routability regularizer that shrinks off-target spread. Finally we show length
+manufacture, via a routability regularizer that shrinks off-target spread. Finally, length
 generalization (rotary position plus staged continued training reaches $32\times$ the trained length at $0.98$
 recall for ${\sim}800$ adaptation steps) and a construction pipeline that converts a dense pretrained model
 into a subquadratic one by swapping the attention and briefly adapting (recovering to within $+1.2$ perplexity
-of a dense model given equal training while attending $38\%$ of keys). All claims are accompanied by
+of a dense model given equal training while attending $38\%$ of keys) are demonstrated. All claims are accompanied by
 measurements at controlled scale.
 \end{abstract}
 
@@ -97,7 +97,7 @@ w_j \;=\; \frac{e^{\beta a_j}}{\sum_{l=1}^n e^{\beta a_l}}, \qquad \beta = \tfra
 so $w$ is the attention distribution and $\beta$ its inverse temperature. The output is $o=\sum_j w_j v_j$.
 
 A long-context layer is, operationally, an \emph{associative recall}: a query must place most of its weight on
-the key(s) that hold the information it needs and little on the rest. We therefore analyze attention by the
+the key(s) that hold the information it needs and little on the rest. Attention is therefore analyzed by the
 weight it puts on a designated \emph{target} key $k_\star$ relative to the \emph{distractors}
 $\{k_j\}_{j\neq\star}$.
 
@@ -290,8 +290,8 @@ condition of Section~\ref{sec:routability}.
 \section{The trilemma and the impossibility}\label{sec:trilemma}
 
 Call a selector \emph{cheap} if it reads $o(n)$ keys, \emph{lossless} if it attends every key dense attention
-would weight non-negligibly, and \emph{length-robust} if its accuracy is flat in $n$. The bounds above let us
-state the fundamental limit.
+would weight non-negligibly, and \emph{length-robust} if its accuracy is flat in $n$. The bounds above suffice
+to state the fundamental limit.
 
 \begin{proposition}[No free selection]\label{prop:impossible}
 No selector can be simultaneously cheap and lossless for arbitrary keys.
@@ -384,7 +384,7 @@ the logit $\inner{q_i}{k_j}$ depends on $i-j$, not on $i,j$ absolutely. A model 
 routing---match a query to the key whose content binds it, at whatever offset---therefore transfers to offsets
 it never saw, because (i)~the decisive relative structure (e.g.\ a key-to-value offset of $+1$) is constant at
 any length and (ii)~content matching is position-free. A model with \emph{learned absolute} position embeddings
-cannot: its embeddings past the trained length are untrained. This predicts, and we observe, zero-shot
+cannot: its embeddings past the trained length are untrained. This predicts, and experiments confirm, zero-shot
 extrapolation of ${\sim}2$--$4\times$ for RoPE and immediate collapse for learned-absolute position.
 
 \subsection{The staging ladder}
@@ -476,7 +476,7 @@ within $+1.2$ of the dense-adapted control at ${\sim}38\%$ of keys.
 
 \paragraph{What the headline retrieval numbers do and do not show.} Reported single-target
 needle-in-a-haystack accuracies of $98$--$100\%$ at $10^6$--$10^7$ tokens are real and consistent
-with~\eqref{eq:recovery}--\eqref{eq:detect}, but they live in a specific regime. We measured retrieval as a
+with~\eqref{eq:recovery}--\eqref{eq:detect}, but they live in a specific regime. Retrieval was measured as a
 function of context length at fixed budget $\kappa\approx10^3$ and margin $\Delta=0.55$:
 
 \begin{center}

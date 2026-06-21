@@ -3,25 +3,25 @@
 ## Abstract
 
 Dense self-attention costs $O(n^2)$ in the sequence length $n$, which is the binding
-constraint on long-context language models. We present **Subquadratic Sparse Attention (SSA)**, an
+constraint on long-context language models. This paper presents **Subquadratic Sparse Attention (SSA)**, an
 attention mechanism that, for each query, (i) routes to a small content-dependent set of key blocks using
 only per-block summary statistics, (ii) adds a local window, and (iii) performs *exact* softmax attention
 over the selected keys. The per-query work is $O(\kappa)$ in a fixed budget $\kappa \ll n$ plus a sublinear
 routing cost, so the layer runs in $O(n\sqrt{n})$ flat or near-linear with a hierarchical router.
 
-We develop the theory that says when this is sound. A retrieval-margin analysis shows that softmax
+A supporting theory establishes when this is sound. A retrieval-margin analysis shows that softmax
 attention recovers a target key with weight $\sigma(\beta\Delta - \log \mu)$, where $\Delta$ is the score
 margin and $\mu$ the number of competing distractors; selection works because it cuts $\mu$ from $n$ to
-$\kappa$, making recovery *flat in $n$*. We give the admissible routing bound that licenses summary-only
+$\kappa$, making recovery *flat in $n$*. The analysis gives the admissible routing bound that licenses summary-only
 selection, a tempered (cumulant) routing score that — unlike centroid routing — sees in-block outliers, and
-a closed-form variance prune test from Samuelson's inequality. We then prove the limit: cheap, lossless,
+a closed-form variance prune test from Samuelson's inequality. The limit is then proved: cheap, lossless,
 length-robust selection cannot hold simultaneously for arbitrary keys (a one-line probe argument), so SSA's
 subquadratic *exactness* is licensed by the **benign geometry** of trained representations — geometry that
-training can be made to manufacture, via a routability regularizer that shrinks off-target spread. Finally we
-show length generalization (rotary position + staged continued training reaches $32\times$ the trained length
+training can be made to manufacture, via a routability regularizer that shrinks off-target spread. Finally,
+length generalization (rotary position + staged continued training reaches $32\times$ the trained length
 at $0.98$ recall for $\sim\!800$ adaptation steps) and a construction pipeline that converts a dense
 pretrained model into a subquadratic one by swapping the attention and briefly adapting (recovering to within
-$+1.2$ perplexity of a dense model given equal training while attending $38\%$ of keys). All claims are
+$+1.2$ perplexity of a dense model given equal training while attending $38\%$ of keys) are demonstrated. All claims are
 accompanied by measurements at controlled scale.
 
 ---
@@ -67,7 +67,7 @@ $$
 so $w$ is the attention distribution and $\beta$ its inverse temperature. The output is $o = \sum_j w_j v_j$.
 
 A long-context layer is, operationally, an **associative recall**: a query must place most of its weight on
-the key(s) that hold the information it needs and little on the rest. We therefore analyze attention by the
+the key(s) that hold the information it needs and little on the rest. Attention is therefore analyzed by the
 weight it puts on a designated **target** key $k_\star$ relative to the **distractors** $\{k_j\}_{j\neq\star}$.
 
 ---
@@ -265,7 +265,7 @@ spread $q^\top\Sigma_c q$ is small, which is the benign-geometry condition of Se
 ## 6. The trilemma and the impossibility
 
 Call a selector **cheap** if it reads $o(n)$ keys, **lossless** if it attends every key dense attention would
-weight non-negligibly, and **length-robust** if its accuracy is flat in $n$. The bounds above let us state the
+weight non-negligibly, and **length-robust** if its accuracy is flat in $n$. The bounds above suffice to state the
 fundamental limit.
 
 > **Proposition (no free selection).** No selector can be simultaneously cheap and lossless for *arbitrary*
@@ -356,7 +356,7 @@ the logit $\langle q_i,k_j\rangle$ depends on $i-j$, not on $i,j$ absolutely. A 
 *content* routing — match a query to the key whose content binds it, at whatever offset — therefore transfers
 to offsets it never saw, because (i) the decisive relative structure (e.g. a key-to-value offset of $+1$) is
 constant at any length and (ii) content matching is position-free. A model with *learned absolute* position
-embeddings cannot: its embeddings past the trained length are untrained. This predicts, and we observe,
+embeddings cannot: its embeddings past the trained length are untrained. This predicts, and experiments confirm,
 zero-shot extrapolation of $\sim\!2$–$4\times$ for RoPE and immediate collapse for learned-absolute position.
 
 ### 8.2 The staging ladder
@@ -437,7 +437,7 @@ the dense-adapted control at $\sim\!38\%$ of keys.
 
 **What the headline retrieval numbers do and do not show.** Reported single-target needle-in-a-haystack
 accuracies of $98$–$100\%$ at $10^6$–$10^7$ tokens are real and consistent with (3.1)–(3.2), but they live in a
-specific regime. We measured retrieval as a function of context length at fixed budget $\kappa\approx10^3$ and
+specific regime. Retrieval was measured as a function of context length at fixed budget $\kappa\approx10^3$ and
 margin $\Delta=0.55$:
 
 | context $n$ | dense | SSA, isolated target | SSA, benign target |
