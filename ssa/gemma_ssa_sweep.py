@@ -84,36 +84,37 @@ def smoke_gate(model, tok, block, device, route_full_only=True):
     return ok, base, gated
 
 
-def sweep(model, tok, lengths, budgets, block, depths, trials, out, device,
+def sweep(model, tok, lengths, budgets, blocks, depths, trials, out, device,
           max_new=12, route_full_only=True, edgeworth=False, beta=2.0, dense_layers=()):
     from ssa import gemma_ssa as G
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     rows = {}
     if os.path.exists(out):
         for r in json.load(open(out)).get("rows", []):
-            rows[(r["n"], r["budget"])] = r
+            rows[(r["n"], r.get("block", 256), r["budget"])] = r
         print(f"  [resume] {len(rows)} cells already done in {out}", flush=True)
 
     def save():
-        json.dump({"rows": sorted(rows.values(), key=lambda r: (r["n"], -r["budget"]))},
+        json.dump({"rows": sorted(rows.values(), key=lambda r: (r["n"], r.get("block", 256), -r["budget"]))},
                   open(out, "w"), indent=2)
 
     for n in sorted(lengths):                       # cheapest length first -> a full curve lands early
-        for b in budgets:                           # budgets passed 1.0-first (dense ref before sparse)
-            if (n, b) in rows:
-                print(f"  [skip] n={n} budget={b}", flush=True)
-                continue
-            G.CFG = G.SSAConfig(block=block, budget_frac=b, route_full_only=route_full_only,
-                                edgeworth=edgeworth, beta=beta, dense_layers=dense_layers)
-            t0 = time.time()
-            acc = niah_accuracy(model, tok, n, depths=depths, trials=trials,
-                                max_new_tokens=max_new, device=device)
-            ll = lm_loss(model, tok, LM_TEXTS, max_len=n, device=device)
-            rows[(n, b)] = {"n": n, "budget": b, "niah_acc": round(acc, 4),
-                            "lm_loss": round(ll, 4), "sec": round(time.time() - t0, 1)}
-            save()
-            print(f"  [done] n={n:>7} budget={b:<5} niah={acc:.3f} lm={ll:.4f} "
-                  f"({rows[(n, b)]['sec']}s)", flush=True)
+        for blk in blocks:
+            for b in budgets:                       # budgets passed 1.0-first (dense ref before sparse)
+                if (n, blk, b) in rows:
+                    print(f"  [skip] n={n} block={blk} budget={b}", flush=True)
+                    continue
+                G.CFG = G.SSAConfig(block=blk, budget_frac=b, route_full_only=route_full_only,
+                                    edgeworth=edgeworth, beta=beta, dense_layers=dense_layers)
+                t0 = time.time()
+                acc = niah_accuracy(model, tok, n, depths=depths, trials=trials,
+                                    max_new_tokens=max_new, device=device)
+                ll = lm_loss(model, tok, LM_TEXTS, max_len=n, device=device)
+                rows[(n, blk, b)] = {"n": n, "block": blk, "budget": b, "niah_acc": round(acc, 4),
+                                     "lm_loss": round(ll, 4), "sec": round(time.time() - t0, 1)}
+                save()
+                print(f"  [done] n={n:>7} block={blk:>4} budget={b:<5} niah={acc:.3f} lm={ll:.4f} "
+                      f"({rows[(n, blk, b)]['sec']}s)", flush=True)
     return rows
 
 
@@ -123,7 +124,7 @@ def main():
     ap.add_argument("--device-map", default="auto")
     ap.add_argument("--lengths", default="2048,8192")
     ap.add_argument("--budgets", default="1.0,0.5,0.25,0.12,0.06")
-    ap.add_argument("--block", type=int, default=256)
+    ap.add_argument("--block", default="256", help="comma list of block sizes to sweep")
     ap.add_argument("--niah-trials", type=int, default=4)
     ap.add_argument("--niah-depths", default="0.1,0.5,0.9")
     ap.add_argument("--out", default="runs/sweep.json")
@@ -139,27 +140,28 @@ def main():
     depths = tuple(float(x) for x in args.niah_depths.split(","))
     route_full_only = not args.route_all
     dense_layers = tuple(int(x) for x in args.dense_layers.split(",") if x.strip())
+    blocks = [int(x) for x in args.block.split(",")]
 
     print(f"loading {args.model} (device_map={args.device_map})...", flush=True)
     model, tok = load_model(args.model, args.device_map)
     device = pick_device(model, args.device_map)
     print(f"  loaded; eval device = {device}", flush=True)
 
-    ok, _, _ = smoke_gate(model, tok, args.block, device, route_full_only)
+    ok, _, _ = smoke_gate(model, tok, blocks[0], device, route_full_only)
     if not ok:
         print("ABORT: smoke gate failed — the kappa=100% path does not reproduce dense. Fix the "
               "full-layer swap before sweeping (likely the 512-dim/K=V or QK-norm handling).")
         return
 
     print(f"  routing: edgeworth={args.edgeworth} beta={args.beta} dense_layers={dense_layers}", flush=True)
-    rows = sweep(model, tok, lengths, budgets, args.block, depths, args.niah_trials,
+    rows = sweep(model, tok, lengths, budgets, blocks, depths, args.niah_trials,
                  args.out, device, route_full_only=route_full_only,
                  edgeworth=args.edgeworth, beta=args.beta, dense_layers=dense_layers)
 
-    print("\n=== kappa-sweep: NIAH accuracy (headline) + LM loss vs budget ===")
-    print(f"{'n':>8} {'budget':>7} {'NIAH':>7} {'LM loss':>9}")
-    for r in sorted(rows.values(), key=lambda r: (r["n"], -r["budget"])):
-        print(f"{r['n']:>8} {r['budget']:>7.2f} {r['niah_acc']:>7.3f} {r['lm_loss']:>9.4f}")
+    print("\n=== kappa-sweep: NIAH accuracy (headline) + LM loss vs (block, budget) ===")
+    print(f"{'n':>8} {'block':>6} {'budget':>7} {'NIAH':>7} {'LM loss':>9}")
+    for r in sorted(rows.values(), key=lambda r: (r["n"], r.get("block", 256), -r["budget"])):
+        print(f"{r['n']:>8} {r.get('block', 256):>6} {r['budget']:>7.2f} {r['niah_acc']:>7.3f} {r['lm_loss']:>9.4f}")
     print(f"\nwrote {args.out}")
 
 

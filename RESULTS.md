@@ -819,11 +819,53 @@ layers. Implementing the deployable diagonal term `r += (β²/6)·Σ_d q_d³·m3
 - `0.444 → 0.556` — forcing the single worst layer (29) dense (the one layer no statistic could route);
 - `0.556 → 1.000` — the **frozen-key ceiling** → co-adaptation training (the moat).
 
-**Verdict.** The first end-to-end real-model evidence, and it confirms the project's thesis *quantitatively*:
-**algorithmic fixes on a frozen model recover budget-0.25 retrieval to ~0.56 at the harshest regime; the
-residual to 1.0 is the frozen-key limit that only co-adaptation training crosses.** The Edgeworth term —
+**Verdict** (block 256 / β4 — *partly superseded; see "Block granularity" below*). At this fixed coarse
+configuration, **algorithmic fixes recover budget-0.25 retrieval to ~0.56, and the residual *looked like* a
+frozen-key limit.** That attribution is **overturned by the block-granularity sweep below**: at n=2048 the
+residual is a **tuning artifact**, fully recoverable to **1.000** with finer blocks and plain cumulant — no
+training. The Edgeworth term —
 previously a theoretical "route to improvement" — is now a *measured* gain on a 26B model, and budget 0.5
 goes 0.833→1.000. *Caveats:* quality not speed (analytic O(n²), n=2048); keep-2-of-8 is a coarse, harsh
 corner (**0.556 is a lower bound** — long context keeps far more blocks at 25% and is more forgiving); single
 model, single needle type, ~9-probe sampling. Runs: `runs/gemma_sweep_{fixed,edge,edge_d29}.json`;
 mechanism in `gemma_ssa.py` (`edgeworth`, `dense_layers`), driver in `gemma_ssa_sweep.py`.
+
+### Block granularity is the real lever — the budget-0.25 "ceiling" was a tuning artifact
+
+The verdict above attributed the budget-0.25 residual to a frozen-key ceiling needing co-adaptation. A
+block-granularity sweep (n=2048, budget 0.25, everything else fixed; `gemma_ssa_sweep.py --block 256,128,64`)
+**overturns that** — recall is *non-monotonic* in block size and, tuned correctly, reaches **1.000**:
+
+| block | #blocks | keep@25% | routing | NIAH |
+|---|---|---|---|---|
+| 256 | 8 | 2 | cumulant β4 + edgeworth | 0.444 |
+| 128 | 16 | 4 | cumulant β4 + edgeworth | 0.667 |
+| 64 | 32 | 8 | cumulant β4 + edgeworth | **0.000** (!) |
+| 64 | 32 | 8 | **plain cumulant (β2 or β4)** | **1.000** |
+
+A controlled isolation at block=64 (one model load, five configs) pins the non-monotonicity:
+
+| block=64, budget 0.25 | NIAH |
+|---|---|
+| edgeworth, β4 | 0.000 |
+| edgeworth, β2 | 1.000 |
+| plain cumulant, β2 | 1.000 |
+| plain cumulant, β4 | 1.000 |
+| edgeworth, β4, local_w=4 (bigger window) | 0.000 |
+
+**Reading.** (1) At **fine blocks the needle dominates its small block, so plain 2nd-cumulant routing fully
+retrieves (1.000) regardless of β** — no skew term needed. (2) The Edgeworth skew term is a *coarse-block
+compensator* (it rescues 0.000→0.444 at block=256, where the needle is buried among 256 keys) but is
+*unnecessary at fine blocks and catastrophic at high β*: its noisy 64-key 3rd-moment estimate, weighted
+β²/6 ≈ 2.7×, destroys routing (the 0.000); a bigger local window does not help, confirming it is the
+**skew×β interaction**, not the window. (3) **The core lever is block granularity, not the skew term I added.**
+
+**Corrected conclusion (at n=2048).** There is **no frozen-key ceiling** at budget 0.25 — the earlier
+"0.556 → needs co-adaptation training" was a **block-size / β tuning artifact**. The simplest robust frozen
+config (fine blocks + plain cumulant) reaches **1.000**, with no skew term, no layer-29-dense, and no
+training. **Scope (unchanged and load-bearing):** this is n=2048 (only 32 blocks at block=64). The real
+long-context target (millions of tokens → 10⁵+ blocks) is a much harder routing problem *and* the
+O((n/block)²) block-score computation itself goes quadratic there (the hierarchical-router gap) — so "no
+ceiling" is established at **moderate context only**, not proven at 12M. The co-adaptation-training frontier
+remains relevant for the long-context / aggressive-budget regime this experiment did not reach. Run:
+`runs/gemma_sweep_block.json`.

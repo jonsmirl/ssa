@@ -488,10 +488,13 @@ $25\%$ (recall $0.00$); a forward-only probe shows the distant needle's block ra
 cumulant score---just outside the kept top-$2$---and worst at the deepest layer, a position-decay effect.
 Adding the third-cumulant (skew) term of the tempered family (Section~\ref{sec:secondorder}) restores the
 $50\%$ budget to $1.00$ and lifts the $25\%$ budget to $0.44$ (to $0.56$ if the single worst-routing layer is
-left dense); the residual to $1.00$ is the frozen-key ceiling that only key co-adaptation (the routability
-regularizer, \eqref{eq:reg}) closes. This is a routing-\emph{quality} measurement (the analytic,
-score-materializing swap at moderate $n$), not the subquadratic-kernel regime; it validates the routing
-theory and the co-adaptation thesis on a real frontier model.
+left dense). This residual is a \emph{tuning artifact}, not a frozen-key ceiling: at a finer block size,
+plain second-order routing reaches recall $1.00$ at the $25\%$ budget---the third-cumulant term is a
+coarse-block compensator, unnecessary (and at large $\beta$ harmful) once the needle dominates a small block.
+So at moderate $n$ the frozen model retrieves fully under the right routing granularity; key co-adaptation
+(the routability regularizer, \eqref{eq:reg}) is for the long-context regime, where the block-score
+computation itself becomes quadratic. This is a routing-\emph{quality} measurement (the analytic,
+score-materializing swap at moderate $n$), not the subquadratic-kernel regime.
 
 \paragraph{What the headline retrieval numbers do and do not show.} Reported single-target
 needle-in-a-haystack accuracies of $98$--$100\%$ at $10^6$--$10^7$ tokens are real and consistent
@@ -584,7 +587,7 @@ $\max_j s_j$, and~\eqref{eq:prune} is its contrapositive against the threshold $
 \bibitem{alman2023} J.~Alman, Z.~Song. \emph{Fast Attention Requires Bounded Entries.} NeurIPS, 2023.
 \bibitem{hopfield} H.~Ramsauer et al. \emph{Hopfield Networks Is All You Need.} ICLR, 2021.
 \bibitem{zoology} S.~Arora et al. \emph{Zoology: Measuring and Improving Recall in Efficient Language Models.} 2023.
-\bibitem{lean} J.~Smirl. \emph{Substrate Abstract Algebra} (Lean~4 development), module \texttt{Substrate.Inference.PhaseTransition.Algebra} (\texttt{RetrievalMargin}, \texttt{SearchTradeoff}, \texttt{AnisotropicBound}, \texttt{SamuelsonBound}, \texttt{TemperedRouting}, \texttt{HierarchicalRouting}, \texttt{LosslessSelectionLimit}, \texttt{ValueAwareSelection}). Machine-checked, axiom-pure; available on request.
+\bibitem{lean} J.~Smirl. \emph{Substrate Abstract Algebra} (Lean~4 development), module \texttt{Substrate.Inference.PhaseTransition.Algebra} (\texttt{RetrievalMargin}, \texttt{SearchTradeoff}, \texttt{AnisotropicBound}, \texttt{SamuelsonBound}, \texttt{TemperedRouting}, \texttt{HierarchicalRouting}, \texttt{LosslessSelectionLimit}, \texttt{ValueAwareSelection}). Machine-checked, axiom-pure. In-depth technical details are available to qualified parties subject to approval.
 \end{thebibliography}
 
 \end{document}
