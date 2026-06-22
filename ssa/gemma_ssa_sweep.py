@@ -85,7 +85,7 @@ def smoke_gate(model, tok, block, device, route_full_only=True):
 
 
 def sweep(model, tok, lengths, budgets, block, depths, trials, out, device,
-          max_new=12, route_full_only=True):
+          max_new=12, route_full_only=True, edgeworth=False, beta=2.0, dense_layers=()):
     from ssa import gemma_ssa as G
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     rows = {}
@@ -103,7 +103,8 @@ def sweep(model, tok, lengths, budgets, block, depths, trials, out, device,
             if (n, b) in rows:
                 print(f"  [skip] n={n} budget={b}", flush=True)
                 continue
-            G.CFG = G.SSAConfig(block=block, budget_frac=b, route_full_only=route_full_only)
+            G.CFG = G.SSAConfig(block=block, budget_frac=b, route_full_only=route_full_only,
+                                edgeworth=edgeworth, beta=beta, dense_layers=dense_layers)
             t0 = time.time()
             acc = niah_accuracy(model, tok, n, depths=depths, trials=trials,
                                 max_new_tokens=max_new, device=device)
@@ -128,12 +129,16 @@ def main():
     ap.add_argument("--out", default="runs/sweep.json")
     ap.add_argument("--route-all", action="store_true",
                     help="route every attention layer (default: only full/global layers)")
+    ap.add_argument("--edgeworth", action="store_true", help="add the 3rd-cumulant (skew) routing term")
+    ap.add_argument("--beta", type=float, default=2.0, help="cumulant routing temperature")
+    ap.add_argument("--dense-layers", default="", help="comma list of layer_idx to leave dense")
     args = ap.parse_args()
 
     lengths = [int(x) for x in args.lengths.split(",")]
     budgets = [float(x) for x in args.budgets.split(",")]
     depths = tuple(float(x) for x in args.niah_depths.split(","))
     route_full_only = not args.route_all
+    dense_layers = tuple(int(x) for x in args.dense_layers.split(",") if x.strip())
 
     print(f"loading {args.model} (device_map={args.device_map})...", flush=True)
     model, tok = load_model(args.model, args.device_map)
@@ -146,8 +151,10 @@ def main():
               "full-layer swap before sweeping (likely the 512-dim/K=V or QK-norm handling).")
         return
 
+    print(f"  routing: edgeworth={args.edgeworth} beta={args.beta} dense_layers={dense_layers}", flush=True)
     rows = sweep(model, tok, lengths, budgets, args.block, depths, args.niah_trials,
-                 args.out, device, route_full_only=route_full_only)
+                 args.out, device, route_full_only=route_full_only,
+                 edgeworth=args.edgeworth, beta=args.beta, dense_layers=dense_layers)
 
     print("\n=== kappa-sweep: NIAH accuracy (headline) + LM loss vs budget ===")
     print(f"{'n':>8} {'budget':>7} {'NIAH':>7} {'LM loss':>9}")

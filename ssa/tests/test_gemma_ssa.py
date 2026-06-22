@@ -81,6 +81,20 @@ def test_gqa_shapes_and_grouping():
     assert torch.allclose(out, dense_ref(q, k, v, 1.0, 2), atol=1e-10)
 
 
+def test_incremental_decode_matches_prefill():
+    """KV-cache incremental decoding (q_len=1, kv_len=N) must reproduce the prefill's last-position
+    output. This is the bug that silently corrupted the sparse-budget sweep numbers: the mask was
+    indexed by query length instead of key length, so generation degraded under sparsity."""
+    for frac in (0.5, 0.25):
+        G.CFG = G.SSAConfig(block=32, budget_frac=frac)
+        q, k, v = _qkv(n=160)
+        full, _ = ssa_attention_forward(_module(), q, k, v, scaling=1.0)
+        inc, _ = ssa_attention_forward(_module(), q[:, :, -1:, :], k, v, scaling=1.0)
+        assert inc.shape == (1, 1, 16, 512)
+        assert torch.allclose(inc[:, 0], full[:, -1], atol=1e-10), \
+            (frac, (inc[:, 0] - full[:, -1]).abs().max().item())
+
+
 def test_routing_finds_the_needle():
     """At a tight budget (top_c=1, no local pull to the needle's block), cumulant routing must
     select the block holding a key strongly aligned with the probe query, so the SSA output at the
