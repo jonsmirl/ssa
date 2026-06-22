@@ -62,7 +62,7 @@ def probe_bandb(enc, X_test, B=256, beta=20.0, budget=None, trials=600, seed=0,
         t = int(rng.integers(n))
         q = enc(corrupt(X_test[t:t + 1], mask_frac, noise, gen=gen))[0].cpu().numpy().astype(np.float32)
         exact += int(np.argmax(K @ q) == t)                  # dense ceiling for this cue
-        UB = mu @ q + R                                       # admissible upper bound per cluster
+        UB = mu @ q + np.linalg.norm(q) * R                  # admissible bound <q,mu>+||q||*R (Cauchy-Schwarz, eq 5.1)
         order = np.argsort(UB)[::-1]
         sstar, best, cost, opened = -1e30, -1, B, 0           # cost starts at B (scored all bounds)
         for b in order:
