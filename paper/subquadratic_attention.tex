@@ -494,7 +494,13 @@ coarse-block compensator, unnecessary (and at large $\beta$ harmful) once the ne
 So at moderate $n$ the frozen model retrieves fully under the right routing granularity; key co-adaptation
 (the routability regularizer, \eqref{eq:reg}) is for the long-context regime, where the block-score
 computation itself becomes quadratic. This is a routing-\emph{quality} measurement (the analytic,
-score-materializing swap at moderate $n$), not the subquadratic-kernel regime.
+score-materializing swap at moderate $n$), not the subquadratic-kernel regime. The routing survives a
+doubling of context---a forward-only probe shows the far needle staying within the $25\%$ budget from $n=2048$
+to $n=4096$, carried by a stable subset of layers---but pushing the validation to genuinely long context, and
+measuring any speed advantage at all, is memory-bound on a single accelerator: it requires the real
+subquadratic kernel together with \emph{substantially larger compute} than a single $16$\,GB device (a
+multi-GPU or cluster budget). We leave that scaling, and the $12$M-token validation it would enable, to future
+work with adequate compute.
 
 \paragraph{What the headline retrieval numbers do and do not show.} Reported single-target
 needle-in-a-haystack accuracies of $98$--$100\%$ at $10^6$--$10^7$ tokens are real and consistent

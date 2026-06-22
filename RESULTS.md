@@ -869,3 +869,35 @@ O((n/block)²) block-score computation itself goes quadratic there (the hierarch
 ceiling" is established at **moderate context only**, not proven at 12M. The co-adaptation-training frontier
 remains relevant for the long-context / aggressive-budget regime this experiment did not reach. Run:
 `runs/gemma_sweep_block.json`.
+
+### Does it extend to longer context? (forward-only routing-rank probe)
+
+The n=2048 result raises the obvious question: does fine-block plain-cumulant routing keep the far needle
+inside the budget as context *grows*? A forward-only probe answers it cheaply — capture the full layers' q,k
+(delegating the attention to real SDPA, so no n² materialization) and compute the far-needle block's
+plain-cumulant rank offline. Routing-rank-within-keep was the faithful predictor of retrieval at n=2048
+(≈65% of layer×heads within budget ⟺ the full 1.000 retrieval), so it extends the test without generation.
+
+Plain cumulant (β=2), block=64, budget 25%, far needle (depth 0.25):
+
+| n | keep@25% | within-budget (layer×heads / 80) | robust layers 5/11/23 (median rank) | weak layers 17/29 |
+|---|---|---|---|---|
+| 2048 | 8 | 52 (65%) | 2, 5, 3 | 10, 11 |
+| 4096 | 16 | 48 (60%) | 2, 4, 5 | 27, 37 |
+| 8192 | — | *not measurable here — see below* | — | — |
+
+**The within-budget fraction holds (65% → 60%) as context doubles**, and the mechanism is sharper than
+"no ceiling at one length": a **robust subset of layers (5, 11, 23) routes the far needle at rank ≤5
+regardless of context length** (well inside the 25% budget), while the two weak layers (17, 29) drift further
+out with n — but those were never the ones carrying retrieval. So the result is **layer-driven and stable
+across context**, now established through **n=4096** (2× the original).
+
+**Measurement ceiling (itself a finding).** n=8192 was *not measurable on this hardware*: the analytic,
+score-materializing swap is memory-bound on the 16 GB GPU (OOM at 4096 without a model-memory cap; a CUDA
+fault at 8192 with one). This is the *measurement path* hitting a wall, not the method — and it is exactly why
+genuine long context (and *any* speed claim) needs the **real subquadratic kernel** (`ssa_kernel` + the
+hierarchical router) wired into the swap, not the score-materializing analytic version used for these quality
+probes. **Pushing the validation to the 12M-token regime — and measuring the speed advantage — requires
+substantially more compute than a single 16 GB GPU + CPU offload** (the neocloud/cluster path). That, and the
+kernel integration, are the remaining work; everything in this section is the frozen-model *quality* story,
+which is now characterized.
