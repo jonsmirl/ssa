@@ -34,11 +34,20 @@ class TreeLevel:
 def build_tree(k: torch.Tensor, block: int, F: int = 8, top_cap: int = 8):
     """k: (B,H,n,d). Returns (levels, F): levels[0] = leaf key-blocks, ascending to the (<=top_cap) top."""
     B, H, n, d = k.shape
+    BH = B * H
     nb = n // block
-    kb = k.reshape(B * H, nb, block, d).float()
-    mu = kb.mean(2)
-    var = kb.var(2, unbiased=False)
-    R = (kb - mu.unsqueeze(2)).norm(dim=-1).amax(dim=-1)
+    kr = k.reshape(BH, nb, block, d)
+    # memory-lean leaf stats: chunk over blocks so no (BH·nb·block·d) fp32 temporary is materialized
+    mu = torch.empty(BH, nb, d, device=k.device)
+    var = torch.empty(BH, nb, d, device=k.device)
+    R = torch.empty(BH, nb, device=k.device)
+    CH = max(1, min(nb, 2048))
+    for i in range(0, nb, CH):
+        kc = kr[:, i:i + CH].float()                       # (BH, c, block, d)
+        m = kc.mean(2)
+        mu[:, i:i + CH] = m
+        var[:, i:i + CH] = kc.var(2, unbiased=False)
+        R[:, i:i + CH] = (kc - m.unsqueeze(2)).norm(dim=-1).amax(dim=-1)
     lo = torch.arange(nb, device=k.device) * block
     levels = [TreeLevel(mu, R, var, lo, nb)]
     BIG = float(nb * block + 1)
