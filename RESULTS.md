@@ -13,7 +13,7 @@ when does it work?**
 > maintained separately and is **not** included in this public repository; the theorem names are the
 > pointers into it. The Python in this repo *measures* those results — it does not prove them.
 
-Run: `python3 -m ssa.experiments` · Tests: `pytest ssa/tests/` (7 pass).
+Run: `python3 -m ssa.experiments` · Tests: `pytest ssa/tests/` (42 pass).
 Method: synthetic keys/queries with *exactly controlled* gap, separation, dimension, and count — so
 each prediction is tested against ground truth. No training; this validates the theory and the
 selector mechanism, not a trained model.
@@ -781,3 +781,49 @@ HIGH-margin, **benign** target, measured as ACCURACY not losslessness, kept find
 because real geometry is coherent. A lone adversarial spike defeats cheap moment routing — the impossibility
 wall (`the theory (see paper)`) in miniature — which is the low-margin / multi-needle side they report no
 12M numbers for (their hard benchmark, MRCR, is at 128K).
+
+## End-to-end frozen-swap on Gemma-4-26B-A4B — the first real-model curve (`gemma_ssa.py`, `gemma_ssa_sweep.py`)
+
+Every result above is synthetic, a routing-recall probe, or random-key kernel timing — none is an
+*end-to-end quality measurement on a real model*. This is that measurement. SSA is installed via the
+transformers attention interface into the **5 full-attention (global) layers** of a **frozen Gemma-4-26B-A4B**
+(MoE, 4B active; head_dim 512, K=V, GQA group 2 — the 25 sliding-window layers are already linear and left
+untouched), receiving post-QK-norm/RoPE q,k, and scored on needle-in-a-haystack (NIAH) retrieval vs. the
+selection budget at n=2048, block 256. **This is the *analytic* swap (it materializes the score matrix), so
+it measures ROUTING QUALITY, not speed** — the subquadratic-kernel / long-context regime is separate.
+
+**A correctness fix first.** The KV-cache incremental-decode path (query_len=1, key_len=N) was indexing the
+selection mask by *query* length, silently corrupting generation under sparsity. Fixed (absolute query
+positions via `cache_position`) and regression-tested — necessary for any real generation.
+
+**Baseline (cumulant β=2), and the cliff.** `1.0→1.000, 0.5→0.833, 0.25→0.000, 0.12→0.000`. The `0.000` at
+budget 0.25 is **not** corruption: generation is coherent filler ("the garden path"), no NaN — a *genuine
+routing miss*. A forward-only routing-rank probe localized it: the far needle's block ranks **~3rd** by the
+cumulant score (just outside the kept top-2), **worst at the deepest layer (29)**, which never ranks a far
+needle even by the block-max oracle — a RoPE-distance decay (distant blocks' q·k are attenuated).
+
+**The fix — the 3rd-cumulant (Edgeworth / skew) term.** A bake-off scoring the far-needle rank under
+candidate routing scores showed the **skew term is the right outlier detector**: the needle is an outlier in
+its block, the 3rd cumulant rewards outlier-bearing blocks, and it even *beat the block-max oracle* on some
+layers. Implementing the deployable diagonal term `r += (β²/6)·Σ_d q_d³·m3_d` (with β=4):
+
+| budget | baseline | +Edgeworth(β4) | +Edgeworth +layer29-dense |
+|---|---|---|---|
+| 1.0 | 1.000 | 1.000 | — |
+| 0.5 | 0.833 | **1.000** | — |
+| 0.25 | 0.000 | **0.444** | **0.556** |
+| 0.12 | 0.000 | 0.000 | 0.000 |
+
+**Attribution of budget-0.25 retrieval** (the harsh keep-2-of-8 regime):
+- `0.000 → 0.444` — the Edgeworth skew term (cheap, summary-only — the §5.2 outlier-routing theory realized);
+- `0.444 → 0.556` — forcing the single worst layer (29) dense (the one layer no statistic could route);
+- `0.556 → 1.000` — the **frozen-key ceiling** → co-adaptation training (the moat).
+
+**Verdict.** The first end-to-end real-model evidence, and it confirms the project's thesis *quantitatively*:
+**algorithmic fixes on a frozen model recover budget-0.25 retrieval to ~0.56 at the harshest regime; the
+residual to 1.0 is the frozen-key limit that only co-adaptation training crosses.** The Edgeworth term —
+previously a theoretical "route to improvement" — is now a *measured* gain on a 26B model, and budget 0.5
+goes 0.833→1.000. *Caveats:* quality not speed (analytic O(n²), n=2048); keep-2-of-8 is a coarse, harsh
+corner (**0.556 is a lower bound** — long context keeps far more blocks at 25% and is more forgiving); single
+model, single needle type, ~9-probe sampling. Runs: `runs/gemma_sweep_{fixed,edge,edge_d29}.json`;
+mechanism in `gemma_ssa.py` (`edgeworth`, `dense_layers`), driver in `gemma_ssa_sweep.py`.

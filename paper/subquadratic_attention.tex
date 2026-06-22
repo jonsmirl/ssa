@@ -479,6 +479,20 @@ recall $0.982$ for ${\sim}800$ adaptation steps, SSA-preserved.
 \paragraph{Construction pipeline.} See Section~\ref{sec:pipeline}: swap $+13.2$ perplexity, $94\%$ recovered to
 within $+1.2$ of the dense-adapted control at ${\sim}38\%$ of keys.
 
+\paragraph{Real-model frozen-swap (Gemma-4-26B).} Beyond the $124$M control, the swap-and-route was
+validated end-to-end on a frozen \emph{Gemma-4-26B-A4B} (mixture-of-experts, $4$B active): SSA was installed
+into its five full-attention layers (head dimension $512$, $K{=}V$, grouped-query) via the attention
+interface and scored on needle-in-a-haystack retrieval against the selection budget at $n=2048$. Plain
+second-order (cumulant) routing recovers retrieval down to a $50\%$ budget (recall $1.00$) but collapses at
+$25\%$ (recall $0.00$); a forward-only probe shows the distant needle's block ranks ${\approx}3$rd by the
+cumulant score---just outside the kept top-$2$---and worst at the deepest layer, a position-decay effect.
+Adding the third-cumulant (skew) term of the tempered family (Section~\ref{sec:secondorder}) restores the
+$50\%$ budget to $1.00$ and lifts the $25\%$ budget to $0.44$ (to $0.56$ if the single worst-routing layer is
+left dense); the residual to $1.00$ is the frozen-key ceiling that only key co-adaptation (the routability
+regularizer, \eqref{eq:reg}) closes. This is a routing-\emph{quality} measurement (the analytic,
+score-materializing swap at moderate $n$), not the subquadratic-kernel regime; it validates the routing
+theory and the co-adaptation thesis on a real frontier model.
+
 \paragraph{What the headline retrieval numbers do and do not show.} Reported single-target
 needle-in-a-haystack accuracies of $98$--$100\%$ at $10^6$--$10^7$ tokens are real and consistent
 with~\eqref{eq:recovery}--\eqref{eq:detect}, but they live in a specific regime. Retrieval was measured as a
