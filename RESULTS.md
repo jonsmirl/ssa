@@ -496,6 +496,56 @@ trilemma again, at the tree level. The win is approximate, which is SSA's regime
 last asymptotic gap flagged for the kernel: with the tree, *both* the read (`O(n·k)`) and the *selection*
 are subquadratic.
 
+### Treecode reality check — co-trained keys (a), the wall-clock crossover (b), the flat-router ceiling (c)
+
+The section above is on *synthetic* clustered keys and counts *nodes*, not wall-clock — the reviewer's
+"synthetic-only, unintegrated" critique. Three follow-ups close that gap honestly; the verdict is **"the
+hierarchical router is *necessary* and *conditionally* viable, not yet a *demonstrated* end-to-end win."**
+
+**(a) On real co-trained keys, lossless treecode pruning still fails; approximate routing survives.** Build the
+2-level tree on keys shaped by the routability regularizer (Route F) vs un-co-trained:
+
+| keys | lossless nodes scored | approx recall | approx cost |
+|---|---|---|---|
+| un-co-trained (λ=0) | 182/182 (**100%** — no pruning) | 0.705 | 29% |
+| co-trained (λ=64) | 169/182 (**93%** — barely prunes) | **0.945** | 29% |
+
+Co-training (which shrinks *intra-cluster* spread) barely helps the **lossless** prune (100%→93%), because the
+recursive parent radius `R_parent = max_child(‖μ_child−μ_parent‖ + R_child)` is dominated by *inter-centroid*
+distance — which Route F does not target. But it lifts the **approximate** recall 0.71→0.95 at the same cost.
+So the realized treecode win is *approximate* even on benign co-trained geometry — exactly the
+"approximate-not-lossless" the real-key tests showed, now with the mechanism (the *radius*, not the spread).
+Closing the lossless gap would need a *hierarchical* routability objective that also shrinks centroid spreads.
+
+**(b) Wall-clock crossover: ~1M tokens — and a naive 2-level then regresses.** Time the kernel's flat block
+router (a dense `(n/b)×(n/b)` GEMM) vs a 2-level matmul+gather router (block 128, H=8, d=64, fp16, single 16 GB GPU):
+
+| n | n/b blocks | flat GEMM | 2-level | winner |
+|---|---|---|---|---|
+| 262K | 2,048 | 2.3 ms | 3.0 ms | flat |
+| 524K | 4,096 | 6.2 ms | 6.4 ms | flat |
+| **1M** | 8,192 | 27.7 ms | **20.7 ms** | **2-level (1.34×)** |
+| 2M | 16,384 | 102 ms | **715 ms** | flat (7× regression) |
+
+The flat GEMM's constant is excellent, so it **wins until ~1M tokens**; only there does the lower-order
+hierarchical scaling overcome it. But a *naive* 2-level router **regresses 7× at 2M** — its candidate gather is
+`Θ(n^{1.5}·d)` and blows up. So the crossover is real and concrete (**~1M**), but **realizing the win in the 12M
+regime needs a true FMM treecode** (bounded candidate sets, no materialized gather) — the genuine, unsolved
+engineering, not the naive 2-level.
+
+**(c) Proposition (flat-router ceiling).** A router that scores every one of the `B = ⌈n/b⌉` key-blocks for
+each query performs `Θ(Q·B)` block-score evaluations (the Lean's `flat_router_work`): per query (`Q=n`) that is
+`Θ(n²/b)`; amortized per query-*block* as NSA/SubQ do (`Q=n/b`) it is `Θ((n/b)²)` — a hard **speedup ceiling of
+`b²`** once the router dominates (the regime SubQ's own two points already enter near 12M). Either way it
+materializes a `B×B` matrix — `Θ(n²)` *time and memory* for fixed `b` (the flat GEMM's nb² matrix is a memory wall). Choosing
+`b = Θ(√n)` gives the `O(n^{1.5})` flat router but caps the attention budget at `Θ(√n)` keys/block. Hence **no
+constant or `√n` block size makes the flat (scan-all-blocks) router subquadratic-with-growing-speedup; a router
+whose speedup grows unboundedly with `n` must examine `o(B)` blocks per query — i.e. a hierarchical
+(sublinear-per-query) index.** This is a counting bound, now **formalized** (axiom-pure) as `flat_router_work` /
+`subquadratic_forces_skip` in the Substrate Lean, a companion to `SearchTradeoff` / `capacity_search_tension`.
+Its force for the SubQ assessment: a *quality-preserving* "1,000× at 12M" **provably forces** a working
+hierarchical indexer — exactly the part (a)+(b) show is only *approximate* and not yet *engineered*.
+
 ## Is the lossless selector impossible? — `the theory (see paper)`
 
 Three strengths, not equal:
@@ -817,7 +867,9 @@ layers. Implementing the deployable diagonal term `r += (β²/6)·Σ_d q_d³·m3
 **Attribution of budget-0.25 retrieval** (the harsh keep-2-of-8 regime):
 - `0.000 → 0.444` — the Edgeworth skew term (cheap, summary-only — the §5.2 outlier-routing theory realized);
 - `0.444 → 0.556` — forcing the single worst layer (29) dense (the one layer no statistic could route);
-- `0.556 → 1.000` — the **frozen-key ceiling** → co-adaptation training (the moat).
+- `0.556 → 1.000` — **(attribution retracted)** this was called a *frozen-key ceiling* crossable only by
+  co-adaptation training (the "moat"); the **"Block granularity" section below overturns it** — plain cumulant
+  at a finer block reaches **1.000** with no training, so this residual was a *tuning artifact*, not a ceiling.
 
 **Verdict** (block 256 / β4 — *partly superseded; see "Block granularity" below*). At this fixed coarse
 configuration, **algorithmic fixes recover budget-0.25 retrieval to ~0.56, and the residual *looked like* a

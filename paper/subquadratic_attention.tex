@@ -46,8 +46,8 @@ $\sigma(\beta\Delta-\log\mu)$, where $\Delta$ is the score margin and $\mu$ the 
 distractors; selection works because it cuts $\mu$ from $n$ to $\kappa$, making recovery \emph{flat in $n$}.
 The analysis gives the admissible routing bound that licenses summary-only selection, a tempered (cumulant) routing score
 that---unlike centroid routing---sees in-block outliers, and a closed-form variance prune test from
-Samuelson's inequality. The limit is then proved: cheap, lossless, length-robust selection cannot hold
-simultaneously for arbitrary keys (a one-line probe argument), so SSA's subquadratic \emph{exactness} is
+Samuelson's inequality. A limit is then proved: cheap and lossless selection cannot hold for arbitrary keys
+(a one-line probe argument); adding length-robustness gives the trilemma (at most two of the three). So SSA's subquadratic \emph{exactness} is
 licensed by the \emph{benign geometry} of trained representations---geometry that training can be made to
 manufacture, via a routability regularizer that shrinks off-target spread. Finally, length
 generalization (rotary position plus staged continued training reaches $32\times$ the trained length at $0.98$
@@ -469,9 +469,11 @@ speedup over a dense exact kernel at $n=262{,}144$ on a single accelerator, with
 length.
 
 \paragraph{Routability.} The regularizer~\eqref{eq:reg} reduced lossless branch-and-bound selection cost from
-$26.5\%$ to $4.2\%$ of keys at zero accuracy cost. The reduction was robust across head dimension and showed no
-capacity trade-off down to $d=$ (number of clusters), since query-specific anisotropy needs only ${\sim}1$
-dimension per cluster---real head dimensions ($64$--$256$) sit well above this.
+$26.5\%$ to $4.2\%$ of keys. (Accuracy is $1.000$ by construction---admissible-bound branch-and-bound always
+returns the exact argmax---so the measured quantity is the \emph{cost}, not task accuracy.) The reduction was
+robust across head dimension; the capacity--search tension is a genuine asymptotic trade-off, but it did not
+bite for $d\ge$ (number of clusters), since query-specific anisotropy needs only ${\sim}1$ dimension per
+cluster---real head dimensions ($64$--$256$) sit above this, the trade reappearing only as $d\to$ (number of clusters).
 
 \paragraph{Length generalization and staging.} See Section~\ref{sec:length}: $32\times$ the trained length at
 recall $0.982$ for ${\sim}800$ adaptation steps, SSA-preserved.
@@ -502,9 +504,11 @@ subquadratic kernel together with \emph{substantially larger compute} than a sin
 multi-GPU or cluster budget). That scaling, and the $12$M-token validation it would enable, are left to future
 work with adequate compute.
 
-\paragraph{What the headline retrieval numbers do and do not show.} Reported single-target
-needle-in-a-haystack accuracies of $98$--$100\%$ at $10^6$--$10^7$ tokens are real and consistent
-with~\eqref{eq:recovery}--\eqref{eq:detect}, but they live in a specific regime. Retrieval was measured as a
+\paragraph{What the headline retrieval numbers do and do not show.} The single-target
+needle-in-a-haystack accuracies of $98$--$100\%$ at $10^6$--$10^7$ tokens \emph{reported by selection-based
+long-context systems} are consistent with~\eqref{eq:recovery}--\eqref{eq:detect}; this section
+\emph{characterizes} that regime rather than re-measuring it (the measured table below reaches $262$k), and it
+holds only in a specific regime. Retrieval was measured as a
 function of context length at fixed budget $\kappa\approx10^3$ and margin $\Delta=0.55$:
 
 \begin{center}
