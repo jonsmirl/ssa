@@ -5,6 +5,14 @@ A controlled, NumPy-only validation of the content-addressable sparse-attention 
 genuinely open piece: **can a sublinear content selector be assembled from known ANN parts, and
 when does it work?**
 
+> **On the *(proved)* claims below.** Results marked *(proved)* — and the theorem names cited inline
+> (`samuelson_prune_gate`, `ellipsoidal_search_bound`, `temperedLogPartition_max_sandwich`,
+> `lossless_selector_reads_every_key`, `hierarchical_prune`, `dropped_combination_error_bound`, …) — are
+> machine-checked in the Substrate Lean 4 development, module
+> `Substrate.Inference.PhaseTransition.Algebra.*` (axiom-pure, no `sorry`/`admit`). That formalization is
+> maintained separately and is **not** included in this public repository; the theorem names are the
+> pointers into it. The Python in this repo *measures* those results — it does not prove them.
+
 Run: `python3 -m ssa.experiments` · Tests: `pytest ssa/tests/` (7 pass).
 Method: synthetic keys/queries with *exactly controlled* gap, separation, dimension, and count — so
 each prediction is tested against ground truth. No training; this validates the theory and the
