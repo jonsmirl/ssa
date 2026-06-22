@@ -34,9 +34,6 @@ pd = np.polyfit(np.log(n_m[fit]), np.log(dense_m[fit]), 1)   # dense exponent ~ 
 ps = np.polyfit(np.log(n_m[fit]), np.log(ssa_m[fit]), 1)     # SSA exponent (flat kernel) ~ n^1.4
 dense_law = lambda n: np.exp(pd[1]) * n ** pd[0]
 ssa_law = lambda n: np.exp(ps[1]) * n ** ps[0]
-# hierarchical design target: pure O(n) anchored at the last measured point's attention-bound rate
-c_lin = ssa_m[2] / n_m[2]                                     # ~attention-only rate (n=16K, router tiny)
-ssa_hier = lambda n: c_lin * n
 
 n_ext = np.logspace(np.log10(262144), np.log10(12e6), 200)
 sp_262k = dense_m[-1] / ssa_m[-1]
@@ -56,9 +53,12 @@ ax.plot(n_ext, dense_law(n_ext), color="#e8806f", lw=2.0, ls=(0, (5, 3)), label=
 ax.plot(n_m, ssa_m, color="#3fbf90", lw=2.6, marker="o", ms=5, label="SSA kernel — measured (flat block router)")
 ax.plot(n_ext, ssa_law(n_ext), color="#3fbf90", lw=2.0, ls=(0, (5, 3)),
         label=f"SSA — extrapolated (measured n^{ps[0]:.1f} scaling)")
-# hierarchical design target (honest: unbuilt)
-ax.plot(n_ext, ssa_hier(n_ext), color="#7cc7ff", lw=1.6, ls=(0, (1, 2)),
-        label="SSA + hierarchical router — O(n) design target (unbuilt)")
+# the hierarchical/treecode router is now MEASURED at the router level (treecode_router_scaling.png):
+# it is SLOWER than the flat router in range, so it does not lift this green line — no O(n) line drawn.
+ax.text(1.6e6, 6.0, "treecode (hierarchical) router measured separately —\n"
+        "treecode_router_scaling.png: slower in range, wins only\n"
+        "past the flat router's ~3.5M OOM wall",
+        color="#8fb8cc", fontsize=7.2, ha="center", va="center")
 
 ax.annotate(f"{sp_262k:.0f}× measured\n@262K", xy=(262144, dense_m[-1]), xytext=(7.0e4, 2.0e3),
             color="#ddd", fontsize=8.5, arrowprops=dict(arrowstyle="-", color="#666", lw=0.8))

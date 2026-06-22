@@ -6,6 +6,7 @@ memory wall (docs/bounded_treecode_scope.md). Times the FULL router each way (su
 Pushes n until the flat nb² matrix OOMs; the treecode keeps running. Run: python3 -m ssa.treecode_bench
 """
 from __future__ import annotations
+import json
 import time
 import torch
 from ssa.treecode import build_tree, descend_beam
@@ -44,6 +45,7 @@ def main():
     print("=" * 84)
     print(f"  {'n':>9} {'nb':>7} {'flat GEMM':>11} {'beam descend':>13} {'(tree build)':>13} "
           f"{'flat nb² mem':>12} {'descend vs flat':>16}")
+    rows = []
     for n in (262144, 524288, 1048576, 2097152, 4194304, 8388608):
         try:
             k = torch.randn(1, H, n, d, device=DEV, dtype=torch.float16)
@@ -75,10 +77,13 @@ def main():
         else:
             verdict = ""
         print(f"  {n:>9} {nb:>7} {fs:>11} {ds:>13} {bs:>13} {flat_gb:>10.1f}G {verdict:>16}")
+        rows.append(dict(n=n, nb=nb, flat_ms=tf, descend_ms=td, build_ms=tb, flat_gb=flat_gb))
+        json.dump(rows, open("paper/figures/treecode_router_measured.json", "w"), indent=2)  # persist incrementally
         del k, qb, levels
         torch.cuda.empty_cache()
         if tf is None and td is None:
             print(f"  {'':>9}  both OOM / GPU memory wall reached (16 GB) — stopping."); break
+    print("  wrote paper/figures/treecode_router_measured.json")
     print("\n  Headline comparison is descend-vs-flat (the tree build is once-per-forward, amortized over all")
     print("  query-blocks + decode steps). Flat's nb² GEMM wins on constant while it fits, then OOMs; the")
     print("  fixed-width beam descend grows nb·log and does NOT regress — the P4 claim, modulo this GPU's wall.")
