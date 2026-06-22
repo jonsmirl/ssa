@@ -31,7 +31,7 @@ accompanied by measurements at controlled scale.
 A transformer layer computes, for queries $Q\in\mathbb{R}^{n\times d}$, keys $K\in\mathbb{R}^{n\times d}$,
 and values $V\in\mathbb{R}^{n\times d}$,
 $$
-\mathrm{Attn}(Q,K,V) = \operatorname{softmax}\!\Big(\tfrac{QK^\top}{\sqrt{d}}\Big)\,V .
+\mathrm{Attn}(Q,K,V) = \mathrm{softmax}\!\Big(\tfrac{QK^\top}{\sqrt{d}}\Big)\,V .
 $$
 The $n\times n$ score matrix makes both time and memory $\Theta(n^2 d)$. For contexts of $10^6$–$10^7$
 tokens this is prohibitive, yet most of the matrix is near-zero: for a given query only a small set of keys
@@ -118,7 +118,7 @@ $$
 \tag{4.1}
 $$
 and a radius $R_c=\max_{j\in c}\lVert k_j-\mu_c\rVert$. In practice $\Sigma_c$ is kept diagonal,
-$\sigma_c^2=\operatorname{diag}\Sigma_c$, so a block's summary is $O(d)$ numbers.
+$\sigma_c^2=\mathrm{diag}\Sigma_c$, so a block's summary is $O(d)$ numbers.
 
 ### 4.2 Routing score
 
