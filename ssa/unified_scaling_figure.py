@@ -38,12 +38,26 @@ subq_sp = np.array([7.2, 52.2, 1000.0])
 subq_rel = dense_law(subq_n) / subq_sp           # claimed compute relative to dense
 n_ext = np.logspace(np.log10(262144), np.log10(12e6), 120)
 
+# Theory floor: any selector that attends kappa keys costs >= n*kappa (router -> 0), so
+# speedup <= n/kappa.  Relative to dense it is dense*min(1, kappa/n): tracks dense until the budget
+# binds (n=kappa), then falls as O(n).  SubQ's 2 published points imply kappa~19k; the 1000x claim
+# implies kappa~12k -> the floor is the BAND between those budgets, not a single line.
+K_HI, K_LO = float(np.mean(subq_n[:2] / subq_sp[:2])), 12e6 / 1000.0      # ~19k (published), 12k (claim)
+floor = lambda n, k: dense_law(n) * np.minimum(1.0, k / n)
+xall = np.logspace(np.log10(4096), np.log10(12e6), 260)
+
 plt.style.use("dark_background")
 fig, ax = plt.subplots(figsize=(10.6, 6.5))
 fig.patch.set_facecolor("#000000"); ax.set_facecolor("#000000")
 ax.set_xscale("log"); ax.set_yscale("log")
 ax.axvspan(262144, 12e6, color="white", alpha=0.05)
 ax.text(2.7e6, 1.4, "projection (dashed)\nbeyond measured", color="#777", fontsize=8, ha="center")
+
+# theory floor band: speedup <= n/kappa (no router beats the n·kappa attention cost), kappa in [12k,19k]
+ax.fill_between(xall, floor(xall, K_LO), floor(xall, K_HI), color="#8a8aff", alpha=0.13, zorder=1)
+ax.plot(xall, floor(xall, K_HI), color="#9a9aff", lw=1.2, ls=(0, (1, 2)), zorder=2,
+        label=f"theory floor: speedup ≤ n/κ  (κ≈{K_LO/1e3:.0f}–{K_HI/1e3:.0f}k, perfect router)")
+ax.plot(xall, floor(xall, K_LO), color="#9a9aff", lw=1.0, ls=(0, (1, 2)), alpha=0.7, zorder=2)
 
 # dense O(n^2) — the n^2 line
 ax.plot(n_m, dense_rel, color="#e8806f", lw=2.6, marker="o", ms=4.5, label="dense  O(n²) — measured")
@@ -58,8 +72,9 @@ ax.scatter(subq_n[:2], subq_rel[:2], color="#f2c14e", s=55, zorder=5, label="Sub
 ax.scatter(subq_n[2:], subq_rel[2:], marker="*", s=300, color="#ffd23f", edgecolor="white", linewidth=0.6,
            zorder=6, label="SubQ claim 1,000× @12M")
 
-ax.annotate("at 12M: SubQ claims ~1,000×;\nour measured-and-projected ~260×",
-            xy=(12e6, subq_rel[2]), xytext=(1.1e6, 6.5), color="#e8d6a0", fontsize=8.3,
+ax.annotate("at 12M: SubQ's 1,000× sits on the κ≈12k floor edge\n"
+            "(needs that tight budget); our measured+projected ~260×",
+            xy=(12e6, subq_rel[2]), xytext=(7.0e5, 7.0), color="#e8d6a0", fontsize=8.0,
             arrowprops=dict(arrowstyle="->", color="#e8d6a0", lw=0.9))
 
 ticks = [4096, 16384, 65536, 262144, 1048576, 12e6]
