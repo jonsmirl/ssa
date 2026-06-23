@@ -113,6 +113,10 @@ pretrained models on first run.
   retraining; bit-exact dense gate) reaches **full** single-needle retrieval at a 25% budget once the block
   size is tuned (plain cumulant); an earlier apparent "frozen-key ceiling" at coarse blocks was a *tuning
   artifact*. This is a routing-**quality** result at n≤4096 — **not** a speed result.
+- **The compute floor (P0–P5).** The kernel's gap to the theoretical `n·κ` floor is the router (the `(n/b)²`
+  score GEMM + the argsort `BlockMask` build). Co-training lowers the floor itself **60×** (κ_min 25%→0.4% of
+  keys), and a **faiss-GPU IVF router** — measured on the GPU, running linearly to **8M** where the flat router
+  OOMs at 4M — closes the gap to **~1.1× the floor** at 12M. Full record: [`FLOOR_PROGRAM.md`](FLOOR_PROGRAM.md).
 
 ## Scope — what is and isn't demonstrated
 

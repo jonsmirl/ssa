@@ -953,3 +953,51 @@ probes. **Pushing the validation to the 12M-token regime — and measuring the s
 substantially more compute than a single 16 GB GPU + CPU offload** (the neocloud/cluster path). That, and the
 kernel integration, are the remaining work; everything in this section is the frozen-model *quality* story,
 which is now characterized.
+
+## The floor program (P0–P5): driving the kernel to the n·κ floor
+
+The theoretical floor is `n·κ` (attending the κ selected keys); the measured kernel sits far above it because
+of router cost. Full record: `FLOOR_PROGRAM.md`. Figures: `paper/figures/{cost_profile,recall_floor,bakeoff,
+router_gpu_compare,p5_synthesis}.png`.
+
+**P0 — cost decomposition** (`cost_profile.py`): attention ~ `n^1.02` (the floor), router ~ `n^1.76`,
+**maskbuild (argsort BlockMask) ~ `n^2.12`** (the largest component). At 12M the floor is ~1% of the forward —
+a **128× gap**, dominated by the `(n/b)²` score GEMM + the argsort maskbuild.
+
+**P1 — recall-vs-κ floor map** (`recall_floor.py`): κ_min = smallest budget reaching recall ≥ 0.9 (κ_min/n IS
+the floor; speedup ≤ n/κ_min):
+
+| geometry | centroid κ_min/n | cumulant κ_min/n |
+|---|---|---|
+| clustered (tight) | 3.0% | 3.0% |
+| diffuse / random (adversarial) | 50% | 50% |
+| co-trained λ=0 | 25% | 25% |
+| **co-trained λ=64** | **0.4%** | **0.4%** |
+
+**Co-training crushes the floor 25%→0.4% (60×)** — the dominant lever; geometry-bound (adversarial = no speedup).
+
+**P2 — cheap router wins** (`router_variants.py`): narrow-kv_idx ~2×, cross-layer sharing ÷5; low-rank a bust
+(5–14% agreement on high-PR keys). All constant factors → the sub-linear router is justified.
+
+**P3 — router bake-off** (`bakeoff.py`, recall vs selection cost on benign co-trained keys): treecode wins raw
+cost (0.8%), **faiss-ivf robust** (1.6%, GPU-optimized), centroid 1.8%, **LSH out** (can't reach 0.9).
+
+**P4–P5 — FAISS-IVF block-router, MEASURED on the GPU** (`router_gpu_compare.py`, faiss-gpu, both routers on
+GPU, no transfer):
+
+| n | flat `(n/b)²` GEMM | faiss-GPU IVF | |
+|---|---|---|---|
+| 256K | 0.21 ms | 7.1 ms | flat 33.8× |
+| 2M | 12.9 ms | 18.9 ms | flat 1.5× |
+| **4M** | **OOM** (nb²=4.3 GB) | **31.4 ms** | IVF — flat dead |
+| **8M** | **OOM** (17.2 GB) | **61.7 ms** | IVF — flat dead |
+
+The flat GEMM's constant wins below ~2M (gap closing 33.8×→1.5×), **crossover ~3M**, then **OOMs at 4M**; the
+**IVF router runs linearly to 8M (62 ms) — the only router past the flat OOM**. Extrapolated to 12M (~90 ms) it
+is small vs the 425 ms attention floor ⇒ kernel **~at the floor** (128× gap → ~1.1×). The same-device CPU
+control (`router_cpu_compare.py`) agreed; the earlier "75–333× slower" was purely a GPU↔CPU transfer artifact.
+
+*Scope:* the IVF was timed as a router in isolation; full `ssa_flex` integration and the 8M→12M step remain
+extrapolated, on benign geometry. Net: both ingredients a quality-preserving 1,000×@12M needs — floor-lowering
+co-training (60×) and a sub-linear indexer (the IVF router) — are demonstrated, under exactly the benign-geometry
+condition the floor analysis names.

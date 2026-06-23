@@ -456,6 +456,53 @@ keys at this configuration. The control matters: continued training lowers perpl
 the off-domain start. The residual is the price of sparsity at this small budget and shrinks as the budget
 grows.
 
+\section{The compute floor and a sub-linear router}\label{sec:floor}
+
+Selection caps the per-query work at a budget $\kappa$ keys, so the irreducible cost of the layer is the
+\emph{attention floor} $n\kappa$---linear in $n$. A measured kernel sits above this floor by exactly its
+router cost. Decomposing one forward of the kernel of \S\ref{sec:pipeline} into router (the $(n/b)^2$
+block-score GEMM), \texttt{BlockMask} construction, and attention, and fitting each over
+$n\in[16\mathrm{K},524\mathrm{K}]$, gives attention ${\sim}\,n^{1.02}$ (the floor), router ${\sim}\,n^{1.76}$,
+and---largest---the argsort-based mask build ${\sim}\,n^{2.12}$. Extrapolated to $12\mathrm{M}$ tokens the floor
+is ${\sim}1\%$ of the forward: a $128\times$ gap, entirely the two $(n/b)^2$ terms. A router that emits the
+selected block indices \emph{directly} removes both.
+
+\paragraph{Lowering the floor.} The floor $n\kappa$ itself drops if fewer keys recover the target. The smallest
+budget $\kappa_{\min}$ reaching recall $\ge 0.9$ is $\kappa_{\min}/n=3\%$ for tight clusters, $50\%$ for diffuse
+or adversarial geometry (no compression), and the routability regularizer of \S\ref{sec:routability} drives it
+from $25\%$ ($\lambda=0$) to $\mathbf{0.4\%}$ ($\lambda=64$)---a $60\times$ reduction, the dominant lever, on
+benign geometry only.
+
+\paragraph{Closing the gap.} The necessity argument of \S\ref{sec:trilemma} forces a sub-linear, examine-$o(B)$
+index. A bake-off on benign co-trained keys (recall vs.\ keys scored) ranks an IVF (inverted-file) router and a
+recursive-radius treecode ahead of LSH, which fails to reach recall $0.9$. An IVF over the block means scores
+$O(\sqrt{n/b})$ blocks at $0.93$--$0.97$ block-selection agreement with the flat router and emits
+\texttt{kv\_idx} directly. Timed on a single 16\,GB GPU with both routers on-device (no host transfer), the
+dense $(n/b)^2$ GEMM's constant wins below ${\sim}2\mathrm{M}$ but its score matrix exhausts memory at
+$4\mathrm{M}$; the IVF runs linearly past it:
+
+\begin{center}\small
+\begin{tabular}{lrrl}
+\hline
+context $n$ & flat $(n/b)^2$ GEMM & faiss-GPU IVF & winner\\
+\hline
+256K & $0.21$\,ms & $7.1$\,ms & flat $33.8\times$\\
+2M & $12.9$\,ms & $18.9$\,ms & flat $1.5\times$\\
+4M & OOM ($nb^2{=}4.3$\,GB) & $31.4$\,ms & IVF (flat dead)\\
+8M & OOM ($17.2$\,GB) & $61.7$\,ms & IVF (flat dead)\\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent The crossover is ${\sim}3\mathrm{M}$, and the IVF is the only router that runs past the flat
+router's $4\mathrm{M}$ memory wall. At $12\mathrm{M}$ the IVF router (${\sim}90$\,ms, extrapolated) is small
+against the ${\sim}425$\,ms attention floor, so the kernel reaches ${\sim}1.1\times$ the floor---the $128\times$
+gap closed. Two caveats bound the claim: the router was timed in isolation (full-kernel integration and the
+$8\mathrm{M}\!\to\!12\mathrm{M}$ step remain extrapolated), and the whole result is conditional on benign
+geometry---adversarial or multi-hop retrieval returns $\kappa_{\min}$ to the $50\%$ floor, where no speedup
+exists. Both ingredients of a quality-preserving large-context speedup---a floor-lowering training stage and a
+sub-linear indexer---are thus exhibited, under exactly that benign-geometry condition.
+
 \section{Experiments}\label{sec:experiments}
 
 All experiments are at controlled scale; the point is to validate mechanisms, not to set absolute records.

@@ -413,7 +413,44 @@ off-domain start. The residual is the price of sparsity at this small budget and
 
 ---
 
-## 10. Experiments
+## 10. The compute floor and a sub-linear router
+
+Selection caps the per-query work at a budget κ keys, so the irreducible cost of the layer is the **attention
+floor** `n·κ` — linear in n. A measured kernel sits above this floor by exactly its router cost. Decomposing
+one forward of the §9 kernel into router (the `(n/b)²` block-score GEMM), `BlockMask` construction, and
+attention, and fitting each over n ∈ [16K, 524K], gives attention ~ n^1.02 (the floor), router ~ n^1.76, and —
+largest — the argsort-based mask build ~ n^2.12. Extrapolated to 12M tokens the floor is ~1% of the forward: a
+**128× gap**, entirely the two `(n/b)²` terms. A router that emits the selected block indices directly removes
+both.
+
+**Lowering the floor.** The floor `n·κ` itself drops if fewer keys recover the target. The smallest budget
+κ_min reaching recall ≥ 0.9 is κ_min/n = 3% for tight clusters, 50% for diffuse or adversarial geometry (no
+compression), and the routability regularizer of §7 drives it from 25% (λ=0) to **0.4%** (λ=64) — a **60×
+reduction**, the dominant lever, on benign geometry only.
+
+**Closing the gap.** The necessity argument of §6 forces a sub-linear, examine-o(B) index. A bake-off on benign
+co-trained keys (recall vs keys scored) ranks an IVF (inverted-file) router and a recursive-radius treecode
+ahead of LSH, which fails to reach recall 0.9. An IVF over the block means scores O(√(n/b)) blocks at 0.93–0.97
+block-selection agreement with the flat router and emits `kv_idx` directly. Timed on a single 16 GB GPU with
+both routers on-device (no host transfer):
+
+| context n | flat (n/b)² GEMM | faiss-GPU IVF | winner |
+|---|---|---|---|
+| 256K | 0.21 ms | 7.1 ms | flat 33.8× |
+| 2M | 12.9 ms | 18.9 ms | flat 1.5× |
+| 4M | OOM (nb²=4.3 GB) | 31.4 ms | IVF (flat dead) |
+| 8M | OOM (17.2 GB) | 61.7 ms | IVF (flat dead) |
+
+The dense GEMM's constant wins below ~2M but its score matrix exhausts memory at 4M; the IVF runs linearly past
+it. Crossover ~3M, and the IVF is the only router past the flat router's 4M memory wall. At 12M the IVF router
+(~90 ms, extrapolated) is small against the ~425 ms attention floor, so the kernel reaches **~1.1× the floor** —
+the 128× gap closed. Two caveats: the router was timed in isolation (full-kernel integration and the 8M→12M step
+remain extrapolated), and the result is conditional on benign geometry — adversarial or multi-hop retrieval
+returns κ_min to the 50% floor, where no speedup exists. Both ingredients of a quality-preserving large-context
+speedup — a floor-lowering training stage and a sub-linear indexer — are thus exhibited, under exactly that
+benign-geometry condition.
+
+## 11. Experiments
 
 All experiments are at controlled scale; the point is to validate mechanisms, not to set absolute records.
 
@@ -461,7 +498,7 @@ certify lossless selection in the worst case, which Section 6 shows is unavailab
 
 ---
 
-## 11. Discussion and limitations
+## 12. Discussion and limitations
 
 SSA is best understood as the resolution of a constrained problem rather than a universal accelerator. The
 recovery-weight law (3.1) shows selection makes retrieval flat in $n$; the admissible bound (5.1) and the
