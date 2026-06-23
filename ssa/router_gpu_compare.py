@@ -79,5 +79,52 @@ def main():
     print("  memory and op-count. wrote paper/figures/router_gpu_compare.json")
 
 
+def plot_from_json(path="paper/figures/router_gpu_compare.json"):
+    import json
+    import numpy as np
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    rows = json.load(open(path))
+    n = np.array([r["n"] for r in rows], float)
+    flat = np.array([r["flat_ms"] if r["flat_ms"] else np.nan for r in rows])
+    ivf = np.array([r["ivf_ms"] for r in rows])
+    fm = ~np.isnan(flat)
+
+    plt.style.use("dark_background")
+    fig, ax = plt.subplots(figsize=(10.0, 6.0))
+    fig.patch.set_facecolor("#000"); ax.set_facecolor("#000")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.plot(n[fm], flat[fm], color="#f2c14e", lw=2.5, marker="o", ms=5, label="flat (n/b)² GEMM — GPU")
+    ax.plot(n, ivf, color="#3fbf90", lw=2.5, marker="o", ms=5, label="faiss-GPU IVF (build+search) — GPU")
+    # where flat OOMs: extrapolate its measured trend and mark it dead (× on a faint dashed continuation)
+    oom = n[~fm]
+    if len(oom):
+        pf = np.polyfit(np.log(n[fm]), np.log(flat[fm]), 1)
+        flat_ext = np.exp(pf[1]) * oom ** pf[0]
+        ax.plot(np.concatenate([[n[fm][-1]], oom]), np.concatenate([[flat[fm][-1]], flat_ext]),
+                color="#f2c14e", lw=1.3, ls=(0, (2, 3)), alpha=0.5)
+        ax.scatter(oom, flat_ext, marker="x", s=120, linewidths=2.6, color="#ff5d5d",
+                   label="flat OOMs (nb² matrix > GPU)", zorder=6)
+
+    ax.text(3.0e5, 1.1e2, "crossover ~3M; flat OOMs at 4M;\nIVF runs to 8M (62 ms) —\nonly router past the wall",
+            color="#9fd9c4", fontsize=8.6, ha="left", va="top")
+    ax.set_xticks([262144, 524288, 1048576, 2097152, 4194304, 8388608])
+    ax.set_xticklabels(["256K", "512K", "1M", "2M", "4M", "8M"])
+    ax.set_xlim(2.3e5, 1.0e7); ax.set_ylim(0.15, 4e2)
+    ax.set_xlabel("Context length (tokens)", color="#bdbdbd")
+    ax.set_ylabel("Router wall-clock per call (ms, log)", color="#bdbdbd")
+    ax.text(0.0, 1.13, "REAL GPU — both routers on GPU, no transfer (faiss-gpu)",
+            transform=ax.transAxes, color="#8a8a8a", fontsize=8.4, fontweight="bold")
+    ax.set_title("Flat (n/b)² GEMM vs faiss-GPU IVF router — measured", color="white",
+                 fontsize=13.5, loc="left", pad=30)
+    ax.grid(True, which="major", color="#2a2a2a", lw=0.5)
+    ax.legend(loc="lower right", fontsize=8.5, framealpha=0.12, labelcolor="#ddd")
+    fig.tight_layout()
+    fig.savefig("paper/figures/router_gpu_compare.png", dpi=150, facecolor=fig.get_facecolor())
+    print("wrote paper/figures/router_gpu_compare.png")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    plot_from_json() if "plot" in sys.argv else main()
