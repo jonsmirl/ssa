@@ -957,8 +957,8 @@ which is now characterized.
 ## The floor program (P0–P5): driving the kernel to the n·κ floor
 
 The theoretical floor is `n·κ` (attending the κ selected keys); the measured kernel sits far above it because
-of router cost. Full record: `FLOOR_PROGRAM.md`. Figures: `paper/figures/{cost_profile,recall_floor,bakeoff,
-router_gpu_compare,p5_synthesis}.png`.
+of router cost. Full record: `FLOOR_PROGRAM.md`. Figures: `paper/figures/{unified_scaling,router_gpu_compare}.png`;
+data: `paper/figures/{cost_profile,recall_floor,bakeoff,faiss_router,router_gpu_compare,router_cpu_compare}.json`.
 
 **P0 — cost decomposition** (`cost_profile.py`): attention ~ `n^1.02` (the floor), router ~ `n^1.76`,
 **maskbuild (argsort BlockMask) ~ `n^2.12`** (the largest component). At 12M the floor is ~1% of the forward —

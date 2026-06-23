@@ -3,8 +3,8 @@
 **Goal.** The measured SSA kernel sits far above the theoretical floor `n·κ` (attending the κ selected
 keys). This program *sized the gap*, *mapped the floor*, and *closed the gap* with a sub-linear router —
 all on a 16 GB GPU, with the 12M regime projected (the scope), every result reproducible (`ssa/*.py` +
-`paper/figures/*.json`). Figures: `paper/figures/p5_synthesis.png` (the result), `unified_scaling.png`
-(claim vs floor).
+`paper/figures/*.json`). Figures: `paper/figures/unified_scaling.png` (the result — dense O(n²), our kernels, the
+floor, and SubQ's claim) and `router_gpu_compare.png` (the measured GPU router).
 
 | phase | question | result |
 |---|---|---|
@@ -13,7 +13,7 @@ all on a 16 GB GPU, with the 12M regime projected (the scope), every result repr
 | **P2** cheap wins | do constant-factor fixes reach it? | `router_variants.py`: narrow-kv_idx ~2× on maskbuild; cross-layer sharing ÷5 (Gemma); **low-rank routing a bust** (5–14% agreement on high-PR keys). All constant factors — the `(n/b)²` remains. **Gate: sub-linear router justified.** |
 | **P3** bake-off | which sub-linear router? | `bakeoff.py` (recall vs cost on benign co-trained keys): **treecode wins raw cost (0.8%)**, **faiss-ivf robust (1.6%, best recall, GPU-optimized)**, centroid 1.8%, **LSH out** (can't reach 0.9). Decision: **faiss-ivf** for the kernel — competitive cost + an optimized constant (sidesteps the treecode's wall-clock-constant problem). |
 | **P4** integrate | how close does it get? | `faiss_router.py`: IVF over block-means scores **O(√nb) blocks (8→64× fewer), 0.93–0.97 agreement**, emits kv_idx directly. **MEASURED on the GPU** (`router_gpu_compare.py`, faiss-gpu, both on GPU, no transfer): the flat GEMM's constant wins below ~2M (gap closing 33.8×→1.5×), **crossover ~3M**, then **flat OOMs at 4M** (nb² matrix); the **IVF router runs linearly to 8M (62 ms) — the only router that runs past 4M**. Extrapolated to 12M (~90 ms) the IVF router is small vs the 425 ms attention floor ⇒ kernel **~at the floor**, as projected. (Same-device CPU control `router_cpu_compare.py` agreed; the earlier "75–333× slower" was a GPU↔CPU transfer artifact.) |
-| **P5** synthesis | the picture | `p5_synthesis.png`: at 12M the **flat kernel is only ~20× over dense** (maskbuild-bound), the **IVF-router kernel ~2336× — on the floor** (op-count, CPU-validated). The router moves the kernel off n¹·³ onto the linear floor. |
+| **P5** synthesis | the picture | `unified_scaling.png` (SubQ's compute orientation): dense O(n²) rises; our flat-router kernel stays below but is **speedup-capped** (maskbuild ~n²·¹²); the **measured IVF router drops the kernel onto the floor** — below SubQ's 1,000× claim. Dense, the floor, and SubQ's points in one frame. |
 
 ## What it establishes
 - **The gap to the floor is the router** (score GEMM + argsort maskbuild, both `(n/b)²`), and a sub-linear

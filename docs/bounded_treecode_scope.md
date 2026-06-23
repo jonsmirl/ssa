@@ -103,7 +103,7 @@ P5 is the separate *quality* axis.
 2. **Memory**: runs at 4M/8M where the flat GEMM OOMs.
 3. **Quality**: NIAH single-needle recall within ε of the flat router at a matched key budget (the gate).
 
-Only when all three hold does the measured green line in `kernel_scaling_measured.png` move from the flat
-`n^{1.3}` curve toward the dotted `O(n)` target. The necessity that makes this worth building is machine-checked:
+Only when all three hold does the measured kernel line (see `unified_scaling.png`) move from the flat
+`n^{1.3}` curve toward the `O(n)` floor. The necessity that makes this worth building is machine-checked:
 `flat_router_work` / `subquadratic_forces_skip` (Substrate Lean) — a flat router *cannot* be the long-context
 answer.
