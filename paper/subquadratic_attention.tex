@@ -5,6 +5,7 @@
 \usepackage{lmodern}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{geometry}
 \geometry{margin=1.1in}
 \usepackage{microtype}
@@ -458,6 +459,17 @@ grows.
 
 \section{The compute floor and a sub-linear router}\label{sec:floor}
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/unified_scaling.png}
+  \caption{Attention compute versus context length (lower is faster). Dense $O(n^2)$ rises at the top; our
+  flat-router kernel (measured) stays well below it but its speedup is capped because the argsort
+  \texttt{BlockMask} build grows nearly as fast; the measured faiss-GPU IVF router drops the kernel onto the
+  $n\kappa$ floor. SubQ's two published speedups and its $1{,}000\times$@12M claim are shown as compute
+  $=$ dense$/$speedup. Measured solid, projection dashed; one 16\,GB GPU.}
+  \label{fig:unified}
+\end{figure}
+
 Selection caps the per-query work at a budget $\kappa$ keys, so the irreducible cost of the layer is the
 \emph{attention floor} $n\kappa$---linear in $n$. A measured kernel sits above this floor by exactly its
 router cost. Decomposing one forward of the kernel of \S\ref{sec:pipeline} into router (the $(n/b)^2$
@@ -465,7 +477,7 @@ block-score GEMM), \texttt{BlockMask} construction, and attention, and fitting e
 $n\in[16\mathrm{K},524\mathrm{K}]$, gives attention ${\sim}\,n^{1.02}$ (the floor), router ${\sim}\,n^{1.76}$,
 and---largest---the argsort-based mask build ${\sim}\,n^{2.12}$. Extrapolated to $12\mathrm{M}$ tokens the floor
 is ${\sim}1\%$ of the forward: a $128\times$ gap, entirely the two $(n/b)^2$ terms. A router that emits the
-selected block indices \emph{directly} removes both.
+selected block indices \emph{directly} removes both (Figure~\ref{fig:unified}).
 
 \paragraph{Lowering the floor.} The floor $n\kappa$ itself drops if fewer keys recover the target. The smallest
 budget $\kappa_{\min}$ reaching recall $\ge 0.9$ is $\kappa_{\min}/n=3\%$ for tight clusters, $50\%$ for diffuse

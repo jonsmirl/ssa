@@ -415,6 +415,11 @@ off-domain start. The residual is the price of sparsity at this small budget and
 
 ## 10. The compute floor and a sub-linear router
 
+![Attention compute versus context length (lower is faster). Dense O(n²) rises at the top; our flat-router
+kernel (measured) stays well below it but its speedup is capped by the argsort BlockMask build; the measured
+faiss-GPU IVF router drops the kernel onto the n·κ floor. SubQ's two published speedups and its 1,000×@12M
+claim are shown as compute = dense/speedup. Measured solid, projection dashed; one 16 GB GPU.](figures/unified_scaling.png)
+
 Selection caps the per-query work at a budget κ keys, so the irreducible cost of the layer is the **attention
 floor** `n·κ` — linear in n. A measured kernel sits above this floor by exactly its router cost. Decomposing
 one forward of the §9 kernel into router (the `(n/b)²` block-score GEMM), `BlockMask` construction, and

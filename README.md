@@ -11,6 +11,11 @@ verdict on what the reverse-engineering establishes (and cannot) about SubQ's pu
 SubQ's 12M speedup exceeds what its own two published points imply, so a *quality-preserving* 1,000× provably
 requires a hierarchical indexer (the component the NSA/DSA family lacks) that this rig has only in reference form.
 
+![Attention compute vs context length: dense O(n²) rising at the top, our flat-router kernel (measured) staying
+below but speedup-capped by the argsort BlockMask build, the measured faiss-GPU IVF router dropping the kernel
+onto the n·κ floor, and SubQ's two published points plus its 1,000×@12M claim — measured (solid) + projection
+(dashed), one 16 GB GPU.](paper/figures/unified_scaling.png)
+
 Dense self-attention costs `O(n²)` in the sequence length `n`. SSA replaces it with a mechanism that, for each
 query, (i) routes to a small content-dependent set of key **blocks** using only per-block summary statistics,
 (ii) adds a local window, and (iii) computes **exact** softmax attention over the selected keys. The per-query
