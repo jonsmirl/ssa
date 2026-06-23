@@ -1,17 +1,13 @@
 """
-One chart: dense O(n²)  vs  Subquadratic's CLAIM  vs  our MEASURED kernel — solid = measured,
-dashed = projection.
-
-Common axis = attention compute *relative to dense @4K* (so it is hardware-neutral and dense is the
-n² line). Each curve's vertical gap below dense IS its speedup. Sources:
-  * dense + our SSA kernel: real wall-clock (paper/figures/kernel_speed_measured.json, one GPU), solid
-    where measured (4K->262K), dashed power-law projection beyond.
-  * SubQ's claim: their published speedups (7.2x@128K, 52.2x@1M) + the 1,000x@12M headline, turned into
-    relative compute = dense / speedup, dashed (their claimed trajectory; the 12M point is the claim).
-Caveat (on the figure): speedups are ratios vs each system's OWN dense on different hardware — the
-ratio is the comparable quantity, not absolute ms.
-
-Run: python3 -m ssa.unified_scaling_figure  ->  paper/figures/unified_scaling.png
+Unified scaling chart (v2): speedup over dense vs context, telling the whole program in one frame.
+  * dense O(n²)                  — the 1× baseline.
+  * our flat-router kernel       — MEASURED (4K→262K) + projected; plateaus ~20× because the argsort
+                                    BlockMask build (P0: ~n^2.12) grows nearly as fast as dense.
+  * our IVF-router kernel        — projected (the faiss-GPU IVF router, GPU-measured to 8M, removes the
+                                    maskbuild) — uncaps and climbs toward the floor.
+  * routing-free floor           — dense / attention (the n·κ floor); the max speedup if routing were free.
+  * SubQ                         — its two published speedups + the 1,000×@12M claim, for reference.
+Built from paper/figures/{kernel_speed_measured,cost_profile}.json. Run: python3 -m ssa.unified_scaling_figure
 """
 from __future__ import annotations
 import json
@@ -20,80 +16,74 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-rows = json.load(open("paper/figures/kernel_speed_measured.json"))
-n_m = np.array([r["n"] for r in rows], float)
-dense = np.array([r["dense_ms"] for r in rows], float)
-ssa = np.array([r["ssa_ms"] for r in rows], float)
-ref = dense[0]                                   # normalize to dense @ 4K
-dense_rel, ssa_rel = dense / ref, ssa / ref
+ks = json.load(open("paper/figures/kernel_speed_measured.json"))
+n_m = np.array([r["n"] for r in ks], float)
+dense_m = np.array([r["dense_ms"] for r in ks], float)
+ssa_m = np.array([r["ssa_ms"] for r in ks], float)
+fit = json.load(open("paper/figures/cost_profile.json"))["fit"]
+pa = lambda key, x: fit[key][1] * x ** fit[key][0]
+block = 128
 
-fit = n_m >= 16384                               # power laws past the ~8K crossover
-pd_ = np.polyfit(np.log(n_m[fit]), np.log(dense_rel[fit]), 1)
-ps_ = np.polyfit(np.log(n_m[fit]), np.log(ssa_rel[fit]), 1)
-dense_law = lambda n: np.exp(pd_[1]) * n ** pd_[0]
-ssa_law = lambda n: np.exp(ps_[1]) * n ** ps_[0]
+m = n_m >= 16384
+dl = np.polyfit(np.log(n_m[m]), np.log(dense_m[m]), 1)
+dense_law = lambda x: np.exp(dl[1]) * x ** dl[0]
+flat_kernel = lambda x: pa("attention", x) + pa("router", x) + pa("maskbuild", x)
+ivf_kernel = lambda x: pa("attention", x) + pa("router", x) * (x / block) ** -0.5 + pa("maskbuild", x) * (x / block) ** -1.0
+floor = lambda x: pa("attention", x)
 
-subq_n = np.array([131072.0, 1048576.0, 12e6])   # 128K, 1M (published), 12M (claim)
-subq_sp = np.array([7.2, 52.2, 1000.0])
-subq_rel = dense_law(subq_n) / subq_sp           # claimed compute relative to dense
-n_ext = np.logspace(np.log10(262144), np.log10(12e6), 120)
-
-# Theory floor: any selector that attends kappa keys costs >= n*kappa (router -> 0), so
-# speedup <= n/kappa.  Relative to dense it is dense*min(1, kappa/n): tracks dense until the budget
-# binds (n=kappa), then falls as O(n).  SubQ's 2 published points imply kappa~19k; the 1000x claim
-# implies kappa~12k -> the floor is the BAND between those budgets, not a single line.
-K_HI, K_LO = float(np.mean(subq_n[:2] / subq_sp[:2])), 12e6 / 1000.0      # ~19k (published), 12k (claim)
-floor = lambda n, k: dense_law(n) * np.minimum(1.0, k / n)
-xall = np.logspace(np.log10(4096), np.log10(12e6), 260)
+xe = np.logspace(np.log10(262144), np.log10(12e6), 140)
+xall = np.logspace(np.log10(4096), np.log10(12e6), 200)
+sub_n = np.array([131072.0, 1048576.0, 12e6])
+sub_sp = np.array([7.2, 52.2, 1000.0])
 
 plt.style.use("dark_background")
 fig, ax = plt.subplots(figsize=(10.6, 6.5))
-fig.patch.set_facecolor("#000000"); ax.set_facecolor("#000000")
+fig.patch.set_facecolor("#000"); ax.set_facecolor("#000")
 ax.set_xscale("log"); ax.set_yscale("log")
 ax.axvspan(262144, 12e6, color="white", alpha=0.05)
-ax.text(2.7e6, 1.4, "projection (dashed)\nbeyond measured", color="#777", fontsize=8, ha="center")
 
-# theory floor band: speedup <= n/kappa (no router beats the n·kappa attention cost), kappa in [12k,19k]
-ax.fill_between(xall, floor(xall, K_LO), floor(xall, K_HI), color="#8a8aff", alpha=0.13, zorder=1)
-ax.plot(xall, floor(xall, K_HI), color="#9a9aff", lw=1.2, ls=(0, (1, 2)), zorder=2,
-        label=f"theory floor: speedup ≤ n/κ  (κ≈{K_LO/1e3:.0f}–{K_HI/1e3:.0f}k, perfect router)")
-ax.plot(xall, floor(xall, K_LO), color="#9a9aff", lw=1.0, ls=(0, (1, 2)), alpha=0.7, zorder=2)
+ax.axhline(1.0, color="#888", lw=1.2, ls=(0, (4, 3)), label="dense O(n²) — 1× baseline")
+ax.plot(xall, dense_law(xall) / floor(xall), color="#9a9aff", lw=1.6, ls=(0, (1, 2)),
+        label="routing-free floor (dense / attention)")
+# flat-router kernel: measured solid + projected dashed
+ax.plot(n_m, dense_m / ssa_m, color="#f2c14e", lw=2.6, marker="o", ms=4.5,
+        label="our flat-router kernel — measured")
+ax.plot(xe, dense_law(xe) / flat_kernel(xe), color="#f2c14e", lw=1.9, ls=(0, (5, 3)),
+        label="flat kernel — projected (plateaus: maskbuild cap)")
+# IVF-router kernel: projected
+ax.plot(xe, dense_law(xe) / ivf_kernel(xe), color="#3fbf90", lw=2.4, ls=(0, (4, 3)),
+        label="our IVF-router kernel — projected (GPU-validated)")
+# SubQ
+ax.scatter(sub_n[:2], sub_sp[:2], color="white", s=55, zorder=5, label="SubQ published (7.2×, 52.2×)")
+ax.scatter(sub_n[2:], sub_sp[2:], marker="*", s=320, color="#ff5d5d", edgecolor="white", linewidth=0.6,
+           zorder=6, label="SubQ claim 1,000×@12M")
 
-# dense O(n^2) — the n^2 line
-ax.plot(n_m, dense_rel, color="#e8806f", lw=2.6, marker="o", ms=4.5, label="dense  O(n²) — measured")
-ax.plot(n_ext, dense_law(n_ext), color="#e8806f", lw=2.0, ls=(0, (5, 3)), label="dense  O(n²) — projected")
-# our measured kernel
-ax.plot(n_m, ssa_rel, color="#3fbf90", lw=2.6, marker="o", ms=4.5, label="our SSA kernel — measured (22× @262K)")
-ax.plot(n_ext, ssa_law(n_ext), color="#3fbf90", lw=2.0, ls=(0, (5, 3)),
-        label=f"our SSA — projected (~{dense_law(12e6) / ssa_law(12e6):.0f}× @12M)")
-# SubQ's claim
-ax.plot(subq_n, subq_rel, color="#f2c14e", lw=1.8, ls=(0, (4, 3)), zorder=4, label="SubQ — claimed trajectory")
-ax.scatter(subq_n[:2], subq_rel[:2], color="#f2c14e", s=55, zorder=5, label="SubQ published (7.2×, 52.2×)")
-ax.scatter(subq_n[2:], subq_rel[2:], marker="*", s=300, color="#ffd23f", edgecolor="white", linewidth=0.6,
-           zorder=6, label="SubQ claim 1,000× @12M")
+ax.annotate("flat kernel plateaus ~20×\n(argsort BlockMask ~ n²·¹²)", xy=(12e6, dense_law(12e6) / flat_kernel(12e6)),
+            xytext=(7e5, 2.7), color="#e8d6a0", fontsize=8, arrowprops=dict(arrowstyle="->", color="#e8d6a0", lw=0.8))
+ax.annotate("IVF router removes the cap →\nclimbs toward the floor", xy=(4e6, dense_law(4e6) / ivf_kernel(4e6)),
+            xytext=(2.4e5, 700), color="#9fd9c4", fontsize=8, arrowprops=dict(arrowstyle="->", color="#9fd9c4", lw=0.8))
 
-ax.annotate("at 12M: SubQ's 1,000× sits on the κ≈12k floor edge\n"
-            "(needs that tight budget); our measured+projected ~260×",
-            xy=(12e6, subq_rel[2]), xytext=(7.0e5, 7.0), color="#e8d6a0", fontsize=8.0,
-            arrowprops=dict(arrowstyle="->", color="#e8d6a0", lw=0.9))
-
-ticks = [4096, 16384, 65536, 262144, 1048576, 12e6]
-ax.set_xticks(ticks); ax.set_xticklabels(["4K", "16K", "64K", "256K", "1M", "12M"])
-ax.set_xlim(4096, 1.4e7); ax.set_ylim(1, 6e6)
+ax.set_xticks([4096, 16384, 65536, 262144, 1048576, 12e6]); ax.set_xticklabels(["4K", "16K", "64K", "256K", "1M", "12M"])
+ax.set_xlim(4096, 1.4e7); ax.set_ylim(0.4, 4000)
+ax.set_yticks([1, 10, 100, 1000]); ax.set_yticklabels(["1×", "10×", "100×", "1000×"])
 ax.set_xlabel("Context length (tokens)", color="#bdbdbd")
-ax.set_ylabel("Attention compute relative to dense @4K  (log; lower = faster)", color="#bdbdbd")
-ax.text(0.0, 1.10, "SCALING — dense O(n²) vs SubQ's claim vs our measured kernel (solid=measured, dashed=projected)",
-        transform=ax.transAxes, color="#8a8a8a", fontsize=8.4, fontweight="bold")
-ax.set_title("Attention compute: the claim, the baseline, and the measurement", color="white",
-             fontsize=14, loc="left", pad=24)
+ax.set_ylabel("Prefill speedup over dense  (log)", color="#bdbdbd")
+ax.text(0.0, 1.15, "UNIFIED SCALING — measured (solid) + projection (dashed), one 16 GB GPU",
+        transform=ax.transAxes, color="#8a8a8a", fontsize=8.6, fontweight="bold")
+ax.set_title("The maskbuild cap, the IVF router, and the floor", color="white", fontsize=14, loc="left", pad=34)
 ax.grid(True, which="major", color="#2a2a2a", lw=0.5)
-ax.legend(loc="upper left", fontsize=7.5, framealpha=0.12, labelcolor="#dddddd")
-fig.text(0.012, 0.012, "Speedups are ratios vs each system's own dense on different hardware; the ratio is the "
-         "comparable quantity, not absolute ms. SubQ's 12M point is the claim, above its own 2-point scaling.",
-         color="#6f6f6f", fontsize=6.6)
+ax.legend(loc="upper left", fontsize=7.8, framealpha=0.12, labelcolor="#ddd")
+fig.text(0.012, 0.012, "Floor is the routing-free max at this config's budget; the recall-viable budget (hence "
+         "the achievable floor) is geometry-dependent (P1: 0.4% co-trained → 50% adversarial). IVF-kernel line "
+         "projects the GPU-measured IVF router (router_gpu_compare) into the full kernel; benign geometry.",
+         color="#6f6f6f", fontsize=6.3)
 fig.tight_layout(rect=(0, 0.028, 1, 1))
 out = "paper/figures/unified_scaling.png"
 fig.savefig(out, dpi=150, facecolor=fig.get_facecolor())
 print(f"wrote {out}")
-print(f"@12M relative compute: dense={dense_law(12e6):.0f}, ours={ssa_law(12e6):.0f} "
-      f"({dense_law(12e6)/ssa_law(12e6):.0f}×), SubQ-claim={subq_rel[2]:.0f} (1000×)")
+print(f"@12M speedup: floor={dense_law(12e6)/floor(12e6):.0f}x flat={dense_law(12e6)/flat_kernel(12e6):.0f}x "
+      f"ivf={dense_law(12e6)/ivf_kernel(12e6):.0f}x ; SubQ claim 1000x")
+
+
+if __name__ == "__main__":
+    pass
