@@ -1002,6 +1002,15 @@ past the wall**. The 12M "kernel ~at the floor" is a **projection** (measured ro
 extrapolated 23× past the largest measured n; no end-to-end kernel was timed). The same-device CPU control
 (`router_cpu_compare.py`) agreed; the earlier "75–333× slower" was a GPU↔CPU transfer artifact.
 
+**Recall and speed on the *same* keys (`ivf_recall_speed.json`).** The OOM/speed table above uses random
+`mu`/`qb` (speed only), and the agreement numbers came from a separate set — a fair criticism. Re-measured on
+the *same* benign clustered block-means: the faiss-GPU IVF gets **recall 0.97–0.99** (top-`c` agreement with
+the flat router) **and** fast search (0.3 → 22 ms, 256K → 4M) on one dataset — so the win is not speed-on-noise
++ recall-on-toy. **Caveat:** these are *synthetic benign* keys; recall+speed together on **real-model** keys at
+long context is still unmeasured (the deeper open gap). And FAISS-IVF is a *known* ANN — it isn't the
+contribution; it works here *only because* the co-trained/benign geometry makes the coarse quantizer rank the
+target's cell (the hard part is manufacturing that geometry, §"Manufacturing routability", not the index).
+
 *Scope:* the IVF was timed as a router in isolation; full `ssa_flex` integration and the 8M→12M step remain
 extrapolated, on benign geometry. Net: both ingredients a quality-preserving 1,000×@12M needs — floor-lowering
 co-training (60×) and a sub-linear indexer (the IVF router) — are demonstrated, under exactly the benign-geometry
