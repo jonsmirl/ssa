@@ -69,6 +69,18 @@ random keys). The production speedup is well below the headline — exactly why 
 Magic.dev parallel — 100M tokens, claimed 1,000×, $500M raised, then public silence — is the cautionary base
 rate.)
 
+## The floor program: both levers demonstrated (in projection)
+
+A follow-on program (`FLOOR_PROGRAM.md`, phases P0–P5) drove the rig's own kernel toward the `n·κ` floor and,
+in doing so, demonstrated the two things SubQ's 1,000× requires. (1) **Lower the floor:** co-training drops
+κ_min from 25% to **0.4%** of n (60×) — the mechanism behind SubQ's RL/co-training stage, and the answer to
+"is a tiny κ viable" — *on benign geometry only* (diffuse/adversarial stays at a 50% floor = no speedup).
+(2) **Close the gap:** a FAISS-IVF block-router (O(√nb), 0.93–0.97 selection agreement) projects to put the
+kernel within **1.10× of the floor at 12M** (a 128× → 1.1× gap) — the sub-linear indexer the necessity proof
+(`subquadratic_forces_skip`) said was *required*. So SubQ's claim is **achievable in principle under exactly
+the benign-geometry condition the floor analysis names** — pinned, not refuted. (Both are cost projections on
+the 16 GB card; the faiss-gpu 12M wall-clock is unmeasured.)
+
 ## What this rig cannot settle
 
 It reconstructs the recipe, not SubQ's code. It cannot say whether SubQ solved the router-cost problem this
