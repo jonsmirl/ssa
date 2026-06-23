@@ -985,17 +985,22 @@ cost (0.8%), **faiss-ivf robust** (1.6%, GPU-optimized), centroid 1.8%, **LSH ou
 **P4–P5 — FAISS-IVF block-router, MEASURED on the GPU** (`router_gpu_compare.py`, faiss-gpu, both routers on
 GPU, no transfer):
 
-| n | flat `(n/b)²` GEMM | faiss-GPU IVF | |
+| n | flat single-head `(n/b)²` GEMM | faiss-GPU IVF | |
 |---|---|---|---|
-| 256K | 0.21 ms | 7.1 ms | flat 33.8× |
-| 2M | 12.9 ms | 18.9 ms | flat 1.5× |
-| **4M** | **OOM** (nb²=4.3 GB) | **31.4 ms** | IVF — flat dead |
-| **8M** | **OOM** (17.2 GB) | **61.7 ms** | IVF — flat dead |
+| 256K | 0.21 ms | 7.3 ms | flat 35× |
+| 2M | 14.0 ms | 19.5 ms | flat 1.4× |
+| **4M** | **52.6 ms** (runs; 4.3 GB) | **31.4 ms** | **IVF 1.7×** |
+| **8M** | **OOM** (nb²=17.2 GB > card) | **63.7 ms** | IVF only |
 
-The flat GEMM's constant wins below ~2M (gap closing 33.8×→1.5×), **crossover ~3M**, then **OOMs at 4M**; the
-**IVF router runs linearly to 8M (62 ms) — the only router past the flat OOM**. Extrapolated to 12M (~90 ms) it
-is small vs the 425 ms attention floor ⇒ kernel **~at the floor** (128× gap → ~1.1×). The same-device CPU
-control (`router_cpu_compare.py`) agreed; the earlier "75–333× slower" was purely a GPU↔CPU transfer artifact.
+**Correction (was wrong):** an earlier version skipped the flat GEMM by a `mem<3.0` guard and labelled 4M
+"OOM" — false; the 4.3 GB matrix *fits* (flat = 52.6 ms there, and IVF is 1.7× faster). The flat GEMM OOMs
+only at **8M** (17.2 GB matrix). And note the benchmarked `flat` is a stripped *single-head* score GEMM; the
+kernel's **actual** router (`block_route`, H heads + `(B,H,nb,nb)` sel + argsort) is ~10× heavier and OOMs at
+**~1M** on this card (measured: 19 ms @256K, fault @1M) — so against the real router the IVF wins at every n.
+The flat GEMM's constant wins below ~3M; crossover ~3M; the **IVF router runs to 8M (64 ms) — the only router
+past the wall**. The 12M "kernel ~at the floor" is a **projection** (measured router + an analytic floor
+extrapolated 23× past the largest measured n; no end-to-end kernel was timed). The same-device CPU control
+(`router_cpu_compare.py`) agreed; the earlier "75–333× slower" was a GPU↔CPU transfer artifact.
 
 *Scope:* the IVF was timed as a router in isolation; full `ssa_flex` integration and the 8M→12M step remain
 extrapolated, on benign geometry. Net: both ingredients a quality-preserving 1,000×@12M needs — floor-lowering

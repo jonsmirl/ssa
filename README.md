@@ -120,8 +120,9 @@ pretrained models on first run.
   artifact*. This is a routing-**quality** result at n≤4096 — **not** a speed result.
 - **The compute floor (P0–P5).** The kernel's gap to the theoretical `n·κ` floor is the router (the `(n/b)²`
   score GEMM + the argsort `BlockMask` build). Co-training lowers the floor itself **60×** (κ_min 25%→0.4% of
-  keys), and a **faiss-GPU IVF router** — measured on the GPU, running linearly to **8M** where the flat router
-  OOMs at 4M — closes the gap to **~1.1× the floor** at 12M. Full record: [`FLOOR_PROGRAM.md`](FLOOR_PROGRAM.md).
+  keys), and a **faiss-GPU IVF router** — measured on the GPU, running linearly to **8M** (the only router past
+  the flat router's memory wall: the score GEMM OOMs at 8M and the kernel's real `block_route` at ~1M) —
+  *projecting* the gap to **~1.1× the floor** at 12M. Full record: [`FLOOR_PROGRAM.md`](FLOOR_PROGRAM.md).
 
 ## Scope — what is and isn't demonstrated
 

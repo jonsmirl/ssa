@@ -58,7 +58,11 @@ def main():
         qb = torch.randn(nb, d, device=DEV).contiguous()
         nlist = max(4, int(nb ** 0.5))
         mem = nb * nb * 4 / 1e9
-        tf = _t(lambda: flat(qb, mu)) if mem < 3.0 else None   # skip flat where nb² would OOM (would crash faiss)
+        # NOTE: `flat` here is a stripped single-head score GEMM (nb² fp32). The kernel's ACTUAL router
+        # (ssa_kernel.block_route, H heads + (B,H,nb,nb) bool sel + argsort) is ~10× heavier and OOMs/faults
+        # at ~1M on this 16 GB card (measured: 19 ms @256K, fault @1M). The single-head GEMM genuinely OOMs
+        # only when its matrix exceeds VRAM (~14 GB ⇒ ~7M tokens); skip it just past that to spare faiss.
+        tf = _t(lambda: flat(qb, mu)) if mem < 14.0 else None
         ti = _t(lambda: ivf(mu, qb, nlist))
         if tf is None and ti is not None:
             win = "IVF (flat OOM)"
@@ -107,8 +111,9 @@ def plot_from_json(path="paper/figures/router_gpu_compare.json"):
         ax.scatter(oom, flat_ext, marker="x", s=120, linewidths=2.6, color="#ff5d5d",
                    label="flat OOMs (nb² matrix > GPU)", zorder=6)
 
-    ax.text(3.0e5, 1.1e2, "crossover ~3M; flat OOMs at 4M;\nIVF runs to 8M (62 ms) —\nonly router past the wall",
-            color="#9fd9c4", fontsize=8.6, ha="left", va="top")
+    ax.text(2.9e5, 1.7e2, "crossover ~3M (IVF 1.7× faster at 4M);\nflat OOMs at 8M (17 GB nb² matrix);\n"
+            "IVF the only router past it (64 ms).\n(the kernel's real block_route — H heads +\nargsort — OOMs even earlier, ~1M)",
+            color="#9fd9c4", fontsize=8.0, ha="left", va="top")
     ax.set_xticks([262144, 524288, 1048576, 2097152, 4194304, 8388608])
     ax.set_xticklabels(["256K", "512K", "1M", "2M", "4M", "8M"])
     ax.set_xlim(2.3e5, 1.0e7); ax.set_ylim(0.15, 4e2)

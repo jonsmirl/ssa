@@ -441,13 +441,14 @@ both routers on-device (no host transfer):
 
 | context n | flat (n/b)² GEMM | faiss-GPU IVF | winner |
 |---|---|---|---|
-| 256K | 0.21 ms | 7.1 ms | flat 33.8× |
-| 2M | 12.9 ms | 18.9 ms | flat 1.5× |
-| 4M | OOM (nb²=4.3 GB) | 31.4 ms | IVF (flat dead) |
-| 8M | OOM (17.2 GB) | 61.7 ms | IVF (flat dead) |
+| 256K | 0.21 ms | 7.3 ms | flat 35× |
+| 2M | 14.0 ms | 19.5 ms | flat 1.4× |
+| 4M | 52.6 ms (runs) | 31.4 ms | IVF 1.7× |
+| 8M | OOM (nb²=17.2 GB) | 63.7 ms | IVF only |
 
-The dense GEMM's constant wins below ~2M but its score matrix exhausts memory at 4M; the IVF runs linearly past
-it. Crossover ~3M, and the IVF is the only router past the flat router's 4M memory wall. At 12M the IVF router
+The single-head GEMM's constant wins below ~3M; it OOMs only at 8M (17 GB matrix), while the kernel's actual
+router (block_route, H heads + argsort) OOMs near 1M; the IVF runs linearly past both. Crossover ~3M (IVF 1.7×
+faster at 4M). At 12M the IVF router
 (~90 ms, extrapolated) is small against the ~425 ms attention floor, so the kernel reaches **~1.1× the floor** —
 the 128× gap closed. Two caveats: the router was timed in isolation (full-kernel integration and the 8M→12M step
 remain extrapolated), and the result is conditional on benign geometry — adversarial or multi-hop retrieval

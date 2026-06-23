@@ -21,7 +21,18 @@ ks = json.load(open("paper/figures/kernel_speed_measured.json"))
 n_m = np.array([r["n"] for r in ks], float)
 dense_m = np.array([r["dense_ms"] for r in ks], float)
 ssa_m = np.array([r["ssa_ms"] for r in ks], float)
-fit = json.load(open("paper/figures/cost_profile.json"))["fit"]
+_cp = json.load(open("paper/figures/cost_profile.json"))
+if isinstance(_cp, dict) and "fit" in _cp:                  # robust to a partial cost_profile.py run (bare list)
+    fit = _cp["fit"]
+else:
+    import numpy as _np
+    _rows = _cp if isinstance(_cp, list) else _cp.get("rows", [])
+    def _fk(key):
+        xs = [r["n"] for r in _rows if r["n"] >= 131072 and r.get(key)]
+        ys = [r[key] for r in _rows if r["n"] >= 131072 and r.get(key)]
+        p = _np.polyfit(_np.log(xs), _np.log(ys), 1)
+        return [float(p[0]), float(_np.exp(p[1]))]
+    fit = {k: _fk(k) for k in ("router", "maskbuild", "attention")}
 pa = lambda key, x: fit[key][1] * x ** fit[key][0]
 block = 128
 
@@ -57,7 +68,7 @@ ivf_n = np.array([r["n"] for r in gr], float)
 ivf_router_meas = np.array([r["ivf_ms"] for r in gr], float)
 ivf_kernel_meas = floor(ivf_n) + ivf_router_meas              # attention + measured IVF router (maskbuild ~0)
 ax.plot(ivf_n, ivf_kernel_meas, color="#3fbf90", lw=2.5, marker="s", ms=6, zorder=6,
-        label="our IVF-router kernel — MEASURED router + attention")
+        label="IVF-router kernel — measured router + analytic floor (projection)")
 pr = np.polyfit(np.log(ivf_n), np.log(ivf_router_meas), 1)   # extrapolate the measured router to 12M
 xv = np.logspace(np.log10(ivf_n[-1]), np.log10(12e6), 30)
 ax.plot(xv, floor(xv) + np.exp(pr[1]) * xv ** pr[0], color="#3fbf90", lw=1.9, ls=(0, (4, 3)))
@@ -66,11 +77,11 @@ ax.plot(xall, floor(xall), color="#9a9aff", lw=1.6, ls=(0, (1, 2)), label="n·κ
 # SubQ claim (as compute)
 ax.scatter(sub_n[:2], sub_ms[:2], color="white", s=55, zorder=5, label="SubQ published (7.2×, 52.2×)")
 ax.scatter(sub_n[2:], sub_ms[2:], marker="*", s=320, color="#ff5d5d", edgecolor="white", linewidth=0.6,
-           zorder=6, label="SubQ claim 1,000×@12M")
+           zorder=6, label="SubQ 1,000×@12M (cross-hardware ref — not head-to-head)")
 
 ax.annotate("flat kernel: speedup capped\n(argsort BlockMask ~ n²·¹²)", xy=(12e6, flat_kernel(12e6)),
             xytext=(8e5, 9e3), color="#e8d6a0", fontsize=8, arrowprops=dict(arrowstyle="->", color="#e8d6a0", lw=0.8))
-ax.annotate("IVF router (GPU-measured to 8M)\n→ kernel drops onto the floor", xy=(4194304, floor(4194304) + 31.4),
+ax.annotate("IVF router GPU-measured to 8M\n→ projected kernel toward the floor", xy=(4194304, floor(4194304) + 31.4),
             xytext=(2.4e4, 1.7e3), color="#9fd9c4", fontsize=8, arrowprops=dict(arrowstyle="->", color="#9fd9c4", lw=0.8))
 
 ax.set_xticks([4096, 16384, 65536, 262144, 1048576, 12e6]); ax.set_xticklabels(["4K", "16K", "64K", "256K", "1M", "12M"])

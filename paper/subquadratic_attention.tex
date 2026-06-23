@@ -498,16 +498,17 @@ $4\mathrm{M}$; the IVF runs linearly past it:
 \hline
 context $n$ & flat $(n/b)^2$ GEMM & faiss-GPU IVF & winner\\
 \hline
-256K & $0.21$\,ms & $7.1$\,ms & flat $33.8\times$\\
-2M & $12.9$\,ms & $18.9$\,ms & flat $1.5\times$\\
-4M & OOM ($nb^2{=}4.3$\,GB) & $31.4$\,ms & IVF (flat dead)\\
-8M & OOM ($17.2$\,GB) & $61.7$\,ms & IVF (flat dead)\\
+256K & $0.21$\,ms & $7.3$\,ms & flat $35\times$\\
+2M & $14.0$\,ms & $19.5$\,ms & flat $1.4\times$\\
+4M & $52.6$\,ms (runs) & $31.4$\,ms & IVF $1.7\times$\\
+8M & OOM ($nb^2{=}17.2$\,GB) & $63.7$\,ms & IVF only\\
 \hline
 \end{tabular}
 \end{center}
 
-\noindent The crossover is ${\sim}3\mathrm{M}$, and the IVF is the only router that runs past the flat
-router's $4\mathrm{M}$ memory wall. At $12\mathrm{M}$ the IVF router (${\sim}90$\,ms, extrapolated) is small
+\noindent The crossover is ${\sim}3\mathrm{M}$. This stripped single-head GEMM OOMs only at $8\mathrm{M}$
+($17$\,GB matrix), while the kernel's \emph{actual} router (\texttt{block\_route}, $H$ heads $+$ an argsort)
+OOMs near $1\mathrm{M}$---so the IVF is the only router that runs at long context. At $12\mathrm{M}$ the IVF router (${\sim}90$\,ms, extrapolated) is small
 against the ${\sim}425$\,ms attention floor, so the kernel reaches ${\sim}1.1\times$ the floor---the $128\times$
 gap closed. Two caveats bound the claim: the router was timed in isolation (full-kernel integration and the
 $8\mathrm{M}\!\to\!12\mathrm{M}$ step remain extrapolated), and the whole result is conditional on benign

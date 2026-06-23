@@ -12,22 +12,24 @@ floor, and SubQ's claim) and `router_gpu_compare.png` (the measured GPU router).
 | **P1** map the floor | how low can κ go? | `recall_floor.py`: κ_min vs geometry × difficulty. **Co-training crushes the floor 25% → 0.4% (60×)** — the dominant lever. Geometry-bound: tight 3%, **diffuse/adversarial 50% (no speedup)**; long-range raises it. This is the SubQ κ-viability test. |
 | **P2** cheap wins | do constant-factor fixes reach it? | `router_variants.py`: narrow-kv_idx ~2× on maskbuild; cross-layer sharing ÷5 (Gemma); **low-rank routing a bust** (5–14% agreement on high-PR keys). All constant factors — the `(n/b)²` remains. **Gate: sub-linear router justified.** |
 | **P3** bake-off | which sub-linear router? | `bakeoff.py` (recall vs cost on benign co-trained keys): **treecode wins raw cost (0.8%)**, **faiss-ivf robust (1.6%, best recall, GPU-optimized)**, centroid 1.8%, **LSH out** (can't reach 0.9). Decision: **faiss-ivf** for the kernel — competitive cost + an optimized constant (sidesteps the treecode's wall-clock-constant problem). |
-| **P4** integrate | how close does it get? | `faiss_router.py`: IVF over block-means scores **O(√nb) blocks (8→64× fewer), 0.93–0.97 agreement**, emits kv_idx directly. **MEASURED on the GPU** (`router_gpu_compare.py`, faiss-gpu, both on GPU, no transfer): the flat GEMM's constant wins below ~2M (gap closing 33.8×→1.5×), **crossover ~3M**, then **flat OOMs at 4M** (nb² matrix); the **IVF router runs linearly to 8M (62 ms) — the only router that runs past 4M**. Extrapolated to 12M (~90 ms) the IVF router is small vs the 425 ms attention floor ⇒ kernel **~at the floor**, as projected. (Same-device CPU control `router_cpu_compare.py` agreed; the earlier "75–333× slower" was a GPU↔CPU transfer artifact.) |
-| **P5** synthesis | the picture | `unified_scaling.png` (SubQ's compute orientation): dense O(n²) rises; our flat-router kernel stays below but is **speedup-capped** (maskbuild ~n²·¹²); the **measured IVF router drops the kernel onto the floor** — below SubQ's 1,000× claim. Dense, the floor, and SubQ's points in one frame. |
+| **P4** integrate | how close does it get? | `faiss_router.py`: IVF over block-means scores **O(√nb) blocks (8→64× fewer), 0.93–0.97 agreement**, emits kv_idx directly. **MEASURED on the GPU** (`router_gpu_compare.py`, faiss-gpu, both on GPU, no transfer): the single-head flat GEMM's constant wins below ~3M (crossover ~3M; **IVF 1.7× faster at 4M**); that GEMM OOMs only at 8M (17 GB nb² matrix), and the kernel's *real* `block_route` (H heads + sel + argsort) OOMs far earlier (~1M, measured), while the **IVF router runs linearly to 8M (64 ms) — the only router past the wall**. The 12M kernel "~at the floor" is a **projection** (the measured router + an analytic floor extrapolated 23× past the largest measured n, no end-to-end kernel). (Same-device CPU control `router_cpu_compare.py` agreed.) |
+| **P5** synthesis | the picture | `unified_scaling.png` (SubQ's compute orientation): dense O(n²) rises; our flat-router kernel stays below but is **speedup-capped** (maskbuild ~n²·¹²); the **projected** IVF-router kernel (measured router + analytic floor) approaches the floor. SubQ's published points + 1,000× claim are shown for *reference* — plotted as compute = our dense fit / its speedup (cross-hardware, **not** a head-to-head). **Necessary, not beaten.** |
 
 ## What it establishes
 - **The gap to the floor is the router** (score GEMM + argsort maskbuild, both `(n/b)²`), and a sub-linear
-  IVF router that emits `kv_idx` directly removes *both* — projecting the kernel to **~1.1× the floor at 12M**.
-  The wall-clock is **measured on the GPU** (`router_gpu_compare.py`, faiss-gpu): the flat GEMM's constant
-  wins below ~2M but OOMs at 4M; the **IVF router runs to 8M (62 ms), the only router past the flat OOM** —
-  small vs the 425 ms attention floor, so the kernel lands ~at the floor.
+  IVF router that emits `kv_idx` directly removes *both* — the kernel reaching **~1.1× the floor at 12M** is a
+  projection. The router wall-clock is **measured on the GPU** (`router_gpu_compare.py`, faiss-gpu): the
+  single-head flat GEMM's constant wins below ~3M, IVF is 1.7× faster at 4M, that GEMM OOMs at 8M (17 GB) and
+  the kernel's real `block_route` OOMs at ~1M, while the **IVF router runs to 8M (64 ms) — the only router past
+  the wall**. The router is small vs the analytic floor, so the *projected* kernel lands ~at the floor.
 - **The floor itself is set by geometry and crushed by co-training** (25%→0.4%). So the two multiplicative
   levers — lower the floor (co-train) and close the gap (IVF router) — *both* work, on benign geometry.
 
 ## Honest scope
 - The IVF router is now **measured on the GPU** (`router_gpu_compare.py`, faiss-gpu, no transfer): it runs
-  linearly to **8M at 62 ms** — the only router past the flat router's 4M OOM. What remains extrapolated is the
-  **8M→12M step** and the **full-kernel** integration (the IVF was timed as a router in isolation, not yet
+  linearly to **8M at 64 ms** — the only router past the flat router's memory wall (the single-head GEMM OOMs
+  at 8M; the kernel's real `block_route` OOMs at ~1M). What remains extrapolated is the **8M→12M step** and the
+  **full-kernel** integration (the IVF was timed as a router in isolation, not yet
   wired into `ssa_flex`); both on **benign** geometry. Adversarial / multi-hop geometry breaks the benign
   assumption (the P1 50% floor; the SubQ MRCR sag).
 - The treecode wins raw selection cost but its wall-clock constant is the known blocker; faiss-ivf is the
