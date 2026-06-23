@@ -77,7 +77,8 @@ in doing so, demonstrated the two things SubQ's 1,000× requires. (1) **Lower th
 "is a tiny κ viable" — *on benign geometry only* (diffuse/adversarial stays at a 50% floor = no speedup).
 (2) **Close the gap:** a FAISS-IVF block-router (O(√nb), 0.93–0.97 selection agreement) projects to put the
 kernel within **1.10× of the floor at 12M** (a 128× → 1.1× gap) — the sub-linear indexer the necessity proof
-(`subquadratic_forces_skip`) said was *required*. So SubQ's claim is **achievable in principle under exactly
+(`subquadratic_forces_skip`) said was *required*. Its op-count→wall-clock step is **validated same-device**
+(IVF beats the flat `(n/b)²` GEMM 6.7× at 4M on CPU); realizing it inside the GPU kernel needs faiss-gpu. So SubQ's claim is **achievable in principle under exactly
 the benign-geometry condition the floor analysis names** — pinned, not refuted. (Both are cost projections on
 the 16 GB card; the faiss-gpu 12M wall-clock is unmeasured.)
 

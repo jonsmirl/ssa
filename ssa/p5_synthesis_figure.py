@@ -44,13 +44,14 @@ ax.plot(xe, dense_law(xe), color="#e8806f", lw=1.8, ls=(0, (5, 3)))
 ax.plot(n_m, ssa_m, color="#f2c14e", lw=2.5, marker="o", ms=4, label="flat-router SSA kernel — measured")
 ax.plot(xe, flat_proj(xe), color="#f2c14e", lw=1.8, ls=(0, (5, 3)))
 ax.plot(xall, ivf(xall), color="#3fbf90", lw=2.3, ls=(0, (4, 3)),
-        label="IVF-router SSA kernel — projected (P0×P4)")
+        label="IVF-router kernel — projected (op-count; CPU-confirmed)")
 ax.plot(xall, floor(xall), color="#9a9aff", lw=1.6, ls=(0, (1, 2)), label="n·κ floor (attention-only)")
 
 sp12 = dense_law(12e6) / ivf(12e6)
-ax.annotate(f"@12M: flat kernel ~{dense_law(12e6)/flat_proj(12e6):.0f}× over dense (maskbuild-bound),\n"
-            f"IVF router ~{sp12:.0f}× — at the floor ({ivf(12e6)/floor(12e6):.1f}×)",
-            xy=(12e6, ivf(12e6)), xytext=(6e5, 7.0), color="#9fd9c4", fontsize=8.2,
+ax.annotate(f"@12M: IVF router ~{sp12:.0f}× over dense — at the floor ({ivf(12e6)/floor(12e6):.1f}×).\n"
+            f"op-count→wall-clock CONFIRMED same-device (router_cpu_compare:\n"
+            f"IVF beats the flat GEMM 6.7× at 4M); GPU pipeline needs faiss-gpu.",
+            xy=(12e6, ivf(12e6)), xytext=(4.6e5, 7.0), color="#9fd9c4", fontsize=7.6,
             arrowprops=dict(arrowstyle="->", color="#9fd9c4", lw=0.9))
 
 ax.set_xticks([16384, 65536, 262144, 1048576, 12e6]); ax.set_xticklabels(["16K", "64K", "256K", "1M", "12M"])
@@ -59,13 +60,14 @@ ax.set_xlabel("Context length (tokens)", color="#bdbdbd")
 ax.set_ylabel("Attention wall-clock per call (ms, log)", color="#bdbdbd")
 ax.text(0.0, 1.10, "P0–P5 SYNTHESIS — measured (solid) + projection (dashed), one 16 GB GPU",
         transform=ax.transAxes, color="#8a8a8a", fontsize=9, fontweight="bold")
-ax.set_title("Closing the gap to the floor: flat router → IVF router", color="white",
-             fontsize=14, loc="left", pad=24)
+ax.set_title("Closing the gap to the floor: flat router → IVF router (faiss-gpu)", color="white",
+             fontsize=13.5, loc="left", pad=24)
 ax.grid(True, which="major", color="#2a2a2a", lw=0.5)
-ax.legend(loc="upper left", fontsize=8.2, framealpha=0.12, labelcolor="#dddddd")
-fig.text(0.012, 0.012, "IVF-router line is a cost projection (P0 component fits × P4 IVF ratios) on benign "
-         "geometry; faiss-gpu wall-clock at 12M unmeasured on the 16 GB card. Floor = the linear attention term.",
-         color="#6f6f6f", fontsize=6.5)
+ax.legend(loc="upper left", fontsize=8.0, framealpha=0.12, labelcolor="#dddddd")
+fig.text(0.012, 0.012, "IVF-router line is an op-count projection, CONFIRMED to translate to wall-clock "
+         "same-device (router_cpu_compare.png: IVF beats the flat GEMM 6.7× at 4M on CPU). Realizing it in "
+         "the GPU kernel needs faiss-gpu (no transfer). Benign geometry; floor = the linear attention term.",
+         color="#6f6f6f", fontsize=6.4)
 fig.tight_layout(rect=(0, 0.028, 1, 1))
 out = "paper/figures/p5_synthesis.png"
 fig.savefig(out, dpi=150, facecolor=fig.get_facecolor())
