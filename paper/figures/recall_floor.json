@@ -1,0 +1,68 @@
+{
+  "target": 0.9,
+  "results": [
+    {
+      "geometry": "synth-clustered(tight)",
+      "difficulty": "all",
+      "n": 8192,
+      "centroid_kmin": 245,
+      "cumulant_kmin": 245,
+      "centroid_floor": 0.0299072265625,
+      "cumulant_floor": 0.0299072265625
+    },
+    {
+      "geometry": "synth-clustered(tight)",
+      "difficulty": "long-range",
+      "n": 8192,
+      "centroid_kmin": 491,
+      "cumulant_kmin": 491,
+      "centroid_floor": 0.0599365234375,
+      "cumulant_floor": 0.0599365234375
+    },
+    {
+      "geometry": "synth-clustered(diffuse)",
+      "difficulty": "all",
+      "n": 8192,
+      "centroid_kmin": 4096,
+      "cumulant_kmin": 4096,
+      "centroid_floor": 0.5,
+      "cumulant_floor": 0.5
+    },
+    {
+      "geometry": "synth-random(adversarial)",
+      "difficulty": "all",
+      "n": 8192,
+      "centroid_kmin": 4096,
+      "cumulant_kmin": 4096,
+      "centroid_floor": 0.5,
+      "cumulant_floor": 0.5
+    },
+    {
+      "geometry": "synth-random(adversarial)",
+      "difficulty": "long-range",
+      "n": 8192,
+      "centroid_kmin": 4096,
+      "cumulant_kmin": 4096,
+      "centroid_floor": 0.5,
+      "cumulant_floor": 0.5
+    },
+    {
+      "geometry": "co-trained(\u03bb=0)",
+      "difficulty": "all",
+      "n": 8192,
+      "centroid_kmin": 2048,
+      "cumulant_kmin": 2048,
+      "centroid_floor": 0.25,
+      "cumulant_floor": 0.25
+    },
+    {
+      "geometry": "co-trained(\u03bb=64)",
+      "difficulty": "all",
+      "n": 8192,
+      "centroid_kmin": 32,
+      "cumulant_kmin": 32,
+      "centroid_floor": 0.00390625,
+      "cumulant_floor": 0.00390625
+    }
+  ]
+}
