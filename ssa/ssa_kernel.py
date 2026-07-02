@@ -59,35 +59,41 @@ def block_route(q, k, block=BLOCK, top_c=8, local=1, routing="cumulant"):
 
 
 def block_route_budget(q, k, block=BLOCK, budget_frac=0.25, top_c=None, local=1,
-                       beta=2.0, edgeworth=False, n_real=None):
+                       beta=2.0, edgeworth=False, n_real=None, sub=None):
     """Budget-fraction generalization of block_route with gemma_ssa's routing semantics, for the
     real-model flex swap. Per query-block i: keep the top `ceil(budget_frac·i)` (or `top_c`) causally-past
     key-blocks by the cumulant score ⟨q̄,μ⟩ + ½β⟨q̄²,σ²⟩ (+ β²/6·⟨q̄³,m3⟩ if edgeworth), always OR in the
     own block + `local` predecessors, and stay block-causal. `n_real` masks pad keys out of block stats
     (the caller pads n up to a block multiple for FlexAttention). The ONLY difference from the analytic
     _selection_mask is query-BLOCK granularity (queries in a block share their selection) — the effect the
-    swap measures. Returns (kv_num (B,H,nb) int32, kv_idx (B,H,nb,nb) int32, sel bool)."""
+    swap measures. `sub` (e.g. 32) computes the cumulant score on finer sub-blocks and MAX-POOLS to the
+    128-block — 4× spike sensitivity at no kernel cost; `sub=None` (default) is byte-identical to the
+    128-block score. Returns (kv_num (B,H,nb) int32, kv_idx (B,H,nb,nb) int32, sel bool)."""
     B, H, n, d = q.shape
     nb = n // block
     n_real = n_real or n
-    kb = k.view(B, H, nb, block, d).float()
-    qb = q.view(B, H, nb, block, d).float().mean(3)                  # query-block summary (mean)
-    if n_real < n:                                                   # pad-aware key stats
-        pos = torch.arange(n, device=q.device).view(1, 1, nb, block, 1)
+    sub_sz = sub if sub is not None else block
+    spb = block // sub_sz                                            # sub-blocks per 128-block (1 if sub=None)
+    nsub = nb * spb
+    ks = k.view(B, H, nsub, sub_sz, d).float()
+    qb = q.view(B, H, nb, block, d).float().mean(3)                  # query-block summary (mean; stays 128-granular)
+    if n_real < n:                                                   # pad-aware sub-block stats
+        pos = torch.arange(n, device=q.device).view(1, 1, nsub, sub_sz, 1)
         valid = (pos < n_real).float()
         cnt = valid.sum(3).clamp(min=1.0)
-        mu = (kb * valid).sum(3) / cnt
-        cen = (kb - mu.unsqueeze(3)) * valid
+        mu = (ks * valid).sum(3) / cnt
+        cen = (ks - mu.unsqueeze(3)) * valid
         var = (cen * cen).sum(3) / cnt
         m3 = (cen ** 3).sum(3) / cnt
     else:
-        mu = kb.mean(3)
-        var = kb.var(3, unbiased=False)
-        m3 = ((kb - mu.unsqueeze(3)) ** 3).mean(3)
-    r = (torch.einsum('bhqd,bhcd->bhqc', qb, mu)
-         + 0.5 * beta * torch.einsum('bhqd,bhcd->bhqc', qb * qb, var))
+        mu = ks.mean(3)
+        var = ks.var(3, unbiased=False)
+        m3 = ((ks - mu.unsqueeze(3)) ** 3).mean(3)
+    rs = (torch.einsum('bhqd,bhcd->bhqc', qb, mu)                    # (B,H,nb,nsub) sub-block scores
+          + 0.5 * beta * torch.einsum('bhqd,bhcd->bhqc', qb * qb, var))
     if edgeworth:
-        r = r + (beta ** 2 / 6.0) * torch.einsum('bhqd,bhcd->bhqc', qb ** 3, m3)
+        rs = rs + (beta ** 2 / 6.0) * torch.einsum('bhqd,bhcd->bhqc', qb ** 3, m3)
+    r = rs.view(B, H, nb, nb, spb).amax(-1)                          # max-pool sub -> 128-block (identity if spb=1)
     qi = torch.arange(nb, device=q.device)
     routable = qi[:, None] > qi[None, :]                            # key block strictly before query block
     r = r.masked_fill(~routable[None, None], float("-inf"))
