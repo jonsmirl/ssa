@@ -559,6 +559,19 @@ $10.7$~GB and $3.5$~s where the fused kernel needs $1.4$~GB and $130$~ms, and th
 $64$K while the kernel reaches $128$K (under YaRN). This is the first result simultaneously real-model,
 long-context, subquadratic-kernel, and quality-measured---at $0.5$B scale.
 
+\paragraph{An optimal selector: the Certified Causal Cascade.} Composing five ingredients---a shared low-dim
+routing space, sub-block max-pool summaries, a chunked-causal streaming index, an exact outlier side-channel,
+and per-query admissible certificates with escalation---into one streaming selector. The certificate is sound
+(certified $\Rightarrow$ the selected top-$\kappa$ blocks equal the exact top-$\kappa$ under the routing metric;
+zero violations on clustered and random geometry). The component table is the trilemma made concrete:
+sub-block granularity and the outlier channel rescue high-norm spikes, but \emph{isolated unit-norm needles
+stay unretrievable for every cheap selector} (recall $0.05$)---the impossibility of Section~\ref{sec:floor}'s
+trilemma in miniature. Per-layer routing is ${\sim}59\%$ of a Qwen-0.5B prefill (at DSA's reported $58\%$), and
+the lever that makes it cheap is \textbf{cross-layer sharing from a mid donor layer}---measured cutting it to
+${\sim}6\%$ with single-needle retrieval preserved (the first measurement of the ``$\div 5$'' folklore; sharing
+from layer~0 fails). A trained $d_r{=}16$ projection rebuts the ``low-rank is a bust'' verdict on real keys
+($0.32 \to 0.65$ block agreement) but is itself too lossy to drive retrieval---the honest boundary.
+
 \paragraph{Routability.} The regularizer~\eqref{eq:reg} reduced lossless branch-and-bound selection cost from
 $26.5\%$ to $4.2\%$ of keys. (Accuracy is $1.000$ by construction---admissible-bound branch-and-bound always
 returns the exact argmax---so the measured quantity is the \emph{cost}, not task accuracy.) The reduction was

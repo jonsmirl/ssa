@@ -108,7 +108,18 @@ SubQ's favor on the strong framing:
   ceiling the rig's Lean `subquadratic_forces_skip` formalizes — deployed reflexively against a competitor. The
   reflexive question goes unasked both times: **what fraction of SubQ's *own* prefill is its selector at 1M and
   12M, and what is its complexity class?** Their growing-speedup curve is only possible with the hierarchical
-  indexer the necessity proof requires (≈ the rig's IVF router, now measured — previous section).
+  indexer the necessity proof requires (≈ the rig's IVF router, now measured — previous section). **The rig now
+  answers this constructively** (`FLOOR_PROGRAM.md` § P7, the Certified Causal Cascade): the selector's cost is
+  dominated by *per-layer* routing (measured at ~59% of prefill on Qwen2.5-0.5B — right at DSA's 58%), and the
+  lever that makes it cheap is **cross-layer sharing from a mid donor layer**, which the rig measures cutting it
+  to **~6% with single-needle retrieval preserved** (the analytic "÷5" made real; sharing from layer 0 fails —
+  the donor must route by content, not position). This gives a **falsifiable signature** for SubQ's selector: if
+  it is isomorphic to a cheap cascade, its routing share is single-digit % *once shared from a mid layer* and it
+  preserves NIAH while sagging on isolated/multi-hop — the NIAH≫MRCR split SubQ already reports. A large selector
+  share would mean they have not solved it (and would explain the gated access). The rig also names the honest
+  boundary: a trained low-dim routing projection (the obvious way to make the selector cheap) ranks blocks
+  approximately (0.65 Jaccard, 2× the untrained P2 control) but at d_r=16 is *too lossy to drive retrieval
+  losslessly* — so the cheapness must come from sharing/co-training, not dimensionality reduction alone.
 - **The pretraining "insight nobody's published" is the rig's §8.2 in miniature.** *"Really long multi-million-
   token pre-training extends the model's ability to generalize mid-context post-training to super-long-context
   versions of that task."* That is the staging ladder (`staged_extension.py`, §8.2: extend → cheap adapt →

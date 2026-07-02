@@ -90,6 +90,10 @@ pretrained models on first run.
 | `ivf_decode.py` | the decode path: per-step IVF-routed SSA vs dense, both measured to 12M (SSA step flat ~0.53 ms; 55× at 12M) | §4.4 |
 | `multihop_analysis.py` | multi-hop chained retrieval through the block selector — the composition law `chain ≈ ∏ρ` and the mixed-mode collapse | §10 |
 | `longctx_swap.py` | the fast kernel inside a real model (Qwen2.5-0.5B) at 8K–128K: NIAH/two-hop quality + prefill wall-clock vs budget | §9 |
+| `cascade_router.py` | the **Certified Causal Cascade** — one streaming selector composing sub-block max-pool, a warm-start IVF index, an outlier channel, and per-query **sound certificates** + escalation | §10 |
+| `routing_space.py` | a trained low-dim routing projection — the P2 "low-rank is a bust" rebuttal (untrained 0.32 → trained 0.65 block-Jaccard on real Qwen keys) | §7 |
+| `longctx_share.py` | cross-layer routing sharing, **measured** — routing's share of prefill 59% → 6% (donor=4), NIAH preserved; the analytic ÷5 made real | §9 |
+| `ccc_quality.py` | which cascade component rescues which regime (sub-block ↔ spikes, outlier ↔ moderate spikes, isolated stays hard) | §10 |
 | `ssa_checkpoint.py` | trains a small (~12M) SSA model with the gentle curriculum | §8 |
 | `ssa_extrapolation.py` | zero-shot length extrapolation under rotary position vs a learned-positional control | §8.1 |
 | `staged_extension.py` | the staging ladder: extend → cheap adapt → extend, reaching 32× the trained length | §8.2 |
@@ -146,6 +150,14 @@ pretrained models on first run.
   subquadratic-kernel × quality-measured (at 0.5B scale). Single-needle retrieval holds where the two-hop chain
   sags under tight budget (the predicted multi-hop split), and at matched budget the analytic O(n²) path needs
   7.6× the memory and OOMs before 64K where the kernel reaches 128K.
+- **The Certified Causal Cascade — an optimal selector, measured (`cascade_router.py` + P7).** One streaming
+  selector composing five ingredients, with **sound per-query certificates** (zero violations; certified ⇒
+  selection == exact routing-metric top-κ; fire-rate 0.89 clustered / 0.50 random). The trilemma table names
+  what each part does: sub-block granularity + the outlier channel rescue spikes, **isolated unit-norm needles
+  stay hard for every cheap selector** (the impossibility wall). The selector's biggest lever is measured:
+  **cross-layer sharing cuts routing from 59% of prefill to 6% (donor=4) with NIAH preserved** — the analytic ÷5
+  made real. The trained low-dim routing space rebuts P2's "bust" (0.32 → 0.65 block-Jaccard on real keys) but
+  is too lossy at d_r=16 to drive retrieval losslessly — an honest boundary.
 
 ## Scope — what is and isn't demonstrated
 

@@ -59,7 +59,7 @@ def block_route(q, k, block=BLOCK, top_c=8, local=1, routing="cumulant"):
 
 
 def block_route_budget(q, k, block=BLOCK, budget_frac=0.25, top_c=None, local=1,
-                       beta=2.0, edgeworth=False, n_real=None, sub=None):
+                       beta=2.0, edgeworth=False, n_real=None, sub=None, proj=None):
     """Budget-fraction generalization of block_route with gemma_ssa's routing semantics, for the
     real-model flex swap. Per query-block i: keep the top `ceil(budget_frac·i)` (or `top_c`) causally-past
     key-blocks by the cumulant score ⟨q̄,μ⟩ + ½β⟨q̄²,σ²⟩ (+ β²/6·⟨q̄³,m3⟩ if edgeworth), always OR in the
@@ -89,10 +89,14 @@ def block_route_budget(q, k, block=BLOCK, budget_frac=0.25, top_c=None, local=1,
         mu = ks.mean(3)
         var = ks.var(3, unbiased=False)
         m3 = ((ks - mu.unsqueeze(3)) ** 3).mean(3)
-    rs = (torch.einsum('bhqd,bhcd->bhqc', qb, mu)                    # (B,H,nb,nsub) sub-block scores
-          + 0.5 * beta * torch.einsum('bhqd,bhcd->bhqc', qb * qb, var))
-    if edgeworth:
-        rs = rs + (beta ** 2 / 6.0) * torch.einsum('bhqd,bhcd->bhqc', qb ** 3, m3)
+    if proj is not None:                                            # route in the trained low-dim space
+        Wq, Wk = (proj.W_q, proj.W_k) if hasattr(proj, "W_q") else (proj, proj)
+        rs = torch.einsum('bhqd,bhcd->bhqc', qb @ Wq, mu @ Wk)      # centroid only (the trained metric)
+    else:
+        rs = (torch.einsum('bhqd,bhcd->bhqc', qb, mu)                # (B,H,nb,nsub) sub-block cumulant scores
+              + 0.5 * beta * torch.einsum('bhqd,bhcd->bhqc', qb * qb, var))
+        if edgeworth:
+            rs = rs + (beta ** 2 / 6.0) * torch.einsum('bhqd,bhcd->bhqc', qb ** 3, m3)
     r = rs.view(B, H, nb, nb, spb).amax(-1)                          # max-pool sub -> 128-block (identity if spb=1)
     qi = torch.arange(nb, device=q.device)
     routable = qi[:, None] > qi[None, :]                            # key block strictly before query block

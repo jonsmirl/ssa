@@ -1155,3 +1155,78 @@ multi-hop pattern is exactly the theory's real-model analogue.
 the attention component of a small model (Amdahl-limited); Gemma-26B stays on the analytic path (CPU offload
 makes 32K+ prefill infeasible on a 16 GB card). This is the first rig result that is simultaneously
 **real-model × long-context × subquadratic-kernel × quality-measured** — at 0.5B, moderate length.
+
+## The Certified Causal Cascade — an optimal selector, built and measured — (`cascade_router.py`, `routing_space.py`, `ccc_quality.py`, `longctx_share.py`)
+
+The assessment's largest open question was the selector: DSA's eats **58% of prefill at 1M**; SubQ attacks
+that number but never states its own. This composes the five ingredients an optimal selector needs — a
+shared low-dim routing space, sub-block max-pool summaries, a chunked-causal streaming index, an exact
+outlier side-channel, and per-query admissible certificates with escalation — into one selector
+(`CausalCascade`), and measures which components pay off. Full record: `FLOOR_PROGRAM.md` § P7.
+
+**Certificates are sound.** `test_ccc_certificates.py` pins zero violations of *certified ⇒ selection ==
+exact top-κ under the routing metric* on **both** clustered and random geometry (the certificate uses an
+admissible bound over unprobed IVF cells + a search-truncation check; the cascade owns its centroids so the
+probed set and radii match faiss exactly). Fire-rate is geometry-dependent: **0.89 clustered / 0.50 random**
+at 1M (benign certifies; adversarial escalates). The full cascade runs end-to-end to **12M (980 ms, 6.67 GB,
+single-head)** — heavier than the plain IVF kernel (139 ms), the honest cost of the certificate GEMMs,
+streaming rebuilds, and the 4× sub-block index.
+
+**Which component rescues which regime** (`ccc_quality.py`, needle-block recall at 64K, unit-norm background):
+
+| regime | ivf (block) | +sub-block | +outlier |
+|---|---|---|---|
+| benign (coherent span) | 1.00 | 1.00 | 1.00 |
+| **isolated** (unit-norm needle) | 0.00 | 0.05 | 0.05 |
+| spike c=2 (modest high-norm) | 0.23 | 0.38 | **1.00** |
+| spike c=4 | 0.35 | 1.00 | 1.00 |
+| spike c=8 (large) | 1.00 | 1.00 | 1.00 |
+
+**Reading.** Sub-block granularity rescues large spikes; the outlier channel *uniquely* rescues the moderate
+c=2 spike (0.38→1.00) that sub-block still washes out; **isolated unit-norm needles stay hard for every cheap
+selector (0.05)** — the impossibility wall in miniature, exactly as the trilemma predicts. No component
+escapes it; the honest boundary is named, not hidden.
+
+**The trained routing space — the P2 rebuttal** (`routing_space.py`, real Qwen keys). P2 concluded "low-rank
+routing is a bust (5–14%)" from an *untrained random* projection. Measured on real keys:
+
+| projection (d_r=16) | block-selection Jaccard vs full-d |
+|---|---|
+| untrained random (the P2 control) | 0.32 |
+| PCA (unsupervised) | 0.46 |
+| **trained (listwise KL)** | **0.65** (0.77 at d_r=32; held-out code doc 0.58) |
+
+So low-rank routing is **not a bust** — a trained d_r=16 projection roughly doubles the untrained one and
+generalizes across register. **But** the honest boundary: driving the real model, the d_r=16 projection
+*collapses NIAH to 0.00* — 0.65 Jaccard ranks blocks approximately but is too lossy (and centroid-vs-cumulant
+metric-mismatched) to drive attention losslessly. Low-rank routing is viable for *approximate ranking*, not
+yet for lossless selection at d_r=16. Cross-layer transfer (`transfer_matrix`): a per-layer projection scores
+0.78 on its own layer but only **0.41** median off-diagonal — the first *measurement* of the transfer the
+analytic "÷5" assumed.
+
+**Cross-layer sharing — the ÷5 measured** (`longctx_share.py`, Qwen2.5-0.5B, budget 0.12). The first
+measurement of what `router_variants.py` only asserted:
+
+| arm | n | NIAH | two-hop | route / prefill |
+|---|---|---|---|---|
+| per-layer full-d routing | 8K | 1.00 | 1.00 | **0.61** |
+| per-layer full-d routing | 32K | 1.00 | 0.67 | 0.16 |
+| share from layer 0 | 8K | **0.00** | 0.00 | 0.02 |
+| **share from layer 4** | 8K | **1.00** | **1.00** | **0.06** |
+| **share from layer 4** | 32K | **1.00** | 0.89 | 0.04 |
+
+**Reading.** Per-layer routing costs **~59% of prefill at 8K** — right at DSA's 58%, because attention is a
+small fraction of a 0.5B forward and the per-layer router (block stats + argsort mask) is heavy. **Sharing the
+selection from a mid layer (donor=4) cuts it to ~6% with NIAH and two-hop preserved** — a measured ~10×
+reduction that validates and exceeds the analytic ÷5. But **the donor choice matters**: sharing from layer 0
+collapses NIAH to 0.00 (early layers route positionally, not by content) — the analytic claim assumed any
+layer transfers; only mid layers do. So the lever that makes the selector cheap is **cross-layer sharing from
+the right donor**, not the low-dim projection (which is too lossy at d_r=16).
+
+**Honest scope.** Single model at 0.5B; the cascade rig result is single-head + synthetic keys (a cost/soundness
+result, not a real-model speed claim); the trained-projection real-model result is a *negative* at d_r=16 (the
+projection ranks but does not preserve retrieval); sharing quality is measured at one trial-budget (two-hop
+0.67–0.89 shows the multi-hop sensitivity). What this settles for the assessment: SubQ's selector, if isomorphic
+to CCC, has a routing share that is single-digit % **once shared from a mid layer** and preserves single-needle
+retrieval while sagging on isolated/multi-hop — the NIAH≫MRCR split they report. If their share is large, they
+have not solved it (explaining the gated access).
