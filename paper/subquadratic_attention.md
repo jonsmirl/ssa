@@ -277,6 +277,16 @@ fundamental limit.
 > the same output as on the unmodified input, which is independent of $v_{j_0}$. Hence it is lossy on this
 > input. $\square$
 
+> **Note on formalization.** The proofs given in this paper are the elementary in-text arguments. Their
+> formal counterparts — `subquadratic_forces_skip`, `flat_router_work`, `lossless_selector_reads_every_key`,
+> `hierarchical_prune`, and the rest of the `(proved)` results — are **machine-checked in a separate Lean 4
+> development** (`Substrate.Inference.PhaseTransition.Algebra.*`, Lean 4.30.0 + Mathlib), each confirmed
+> `sorry`-free and axiom-clean (`#print axioms` → only `[propext, Classical.choice, Quot.sound]`). That
+> development is **not bundled in this repository**, so a reader of this artifact alone cannot re-run the
+> checker; and the formal statements are deliberately modest — finite-counting / probe-model lower bounds and
+> sufficient conditions, not the grander informal reading (e.g. `subquadratic_forces_skip` proves only that
+> sub-`Q·B` work must skip some block, not that any specific system achieves a quality-preserving 1,000×).
+
 The proposition says losslessness for *worst-case* keys forces $\lvert\mathcal{R}\rvert=n$ — no summary suffices, because a
 summary can always hide a spike. A quantitative companion holds under fine-grained complexity assumptions:
 exact attention with unbounded logits requires $n^{2-o(1)}$ time, and only bounded-logit / low-rank regimes
@@ -447,14 +457,27 @@ both routers on-device (no host transfer):
 | 8M | OOM (nb²=17.2 GB) | 63.7 ms | IVF only |
 
 The single-head GEMM's constant wins below ~3M; it OOMs only at 8M (17 GB matrix), while the kernel's actual
-router (block_route, H heads + argsort) OOMs near 1M; the IVF runs linearly past both. Crossover ~3M (IVF 1.7×
-faster at 4M). At 12M the IVF router
-(~90 ms, extrapolated) is small against the ~425 ms attention floor, so the kernel reaches **~1.1× the floor** —
-the 128× gap closed. Two caveats: the router was timed in isolation (full-kernel integration and the 8M→12M step
-remain extrapolated), and the result is conditional on benign geometry — adversarial or multi-hop retrieval
-returns κ_min to the 50% floor, where no speedup exists. Both ingredients of a quality-preserving large-context
-speedup — a floor-lowering training stage and a sub-linear indexer — are thus exhibited, under exactly that
-benign-geometry condition.
+router (block_route, H heads + argsort) OOMs near 1M; the IVF runs linearly past both, now measured to **12M
+(94 ms)**. Crossover ~3M (IVF 1.7× faster at 4M).
+
+**The gap, closed end-to-end (measured).** Wiring the IVF router into the FlexAttention kernel — emitting the
+`from_kv_blocks` contract directly and building the mask with `compute_q_blocks=False` (which skips a dense
+`(n_b,n_b{+}1)` transpose that would need 38.7 GB at $n_b{=}98{,}304$) — lets the whole forward be measured,
+single-head, to 12M on one 16 GB GPU:
+
+| context $n$ | router (ms) | maskbuild (ms) | attention = floor (ms) | total (ms) | gap to floor | peak |
+|---|---|---|---|---|---|---|
+| 1M | 13.5 | 0.002 | 3.2 | 16.1 | 5.0× | 0.55 GB |
+| 4M | 36.4 | 0.003 | 13.5 | 52.0 | 3.9× | 2.18 GB |
+| 12M | 101.4 | 0.003 | 47.5 | **139.5** | **2.9×** | 6.55 GB |
+
+The argsort mask build — the projected $n^{2.12}$ wall (40.7 s at 12M) — is now **sub-millisecond**, and the
+residual gap to the floor is a *measured* 2.9× rather than the 128× the flat kernel paid. The remaining caveats
+are narrower than before: the end-to-end run is **single-head** (H=8 does not fit at 12M) and on **synthetic
+keys** (a speed result), and the whole story is conditional on benign geometry — adversarial or multi-hop
+retrieval returns κ_min to the 50% floor, where no speedup exists. Both ingredients of a quality-preserving
+large-context speedup — a floor-lowering training stage and a sub-linear indexer — are thus exhibited, and the
+indexer is shown driving a live kernel to ~the floor, under exactly that benign-geometry condition.
 
 ## 11. Experiments
 
@@ -466,6 +489,28 @@ the bias–variance reading of (5.3).
 
 **Kernel speedup.** A block-sparse implementation of Algorithm 1 achieved a $20.6\times$ wall-clock speedup
 over a dense exact kernel at $n=262{,}144$ on a single accelerator, with the crossover well below that length.
+
+**The IVF kernel, measured to 12M.** Wiring the sub-linear IVF router into the kernel (Section 10) and measuring
+the whole forward single-head on one 16 GB GPU runs a **12M-token forward in 139 ms and 6.55 GB**, at a *measured*
+$2.9\times$ the $n\!\cdot\!\kappa$ floor (versus the $128\times$ gap the flat kernel projected); the argsort mask
+build collapses to sub-millisecond because the IVF emits block indices directly. The autoregressive decode step
+is **flat in $n$** ($\sim\!0.53$ ms from 1M to 12M at fixed $\kappa$) while a dense step's prefix read grows with
+$n$ ($2.6\to29.6$ ms) — a $55\times$ per-step gap at 12M, both measured. (Single head; synthetic keys — a speed
+result, with selection quality the separate benign-geometry story.)
+
+**Multi-hop composition.** A chained retrieval through the same budgeted block selector obeys the composition law
+$\text{chain}\approx\prod_j\rho_j$: benign single needles hold at $1.00$ while a *mixed* two-hop chain (one benign
+hop, one isolated hop) collapses to $0.02$ at $n=65{,}536$ — the isolated hop's $\rho\!\approx\!0.02$ divides the
+product. The multi-hop sag is the single-needle result read $h$ times, reproducing the NIAH$\gg$MRCR benchmark
+split as a prediction of the same theory rather than an anomaly.
+
+**The fused kernel inside a real model.** Swapping the kernel into a pretrained Qwen2.5-0.5B (`impl="flex"`) and
+measuring at $8$K–$128$K preserves single-needle NIAH at $1.00$ while giving a $1.5$–$1.6\times$ prefill speedup
+at $32$K (budget $0.06$–$0.12$), the speedup growing with $n$ and with a tighter budget — the synthetic-key
+crossover shape, now inside a real model. At matched budget the analytic $O(n^2)$ path needs $10.7$ GB and $3.5$ s
+where the fused kernel needs $1.4$ GB and $130$ ms, and the analytic path OOMs before $64$K while the kernel
+reaches $128$K (under YaRN). The real-model two-hop chain shows the predicted budget-sensitivity. This is the
+first result simultaneously real-model, long-context, subquadratic-kernel, and quality-measured — at $0.5$B scale.
 
 **Routability.** The regularizer (7.2) reduced lossless branch-and-bound selection cost from $26.5\%$ to
 $4.2\%$ of keys at zero accuracy cost (Section 7.2). The reduction was robust across head dimension and showed

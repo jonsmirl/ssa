@@ -8,7 +8,16 @@ def test_limits_and_second_order():
     s = rng.standard_normal(64)
     assert abs(_tempered(s, 1.0, "centroid") - s.mean()) < 1e-9          # β→0 is the mean
     assert _tempered(s, 1.0, "oracle") == float(s.max())                 # β→∞ is the max
-    assert abs(_tempered(s, 3.0, "second") - (s.mean() + 1.5 * s.var())) < 1e-9   # μ + (β/2)σ²
+    # The "second" score μ + (β/2)σ² is the 2nd-order cumulant expansion of the escort
+    # log-partition β⁻¹·log(mean e^{βs}) = μ + (β/2)σ² + O(β²κ₃). Check it INDEPENDENTLY against
+    # the EXACT tempered score (the LSE branch, minus the (log m)/β sum-vs-mean offset) in the
+    # small-β regime — not by re-deriving the same formula on both sides.
+    beta, m = 0.05, len(s)
+    exact_normalized = _tempered(s, beta, "exact") - np.log(m) / beta    # μ + (β/2)σ² + O(β²)
+    second = _tempered(s, beta, "second")
+    assert abs(second - exact_normalized) < 1e-3                         # matches the LSE to 2nd order
+    # and it must be a strictly better approximation than the 0th-order centroid (μ alone)
+    assert abs(second - exact_normalized) < abs(s.mean() - exact_normalized)
 
 
 def test_tempered_sandwich():

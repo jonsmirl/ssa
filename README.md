@@ -38,6 +38,9 @@ w★ = σ(βΔ − log μ),     β = 1/√d
 ```
 
 so the target is recovered when `βΔ > log μ` — degradation is only **logarithmic** in the distractor count.
+(Here `β = 1/√d` is the *nominal* softmax temperature that makes the law dimension-free; in the routing
+experiments `β` is treated as a tunable inverse-temperature knob — the identity holds for any `β`, and measured
+routing quality peaks near `β ≈ 2`, not at `1/√d`, so no experiment instantiates the literal `1/√d` value.)
 Selection's whole value is that it cuts `μ` from `n` to a fixed budget `κ`, which makes retrieval **flat in
 context length**. The catch is that the selector must contain the target in its budget while reading only
 summaries. SSA routes each block `c` by the second-cumulant (tempered) score
@@ -83,6 +86,10 @@ pretrained models on first run.
 |---|---|---|
 | `ssa_demo.py` | the full SSA layer end to end: cumulant block routing + local window + exact attention, `O(n·k)`, recovering dense accuracy at a small budget | §4 |
 | `ssa_kernel.py` | a fused block-sparse kernel (PyTorch FlexAttention) that never materializes the `n×n` scores (≈20.6× over dense at 256K) | §4.4 |
+| `ivf_kernel.py` | the faiss-GPU IVF router wired into the kernel (`ssa_flex_ivf`), measured end-to-end to **12M tokens** single-head (139 ms, 6.55 GB; maskbuild ~0) | §4.4 |
+| `ivf_decode.py` | the decode path: per-step IVF-routed SSA vs dense, both measured to 12M (SSA step flat ~0.53 ms; 55× at 12M) | §4.4 |
+| `multihop_analysis.py` | multi-hop chained retrieval through the block selector — the composition law `chain ≈ ∏ρ` and the mixed-mode collapse | §10 |
+| `longctx_swap.py` | the fast kernel inside a real model (Qwen2.5-0.5B) at 8K–128K: NIAH/two-hop quality + prefill wall-clock vs budget | §9 |
 | `ssa_checkpoint.py` | trains a small (~12M) SSA model with the gentle curriculum | §8 |
 | `ssa_extrapolation.py` | zero-shot length extrapolation under rotary position vs a learned-positional control | §8.1 |
 | `staged_extension.py` | the staging ladder: extend → cheap adapt → extend, reaching 32× the trained length | §8.2 |
@@ -121,22 +128,49 @@ pretrained models on first run.
 - **The compute floor (P0–P5).** The kernel's gap to the theoretical `n·κ` floor is the router (the `(n/b)²`
   score GEMM + the argsort `BlockMask` build). Co-training lowers the floor itself **60×** (κ_min 25%→0.4% of
   keys), and a **faiss-GPU IVF router** — measured on the GPU, running linearly to **8M** (the only router past
-  the flat router's memory wall: the score GEMM OOMs at 8M and the kernel's real `block_route` at ~1M) —
-  *projecting* the gap to **~1.1× the floor** at 12M. Full record: [`FLOOR_PROGRAM.md`](FLOOR_PROGRAM.md).
+  the flat router's memory wall: the score GEMM OOMs at 8M and the kernel's real `block_route` at ~1M).
+  Full record: [`FLOOR_PROGRAM.md`](FLOOR_PROGRAM.md).
+- **The IVF kernel end-to-end — MEASURED to 12M (`ivf_kernel.py`).** The IVF router wired straight into the
+  FlexAttention kernel (`from_kv_blocks(compute_q_blocks=False)` skips the 38.7 GB dense transpose) runs a
+  **full 12M-token forward in 139 ms and 6.55 GB, single-head** — the argsort maskbuild `n^2.12` wall is now
+  **sub-millisecond**, and the gap to the floor is a *measured* **2.9×** (was a 128× projection). The decode
+  path (`ivf_decode.py`) is **flat in n** (~0.53 ms/step) vs dense's growing prefix read — **55× at 12M**.
+  (Single-head, synthetic keys = speed only.)
+- **Multi-hop retrieval — the composition law self-tested (`multihop_analysis.py`).** A chained retrieval
+  through the same block selector obeys `chain ≈ ∏ρ`: benign single needles hold at **1.00** while the **mixed**
+  chain (one benign + one isolated hop) collapses to **0.02** — the NIAH@12M (~98%) vs MRCR (65.9%) split the
+  assessment predicted, now measured by the rig.
+- **The fast kernel in a real model at 8K–128K (`longctx_swap.py`).** The fused kernel swapped into Qwen2.5-0.5B
+  (`impl="flex"`) largely preserves NIAH while its prefill speedup **grows with context** — **1.6× at 32K,
+  2.15× at 65K, 3.44× at 128K** (under YaRN) — the first result that is real-model × long-context ×
+  subquadratic-kernel × quality-measured (at 0.5B scale). Single-needle retrieval holds where the two-hop chain
+  sags under tight budget (the predicted multi-hop split), and at matched budget the analytic O(n²) path needs
+  7.6× the memory and OOMs before 64K where the kernel reaches 128K.
 
 ## Scope — what is and isn't demonstrated
 
-No single result here is simultaneously *real-model × long-context × subquadratic × quality-matched*; read the
-headlines with that in mind.
+The four-way conjunction is now *split across two measured results*, not held in one: `ivf_kernel.py` is
+**subquadratic × long-context (12M) × end-to-end-measured** but single-head and synthetic-keys (speed only);
+`longctx_swap.py` is **real-model × long-context (to 128K) × subquadratic-kernel × quality-measured** but at
+0.5B scale and moderate length. No *single* run is yet all four at the 12M endpoint on a frontier-size model —
+read the headlines with that seam in mind.
 
-- The **≈20× kernel speedup** is on *synthetic* keys at a *fixed* budget; its flat router still builds an
-  `O((n/block)²)` block-score matrix, and the hierarchical router that removes it is a *separate, un-wired* module.
-- The **Gemma frozen-swap** is an *analytic `O(n²)`* routing-**quality** probe (it materializes the score
-  matrix and masks it) — no speed claim.
+- The **≈20× flat-kernel speedup** is on *synthetic* keys at a *fixed* budget with an `O((n/block)²)` block-score
+  router. That router is **now wired out**: `ivf_kernel.py`'s IVF router drives the kernel end-to-end and
+  **measured to 12M** (139 ms, single-head) — the maskbuild `n^2.12` wall is gone (sub-ms) and the gap to the
+  floor is a measured 2.9×. Still single-head (H=8 does not fit at 12M) and synthetic-keys (**speed**, not
+  selection-quality — that is the P1/P3/P4 story).
+- The **Gemma-26B frozen-swap** stays an *analytic `O(n²)`* routing-**quality** probe (no speed claim); the
+  **fused-kernel speed+quality** result is now `longctx_swap.py` on Qwen2.5-0.5B (`impl="flex"`), which reaches
+  128K under YaRN and shows a **1.5–1.6× prefill speedup at 32K** with NIAH preserved. The speedup is modest
+  because attention is a fraction of a 0.5B forward (Amdahl) — it grows with model size and context.
 - The **124M perplexity** demo attends a *constant* ~38% of keys at n=1024 — a constant fraction is still `O(n²)`.
-- The `O(n√n)` / near-linear complexity is the **algorithm's**; the subquadratic **win is designed, not yet
-  demonstrated end-to-end**. Validating it at real long context (and the 12M-token regime) needs substantially
-  more compute than a single GPU.
+- The `O(n√n)` / near-linear complexity is the **algorithm's**; the subquadratic **win is now demonstrated
+  end-to-end** (`ivf_kernel.py`, single-head to 12M). Validating it *multi-head, real-model, at 12M*
+  simultaneously still needs substantially more than a single 16 GB GPU.
+- **Multi-hop is the honest failure mode:** the composition law (`multihop_analysis.py`) and the real-model
+  two-hop task (`longctx_swap.py`, `gemma_ssa_eval.py`) both show the chain sagging where single needles hold —
+  the benign-geometry condition is load-bearing, not incidental.
 - The **"(proved)"** results are machine-checked in a *separate* Lean development
   (`Substrate.Inference.PhaseTransition.Algebra.*`) that is **not shipped in this repo**; the prose maps to
   *lower bounds / sufficient conditions*, not equalities (see the paper's bibliography).

@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "H": 1,
+    "d": 64,
+    "block": 128,
+    "top_c": 8,
+    "local": 1,
+    "nprobe": 4,
+    "steps": 128,
+    "seed": 0,
+    "dtype": "float16",
+    "gpu": "RTX 4080 16GB",
+    "index_policy": "prefill-build + add-on-block-complete; no retrain (steps<<n; a serving loop would retrain the quantizer every R blocks as centroids drift)",
+    "dense_reference": "measured full-prefix row (bandwidth ~3\u00b7n\u00b7d\u00b72 bytes in dense_read_gb)"
+  },
+  "rows": [
+    {
+      "n": 1048576,
+      "nb": 8192,
+      "ssa_step_ms_mean": 0.5524680018424988,
+      "dense_step_ms_mean": 2.5835130363702774,
+      "dense_measured": true,
+      "speedup": 4.676312524443365,
+      "search_ms_p50": 0.12826919555664062,
+      "gather_attend_ms_p50": 0.5459785461425781,
+      "kappa_keys": 1280,
+      "dense_read_gb": 0.402653184,
+      "steps": 128
+    },
+    {
+      "n": 2097152,
+      "nb": 16384,
+      "ssa_step_ms_mean": 0.5163177847862244,
+      "dense_step_ms_mean": 4.942590370774269,
+      "dense_measured": true,
+      "speedup": 9.572768005310323,
+      "search_ms_p50": 0.12350082397460938,
+      "gather_attend_ms_p50": 0.5233287811279297,
+      "kappa_keys": 1280,
+      "dense_read_gb": 0.805306368,
+      "steps": 128
+    },
+    {
+      "n": 4194304,
+      "nb": 32768,
+      "ssa_step_ms_mean": 0.5305539816617966,
+      "dense_step_ms_mean": 9.827535599470139,
+      "dense_measured": true,
+      "speedup": 18.52315869666724,
+      "search_ms_p50": 0.1251697540283203,
+      "gather_attend_ms_p50": 0.5388259887695312,
+      "kappa_keys": 1280,
+      "dense_read_gb": 1.610612736,
+      "steps": 128
+    },
+    {
+      "n": 8388608,
+      "nb": 65536,
+      "ssa_step_ms_mean": 0.5266331136226654,
+      "dense_step_ms_mean": 19.513485953211784,
+      "dense_measured": true,
+      "speedup": 37.0532832980823,
+      "search_ms_p50": 0.125885009765625,
+      "gather_attend_ms_p50": 0.5209445953369141,
+      "kappa_keys": 1280,
+      "dense_read_gb": 3.221225472,
+      "steps": 128
+    },
+    {
+      "n": 12582912,
+      "nb": 98304,
+      "ssa_step_ms_mean": 0.5333349108695984,
+      "dense_step_ms_mean": 29.575249180197716,
+      "dense_measured": true,
+      "speedup": 55.453428188256986,
+      "search_ms_p50": 0.13113021850585938,
+      "gather_attend_ms_p50": 0.5581378936767578,
+      "kappa_keys": 1280,
+      "dense_read_gb": 4.831838208,
+      "steps": 128
+    }
+  ]
+}

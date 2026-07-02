@@ -6,7 +6,7 @@ Why the interface, not a global SDPA monkeypatch: `Gemma4TextAttention.forward` 
 `ALL_ATTENTION_FUNCTIONS.get_interface(...)(module, q, k, v, mask, scaling=..., sliding_window=...)`
 *after* q_norm/k_norm + RoPE + transpose, so a registered fn receives exactly the post-norm/RoPE
 `q (b,hq,n,d)`, `k/v (b,hkv,n,d)` the model attends on, and `module.is_sliding` says per layer
-whether to route. We route ONLY the 5 full-attention layers (head_dim 512, K=V on this model);
+whether to route. We route ONLY the 5 full-attention layers (head_dim 256, K=V on this model);
 the 25 sliding-window layers fall through to the stock kernel untouched.
 
 This is the analytic SSA used for the frozen-swap QUALITY measurement: it forms the scores and
@@ -38,6 +38,7 @@ class SSAConfig:
     route_full_only: bool = True  # only sparsify full-attention layers (is_sliding == False)
     edgeworth: bool = False    # add the (diagonal) 3rd-cumulant/skew term to routing (outlier detector)
     dense_layers: tuple = ()   # layer_idx values to leave DENSE (bypass selection) — e.g. the worst router
+    impl: str = "analytic"     # "analytic" = O(n²) score+mask (quality); "flex" = the fused kernel (speed)
 
 
 # module-level config the registered interface reads; the kappa-sweep driver mutates this.
@@ -128,6 +129,32 @@ def _selection_mask(q, k, cfg: SSAConfig, qpos=None, kpos=None):
     return torch.where(allow, 0.0, torch.tensor(NEG, device=q.device))
 
 
+def _flex_forward(query, k, v, cfg, scaling, dense=False):
+    """The fused block-sparse kernel path (prefill only): route -> BlockMask -> flex_attention, never
+    materializing scores. query,k,v are (b,hq,n,d) (GQA already expanded by the caller). n is padded up
+    to a block multiple; a token-causal mask_mod that also drops pad keys (kv < n) preserves exact
+    causality even with block-granular selection. Returns (b,hq,n,d)."""
+    from ssa import ssa_kernel as K
+    from torch.nn.attention.flex_attention import BlockMask
+    b, hq, n, d = query.shape
+    blk = cfg.block
+    pad = (-n) % blk
+    if pad:
+        query, k, v = (F.pad(t, (0, 0, 0, pad)) for t in (query, k, v))
+    N = n + pad
+    kv_num, kv_idx, _ = K.block_route_budget(
+        query, k, blk, budget_frac=(1.0 if dense else cfg.budget_frac),
+        top_c=(None if dense else cfg.top_c), local=cfg.local_w, beta=cfg.beta,
+        edgeworth=cfg.edgeworth, n_real=n)
+
+    def mm(bb, hh, qi, kv):
+        return (kv <= qi) & (kv < n)                                 # token-causal AND drop pad keys
+
+    bm = BlockMask.from_kv_blocks(kv_num, kv_idx, BLOCK_SIZE=blk, mask_mod=mm, seq_lengths=(N, N))
+    out = K._flex(query, k, v, block_mask=bm, scale=scaling)
+    return out[:, :, :n]
+
+
 def ssa_attention_forward(module, query, key, value, attention_mask=None,
                           scaling=None, dropout=0.0, **kwargs):
     """transformers attention-interface fn. query (b,hq,n,d); key/value (b,hkv,n,d).
@@ -146,6 +173,15 @@ def ssa_attention_forward(module, query, key, value, attention_mask=None,
 
     q_len = query.shape[2]
     kv_len = k.shape[2]
+    nb_layer = (kv_len + cfg.block - 1) // cfg.block
+    force_dense = getattr(module, "layer_idx", None) in cfg.dense_layers
+    is_dense = force_dense or (cfg.top_c is not None and cfg.top_c >= nb_layer) \
+        or (cfg.top_c is None and cfg.budget_frac >= 1.0)
+    # the fused kernel path — prefill-shaped CUDA calls only; decode (q_len==1), chunked prefill
+    # (q_len != kv_len), and CPU fall through to the analytic path below (already decode-correct).
+    if cfg.impl == "flex" and query.is_cuda and q_len == kv_len and q_len > cfg.block:
+        out = _flex_forward(query, k, v, cfg, scaling, dense=is_dense)
+        return out.transpose(1, 2).contiguous(), None
     # absolute query positions: prefer cache_position (KV-cache incremental decode); else assume the
     # queries are the last q_len of a left-aligned sequence. kv_len != q_len during generation.
     cpos = kwargs.get("cache_position")
@@ -157,12 +193,7 @@ def ssa_attention_forward(module, query, key, value, attention_mask=None,
     causal = qpos[:, None] >= kpos[None, :]                       # (q_len,kv_len)
     scores = scores.masked_fill(~causal[None, None], NEG)
 
-    nb = (kv_len + cfg.block - 1) // cfg.block
-    force_dense = getattr(module, "layer_idx", None) in cfg.dense_layers
-    dense = force_dense \
-        or (cfg.top_c is not None and cfg.top_c >= nb) \
-        or (cfg.top_c is None and cfg.budget_frac >= 1.0)
-    if not dense:
+    if not is_dense:
         scores = scores + _selection_mask(query, k, cfg, qpos, kpos)
 
     w = torch.softmax(scores, dim=-1, dtype=torch.float32).to(v.dtype)

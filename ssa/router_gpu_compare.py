@@ -52,7 +52,7 @@ def main():
     print("=" * 86)
     print(f"  {'n':>9} {'nb':>6} {'flat GEMM':>11} {'IVF (build+search)':>20} {'flat nb² mem':>13} {'winner':>14}")
     rows = []
-    for n in (262144, 524288, 1048576, 2097152, 4194304, 8388608):
+    for n in (262144, 524288, 1048576, 2097152, 4194304, 8388608, 12582912):
         nb = n // block
         mu = torch.randn(nb, d, device=DEV).contiguous()
         qb = torch.randn(nb, d, device=DEV).contiguous()
@@ -112,11 +112,11 @@ def plot_from_json(path="paper/figures/router_gpu_compare.json"):
                    label="flat OOMs (nb² matrix > GPU)", zorder=6)
 
     ax.text(2.9e5, 1.7e2, "crossover ~3M (IVF 1.7× faster at 4M);\nflat OOMs at 8M (17 GB nb² matrix);\n"
-            "IVF the only router past it (64 ms).\n(the kernel's real block_route — H heads +\nargsort — OOMs even earlier, ~1M)",
+            "IVF the only router past it, measured to 12M.\n(the kernel's real block_route — H heads +\nargsort — OOMs even earlier, ~1M)",
             color="#9fd9c4", fontsize=8.0, ha="left", va="top")
-    ax.set_xticks([262144, 524288, 1048576, 2097152, 4194304, 8388608])
-    ax.set_xticklabels(["256K", "512K", "1M", "2M", "4M", "8M"])
-    ax.set_xlim(2.3e5, 1.0e7); ax.set_ylim(0.15, 4e2)
+    ax.set_xticks([262144, 524288, 1048576, 2097152, 4194304, 8388608, 12582912])
+    ax.set_xticklabels(["256K", "512K", "1M", "2M", "4M", "8M", "12M"])
+    ax.set_xlim(2.3e5, 1.5e7); ax.set_ylim(0.15, 4e2)
     ax.set_xlabel("Context length (tokens)", color="#bdbdbd")
     ax.set_ylabel("Router wall-clock per call (ms, log)", color="#bdbdbd")
     ax.text(0.0, 1.13, "REAL GPU — both routers on GPU, no transfer (faiss-gpu)",

@@ -508,13 +508,21 @@ context $n$ & flat $(n/b)^2$ GEMM & faiss-GPU IVF & winner\\
 
 \noindent The crossover is ${\sim}3\mathrm{M}$. This stripped single-head GEMM OOMs only at $8\mathrm{M}$
 ($17$\,GB matrix), while the kernel's \emph{actual} router (\texttt{block\_route}, $H$ heads $+$ an argsort)
-OOMs near $1\mathrm{M}$---so the IVF is the only router that runs at long context. At $12\mathrm{M}$ the IVF router (${\sim}90$\,ms, extrapolated) is small
-against the ${\sim}425$\,ms attention floor, so the kernel reaches ${\sim}1.1\times$ the floor---the $128\times$
-gap closed. Two caveats bound the claim: the router was timed in isolation (full-kernel integration and the
-$8\mathrm{M}\!\to\!12\mathrm{M}$ step remain extrapolated), and the whole result is conditional on benign
-geometry---adversarial or multi-hop retrieval returns $\kappa_{\min}$ to the $50\%$ floor, where no speedup
-exists. Both ingredients of a quality-preserving large-context speedup---a floor-lowering training stage and a
-sub-linear indexer---are thus exhibited, under exactly that benign-geometry condition.
+OOMs near $1\mathrm{M}$---so the IVF is the only router that runs at long context, now measured to
+$12\mathrm{M}$ ($94$\,ms).
+
+\medskip\noindent\textbf{The gap, closed end-to-end (measured).} Wiring the IVF router into the kernel---it
+emits the compressed block-index contract directly, and the mask is built without the dense
+$(n_b,n_b{+}1)$ transpose (which would need $38.7$\,GB at $n_b{=}98{,}304$)---lets the whole forward be measured,
+single-head, to $12\mathrm{M}$ on one $16$\,GB GPU: router $101$\,ms, mask build $0.003$\,ms, attention (the
+floor) $47.5$\,ms, \emph{total $139.5$\,ms} in $6.55$\,GB. The argsort mask build---the projected $n^{2.12}$
+wall ($40.7$\,s at $12\mathrm{M}$)---is now sub-millisecond, and the residual gap to the floor is a
+\emph{measured} $2.9\times$ rather than the projected $128\times$. The remaining caveats are narrower: the
+end-to-end run is single-head ($H{=}8$ does not fit at $12\mathrm{M}$) and on synthetic keys (a speed result),
+and the whole result is conditional on benign geometry---adversarial or multi-hop retrieval returns
+$\kappa_{\min}$ to the $50\%$ floor, where no speedup exists. Both ingredients of a quality-preserving
+large-context speedup---a floor-lowering training stage and a sub-linear indexer---are thus exhibited, and the
+indexer is shown driving a live kernel to ${\sim}$the floor, under exactly that benign-geometry condition.
 
 \section{Experiments}\label{sec:experiments}
 
@@ -527,6 +535,29 @@ $\beta\approx2$, consistent with the bias--variance reading of~\eqref{eq:lse}.
 \paragraph{Kernel speedup.} A block-sparse implementation of Algorithm~1 achieved a $20.6\times$ wall-clock
 speedup over a dense exact kernel at $n=262{,}144$ on a single accelerator, with the crossover well below that
 length.
+
+\paragraph{The IVF kernel, measured to 12M.} Wiring the sub-linear IVF router into the kernel
+(Section~\ref{sec:floor}) and measuring the whole forward single-head on one $16$~GB GPU runs a
+\emph{$12$M-token forward in $139$~ms and $6.55$~GB}, at a measured $2.9\times$ the $n\!\cdot\!\kappa$ floor
+(versus the $128\times$ gap the flat kernel projected); the argsort mask build collapses to sub-millisecond
+because the IVF emits block indices directly. The autoregressive decode step is \emph{flat in $n$}
+(${\sim}0.53$~ms from $1$M to $12$M at fixed $\kappa$) while a dense step's prefix read grows with $n$
+($2.6\to29.6$~ms)---a $55\times$ per-step gap at $12$M, both measured. (Single head; synthetic keys---a speed
+result, with selection quality the separate benign-geometry story.)
+
+\paragraph{Multi-hop composition.} A chained retrieval through the same budgeted block selector obeys the
+composition law $\text{chain}\approx\prod_j\rho_j$: benign single needles hold at $1.00$ while a \emph{mixed}
+two-hop chain (one benign hop, one isolated hop) collapses to $0.02$ at $n=65{,}536$---the isolated hop's
+$\rho\!\approx\!0.02$ divides the product. The multi-hop sag is the single-needle result read $h$ times,
+reproducing the NIAH${\gg}$MRCR benchmark split as a prediction of the same theory rather than an anomaly.
+
+\paragraph{The fused kernel inside a real model.} Swapping the kernel into a pretrained Qwen2.5-0.5B and
+measuring at $8$K--$128$K preserves single-needle NIAH at $1.00$ while giving a $1.5$--$1.6\times$ prefill
+speedup at $32$K (budget $0.06$--$0.12$), the speedup growing with $n$ and with a tighter budget---the
+synthetic-key crossover shape inside a real model. At matched budget the analytic $O(n^2)$ path needs
+$10.7$~GB and $3.5$~s where the fused kernel needs $1.4$~GB and $130$~ms, and the analytic path OOMs before
+$64$K while the kernel reaches $128$K (under YaRN). This is the first result simultaneously real-model,
+long-context, subquadratic-kernel, and quality-measured---at $0.5$B scale.
 
 \paragraph{Routability.} The regularizer~\eqref{eq:reg} reduced lossless branch-and-bound selection cost from
 $26.5\%$ to $4.2\%$ of keys. (Accuracy is $1.000$ by construction---admissible-bound branch-and-bound always

@@ -1,8 +1,8 @@
 # `ssa/tests/` — the test suite
 
 Fast, deterministic assertions that lock in the load-bearing claims of the paper and the package. Most run on
-CPU in seconds with no training and no model downloads; the only GPU-gated file is the kernel test, which skips
-cleanly when CUDA / FlexAttention is unavailable.
+CPU in seconds with no training and no model downloads; the GPU-gated files (the block-sparse kernel, the IVF
+kernel/decode, and the flex-swap kernel path) skip cleanly when CUDA / FlexAttention / faiss is unavailable.
 
 ## Running
 
@@ -13,7 +13,7 @@ pytest ssa/tests -k samuelson    # by keyword
 pytest ssa/tests -q              # quiet
 ```
 
-Expected: **30 passed** on CPU (the 2 kernel tests are skipped without CUDA, run with it).
+Expected: **54 passed** on CPU (**64** with CUDA + faiss — 10 GPU-gated kernel tests self-skip on CPU).
 
 ## What each file checks
 
@@ -36,6 +36,27 @@ Expected: **30 passed** on CPU (the 2 kernel tests are skipped without CUDA, run
 **`test_ssa_kernel.py`** — the block-sparse FlexAttention kernel (GPU-gated; skips on CPU).
 - `test_full_budget_matches_dense` — the fused kernel equals dense at full budget.
 - `test_routing_is_sparse_and_causal` — routing selects a strict subset and never attends the future.
+
+**`test_ivf_kernel.py`** — the IVF-routed kernel (`ivf_kernel.py`; GPU + faiss gated).
+- `test_ivf_full_budget_matches_dense` — exhaustive IVF selection equals dense causal attention.
+- `test_ivf_selection_is_causal_and_owns_its_block` — tight budget is a strict causal subset; own block kept.
+- `test_ivf_agreement_with_flat_router` — IVF vs flat `block_route` block selection Jaccard ≥ 0.6 (clustered).
+
+**`test_ivf_decode.py`** — `test_decode_step_matches_prefill_last_row`: the decode primitive
+(`ivf_decode.decode_attend`) reproduces the IVF kernel's prefill row for the same selected blocks (GPU+faiss).
+
+**`test_multihop_analysis.py`** — the synthetic multi-hop rig (CPU).
+- `test_dense_two_hop_near_perfect_at_high_margin`, `test_composition_law_sanity` — dense chains, and measured
+  chain ≈ ∏ρ (never above its weakest hop).
+- `test_isolated_chain_collapses_benign_holds`, `test_mixed_tracks_weak_hop` — the falsifiable single-needle-
+  holds / chain-collapses prediction.
+
+**`test_flex_swap.py`** — the fast kernel inside the real-model swap (`block_route_budget` + `impl="flex"`).
+- `test_budget_router_causal_and_counts`, `test_budget_router_monotone_in_budget` (CPU) — the budget router's
+  causality, own-block, and monotone-in-budget invariants.
+- `test_flex_full_budget_matches_dense_sdpa`, `test_flex_matches_analytic_at_full_budget`,
+  `test_flex_no_future_leak`, `test_flex_pad_nonmultiple_length` (GPU) — the fused path equals dense / the
+  analytic path, never leaks the future, and handles non-block-multiple lengths.
 
 **`test_ssa_extrapolation.py`** — the RoPE model (paper §8.1), no training.
 - `test_rope_preserves_norm` — the rotary map is an isometry.

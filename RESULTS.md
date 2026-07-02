@@ -306,8 +306,9 @@ exact attention over a local window plus the keys of the top-`k` clusters ranked
 | **[6] O(n·k) scaling** (clusters ∝ √n, fixed top_c=2) | attended fraction **23.6% → 1.7%** as n grows 128→8192; dense/SSA FLOP ratio **2.1× → 29.7×**, growing ~√n |
 
 This is the SSA result reproduced end to end: a subquadratic sparse-attention layer recovers dense
-long-range retrieval at `O(n·k)` cost, the speedup *grows* with context (mirroring SSA's reported
-6.88×@128K → 56×@1M), and it works for exactly the two reasons the experiments identified —
+long-range retrieval at `O(n·k)` cost, the speedup *grows* with context (mirroring SubQ's reported
+7.2×@128K → 52.2×@1M — uncited; see `SUBQ_ASSESSMENT.md` § "Provenance of the external SubQ figures"),
+and it works for exactly the two reasons the experiments identified —
 **second-cumulant routing** (centroid is worse) and **training that makes keys routable** (the untrained
 model is not). Far-needle recall (functional context) requires the global selection; a local window
 alone fails — SSA's headline distinction. NOT reproduced: the proprietary 12M checkpoint, the absolute
@@ -837,7 +838,7 @@ wall (`the theory (see paper)`) in miniature — which is the low-margin / multi
 Every result above is synthetic, a routing-recall probe, or random-key kernel timing — none is an
 *end-to-end quality measurement on a real model*. This is that measurement. SSA is installed via the
 transformers attention interface into the **5 full-attention (global) layers** of a **frozen Gemma-4-26B-A4B**
-(MoE, 4B active; head_dim 512, K=V, GQA group 2 — the 25 sliding-window layers are already linear and left
+(MoE, 4B active; head_dim 256, K=V, GQA group 2 — the 25 sliding-window layers are already linear and left
 untouched), receiving post-QK-norm/RoPE q,k, and scored on needle-in-a-haystack (NIAH) retrieval vs. the
 selection budget at n=2048, block 256. **This is the *analytic* swap (it materializes the score matrix), so
 it measures ROUTING QUALITY, not speed** — the subquadratic-kernel / long-context regime is separate.
@@ -922,6 +923,13 @@ ceiling" is established at **moderate context only**, not proven at 12M. The co-
 remains relevant for the long-context / aggressive-budget regime this experiment did not reach. Run:
 `runs/gemma_sweep_block.json`.
 
+> **Artifact note.** `runs/gemma_sweep_block.json` records the **edgeworth** sweep — the three rows
+> 256→0.444, 128→0.667, 64→**0.000** (the JSON does not store the routing config, so a reader sees only the
+> NIAH column). The load-bearing **plain-cumulant block=64 → 1.000** result and the five-config isolation
+> table come from a *separate* one-model-load run that was not saved to JSON; re-run with
+> `gemma_ssa_sweep.py --block 64 --beta 2` (no `--edgeworth`) to regenerate it. The headline "no ceiling /
+> 1.000" therefore rests on that un-committed run, not on the cited JSON — commit it to close the gap.
+
 ### Does it extend to longer context? (forward-only routing-rank probe)
 
 The n=2048 result raises the obvious question: does fine-block plain-cumulant routing keep the far needle
@@ -990,7 +998,7 @@ GPU, no transfer):
 | 256K | 0.21 ms | 7.3 ms | flat 35× |
 | 2M | 14.0 ms | 19.5 ms | flat 1.4× |
 | **4M** | **52.6 ms** (runs; 4.3 GB) | **31.4 ms** | **IVF 1.7×** |
-| **8M** | **OOM** (nb²=17.2 GB > card) | **63.7 ms** | IVF only |
+| **8M** | **OOM** (nb²=16.0 GiB ≈ 17.2 GB > the 16 GiB card; skipped by size, not run) | **63.7 ms** | IVF only |
 
 **Correction (was wrong):** an earlier version skipped the flat GEMM by a `mem<3.0` guard and labelled 4M
 "OOM" — false; the 4.3 GB matrix *fits* (flat = 52.6 ms there, and IVF is 1.7× faster). The flat GEMM OOMs
@@ -1011,7 +1019,139 @@ long context is still unmeasured (the deeper open gap). And FAISS-IVF is a *know
 contribution; it works here *only because* the co-trained/benign geometry makes the coarse quantizer rank the
 target's cell (the hard part is manufacturing that geometry, §"Manufacturing routability", not the index).
 
-*Scope:* the IVF was timed as a router in isolation; full `ssa_flex` integration and the 8M→12M step remain
-extrapolated, on benign geometry. Net: both ingredients a quality-preserving 1,000×@12M needs — floor-lowering
-co-training (60×) and a sub-linear indexer (the IVF router) — are demonstrated, under exactly the benign-geometry
-condition the floor analysis names.
+*Scope (updated — the integration is now measured):* the IVF router is **now wired into the FlexAttention
+kernel and measured end-to-end to 12M** (`ivf_kernel.py`, next section) — the "isolation-only" and "8M→12M
+extrapolated" caveats are retired. The standalone router sweep also now runs to **12M (94 ms; flat OOMs at
+8M and 12M)**. What *still* remains is multi-head and **real-model** keys at the 12M endpoint (the e2e run is
+single-head, synthetic-keys-speed-only). Net: both ingredients a quality-preserving 1,000×@12M needs —
+floor-lowering co-training (60×) and a sub-linear indexer (the IVF router) — are demonstrated, and the
+indexer is now shown to drive a **live** kernel to ~the floor, under exactly the benign-geometry condition
+the floor analysis names.
+
+## The IVF kernel end-to-end — measured to 12M — (`ivf_kernel.py`, `ivf_decode.py`)
+
+The floor program's last caveat was that the IVF router had only been timed *in isolation* — the full-kernel
+landing at 12M was a projection. This wires the faiss-GPU IVF router straight into the FlexAttention kernel
+(`ssa_flex_ivf`: IVF search over the block-means emits the `from_kv_blocks` contract directly — no `(n/b)²`
+score GEMM, no argsort maskbuild) and **measures the whole forward, single-head, to 12M on the 16 GB card**.
+The enabling detail is `BlockMask.from_kv_blocks(..., compute_q_blocks=False)`, which skips the dense
+`(nb,nb+1)` transpose that would need 38.7 GB at nb=98,304 — the one change that makes a live 12M forward fit.
+
+**Measured prefill decomposition** (single head, d=64, block=128, top_c=8, fp16; router = full IVF
+build+search each call; dense measured to 4M then fit `~2.0e-9·n^1.98`):
+
+| n | router (ms) | maskbuild (ms) | attention = floor (ms) | **total (ms)** | dense (ms) | speedup | peak mem |
+|---|---|---|---|---|---|---|---|
+| 256K | 7.8 | 0.002 | 0.9 | **8.6** | 110 (meas) | 13× | 0.14 GB |
+| 1M | 13.5 | 0.002 | 3.2 | **16.1** | 1,617 (meas) | 100× | 0.55 GB |
+| 4M | 36.4 | 0.003 | 13.5 | **52.0** | 26,279 (meas) | 505× | 2.18 GB |
+| 8M | 65.1 | 0.003 | 32.6 | **94.3** | (fit) | — | 4.37 GB |
+| **12M** | **101.4** | **0.003** | **47.5** | **139.5** | **227,227 (fit)** | **1,629×** | **6.55 GB** |
+
+**The `n^2.12` maskbuild wall is gone** — the argsort BlockMask build that P0 measured as the dominant term
+(40.7 s projected at 12M) is now **sub-millisecond** (0.003 ms), because the IVF emits `kv_idx` directly. At
+12M the whole forward is **139 ms in 6.55 GB**, and the gap to the theoretical floor is a **measured 2.9×**
+(total/attention), not the 128× P0 measured for the flat kernel. The 101 ms router is dominated by the faiss
+index **build** (73 ms; search is 16 ms) — in real serving the index is built once and reused across layers,
+so the amortized per-layer router cost is closer to the search term. (Honest scope: single head — H=8 does not
+fit at 12M, K alone is 12.3 GB; synthetic random keys, so this is a **speed** result — selection quality is
+the P1/P3/P4 story, unchanged; the dense speedup numerator is measured, the 8M/12M denominator is the fitted
+`n^1.98` dense law since dense attention is itself unmeasurable there.)
+
+**Decode path** (`ivf_decode.py`) — the serving cost the "serving paradox" only asserted, now measured on both
+sides. Per generated token: maintain block-means incrementally (add-only IVF index, so it holds only completed
+past blocks ⇒ automatically causal), IVF-search the one query, gather ≈κ keys, one κ-length softmax row. Dense
+reads the whole causal prefix (measurable even at 12M):
+
+| n | SSA step (ms) | dense step (ms) | speedup | search (ms) | gather+attend (ms) |
+|---|---|---|---|---|---|
+| 1M | 0.55 | 2.58 | 5× | 0.13 | 0.55 |
+| 4M | 0.53 | 9.83 | 19× | 0.13 | 0.54 |
+| **12M** | **0.53** | **29.58** | **55×** | **0.13** | **0.56** |
+
+The SSA decode step is **flat in n** (κ fixed at ~1,280 keys: 0.55 ms at 1M → 0.53 ms at 12M) while dense
+grows with the prefix (2.6 → 29.6 ms) — a **55× per-step gap at 12M**. **Honest scope:** single head; synthetic
+keys (speed only); add-only index with no quantizer retrain (valid over the 128 measured steps; a real serving
+loop retrains every R blocks as centroids drift, noted in the JSON meta).
+
+## Multi-hop retrieval — the composition law, measured — (`multihop_analysis.py`)
+
+The single-needle NIAH story (`niah_analysis.py`) predicts but never *tests* the multi-hop regime SubQ reports
+65.9% on (MRCR) while NIAH@12M is ~98%. This plants an h-hop chain in the same synthetic geometry and runs it
+through the *same* budgeted block-cumulant selector: hop j's needle is addressed by direction `dirs[j]` and its
+payload is `dirs[j+1]` (the next hop's query — the geometric MQAR analogue), directions mutually orthogonal so
+no hop's elevation helps another. Modes: all-benign, all-isolated, and **mixed** (benign hop 1 + isolated hop 2
+— the falsifiable "single needles hold, the chain collapses" case). The prediction under test: measured chain
+accuracy ≈ ∏ρ_j (oracle per-hop rates), i.e. the multi-hop sag is the single-needle result read h times.
+
+**2-hop chain accuracy vs context length (margin 0.55):**
+
+| n | dense | isolated | benign | **mixed** (benign→isolated) |
+|---|---|---|---|---|
+| 4,096 | 0.99 | 0.19 | 1.00 | 0.53 |
+| 65,536 | 0.78 | 0.00 | **1.00** | **0.02** |
+| 262,144 | 0.56 | 0.00 | **0.88** | **0.00** |
+
+**The composition law holds** (measured chain ≈ ∏ρ, all modes): at n=65,536, mixed has ρ1=1.00 (benign hop),
+ρ2=0.02 (isolated hop), ∏ρ=0.02, measured chain **0.02** — while each *single* benign needle stays at 1.00.
+One weak hop divides the whole product toward zero. This is exactly the shape of SubQ's own table: NIAH@12M
+~98% (benign single needle) vs MRCR 65.9% (multi-hop) — the "suspiciously perfect" retrieval score and the
+MRCR sag are the *same* benign-geometry prediction read at two ends, now self-tested by the rig rather than
+only argued. **Honest scope:** synthetic geometry (the mechanism, not a real-model chain); the real-model
+two-hop task (`gemma_ssa_eval.two_hop_accuracy`, wired into the sweeps) is the model-level companion.
+
+## The fast kernel inside a real model at 8K–128K — (`gemma_ssa.py` `impl="flex"` + `longctx_swap.py`)
+
+The Gemma frozen-swap measured *quality* with an analytic `O(n²)` probe; `ssa_kernel` measured *speed* on
+synthetic keys. This closes the gap the Scope section named: the fused FlexAttention kernel is wired into a
+**real pretrained model** (Qwen2.5-0.5B — 24 layers, GQA 14/2, head_dim 64) behind an `SSAConfig.impl` flag,
+and measured at 8K–128K for **both** NIAH + two-hop accuracy and prefill wall-clock vs the unswapped model.
+`block_route_budget` adds the budget-fraction router at query-BLOCK granularity (the fast form) with the same
+cumulant score as the analytic path; decode steps and CPU fall back to the analytic path (already
+decode-correct via `cache_position`). Full-budget flex reproduces the dense LM loss (smoke gate, delta 6.7e-3).
+
+**Native window (≤32K), block=128, bf16, prefill median of 3, speedup vs the stock-SDPA dense baseline:**
+
+| n | budget | NIAH | 2-hop | prefill (ms) | dense (ms) | speedup |
+|---|---|---|---|---|---|---|
+| 16K | 0.25 | 1.00 | 1.00 | 295 | 329 | 1.11× |
+| 16K | 0.12 | 1.00 | 1.00 | 281 | 329 | 1.17× |
+| 32K | 0.25 | 1.00 | 0.78 | 689 | 913 | 1.32× |
+| 32K | 0.12 | 1.00 | 0.67 | 600 | 913 | **1.52×** |
+| 32K | 0.06 | 1.00 | 1.00 | 567 | 913 | **1.61×** |
+
+The kernel preserves single-needle NIAH at **1.00** while giving a **1.5–1.6× prefill speedup at 32K**
+(budget 0.06–0.12); the speedup **grows with n and with a tighter budget** (≈1.0× at 8K, the crossover, up
+through 1.6× at 32K), exactly the `ssa_kernel` crossover shape now inside a real model. The speedup is modest
+because attention is only a fraction of a 0.5B forward (the MLP/other layers dominate — Whedon's own Amdahl
+point) — it grows with model size and context. The **two-hop chain shows the predicted budget-sensitivity**
+(1.00 → 0.78/0.67 at 32K as the budget tightens), the multi-hop sag appearing in a real model; NIAH is flat
+across the same cells (the single-needle/multi-hop split again). *(Two-hop is 9 samples/cell — the dip is
+directional, not precise.)*
+
+**Granularity + kernel-necessity A/B (n=8K, `--impl analytic` vs `flex`):**
+
+| impl | budget | NIAH | 2-hop | prefill (ms) | peak mem |
+|---|---|---|---|---|---|
+| analytic | 0.25 | 1.00 | 0.67 | 3,480 | **10.66 GB** |
+| flex | 0.25 | 1.00 | 1.00 | **130** | **1.41 GB** |
+
+At the same config the analytic path (which materializes the `(b,hq,n,n)` scores + selection mask) needs
+**10.66 GB and 3.5 s**; the fused kernel needs **1.41 GB and 130 ms** — a 7.6× memory and 27× time gap, and
+the analytic path OOMs before 64K while flex reaches 128K. Both preserve NIAH at 1.00, so query-block
+granularity does not cost single-needle quality; the kernel is simply the only path that scales.
+
+**Extended window (65K/128K under YaRN ×4):** both the dense baseline and SSA run under identical YaRN (rows
+tagged `rope=yarn4` in `runs/qwen_longctx.json`); the full-budget smoke gate passes under YaRN (delta 1.2e-3),
+and dense prefill is **2.8 s at 65K and 11.3 s at 128K** (7.4 GB, well within the card). The speedup **keeps
+widening with n** — 1.6× (32K) → **2.15× (65K, budget 0.12, NIAH 1.00)** → **3.44× (128K, budget 0.06)** — and
+the kernel reaches 128K where the analytic path OOMs. At 128K single-needle NIAH holds at 0.89–1.00 while the
+**two-hop chain sags under a tight budget (0.44–0.78)** — the predicted multi-hop degradation surfacing in a
+real model at extended length. 0.5B is not a validated-128K model, so ≥65K rows are **mechanism + wall-clock
+evidence**, not absolute-quality claims; but the widening-speedup-with-preserved-single-needle / sagging-
+multi-hop pattern is exactly the theory's real-model analogue.
+
+**Honest scope:** single model at **0.5B** scale; ≥65K under YaRN (extrapolated positions); the speedup is on
+the attention component of a small model (Amdahl-limited); Gemma-26B stays on the analytic path (CPU offload
+makes 32K+ prefill infeasible on a 16 GB card). This is the first rig result that is simultaneously
+**real-model × long-context × subquadratic-kernel × quality-measured** — at 0.5B, moderate length.

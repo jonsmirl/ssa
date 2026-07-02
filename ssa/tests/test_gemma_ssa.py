@@ -119,6 +119,27 @@ def test_routing_finds_the_needle():
     assert torch.allclose(out[0, probe], v[0, 0, needle], atol=3e-3)
 
 
+def test_impl_flex_on_cpu_falls_back_to_analytic():
+    """impl='flex' on CPU tensors must take the analytic path (guarded on query.is_cuda) — bit-identical,
+    so nothing breaks off-GPU and the CPU test suite still exercises the swap config."""
+    q, k, v = _qkv(n=160)
+    G.CFG = G.SSAConfig(block=32, budget_frac=0.25, impl="analytic")
+    ref, _ = ssa_attention_forward(_module(), q, k, v, scaling=1.0)
+    G.CFG = G.SSAConfig(block=32, budget_frac=0.25, impl="flex")
+    out, _ = ssa_attention_forward(_module(), q, k, v, scaling=1.0)
+    assert torch.allclose(out, ref, atol=1e-12)
+
+
+def test_impl_flex_decode_step_falls_back():
+    """impl='flex' with q_len=1 (KV-cache decode) is not prefill-shaped, so it falls back to the analytic
+    path and must still reproduce the prefill's last-position output."""
+    G.CFG = G.SSAConfig(block=32, budget_frac=0.5, impl="flex")
+    q, k, v = _qkv(n=160)
+    full, _ = ssa_attention_forward(_module(), q, k, v, scaling=1.0)
+    inc, _ = ssa_attention_forward(_module(), q[:, :, -1:, :], k, v, scaling=1.0)
+    assert torch.allclose(inc[:, 0], full[:, -1], atol=1e-10)
+
+
 def test_sliding_layer_falls_back():
     """A sliding layer (is_sliding=True) must defer to the installed fallback, untouched by SSA."""
     G.CFG = G.SSAConfig(block=32, budget_frac=0.1, route_full_only=True)
