@@ -512,6 +512,21 @@ where the fused kernel needs $1.4$ GB and $130$ ms, and the analytic path OOMs b
 reaches $128$K (under YaRN). The real-model two-hop chain shows the predicted budget-sensitivity. This is the
 first result simultaneously real-model, long-context, subquadratic-kernel, and quality-measured — at $0.5$B scale.
 
+**An optimal selector: the Certified Causal Cascade.** Composing five ingredients — a shared low-dim routing
+space, sub-block max-pool summaries, a chunked-causal streaming index, an exact outlier side-channel, and
+per-query admissible certificates with escalation — into one streaming selector, and measuring which pay off.
+The certificate is sound (certified $\Rightarrow$ the selected top-$\kappa$ blocks equal the exact top-$\kappa$
+under the routing metric; zero violations on clustered and random geometry; fire-rate $0.89$ / $0.50$). The
+component table is the trilemma made concrete: sub-block granularity and the outlier channel rescue high-norm
+spikes, but **isolated unit-norm needles stay unretrievable for every cheap selector** (recall $0.05$) — the
+impossibility of Section 6 in miniature. On the selector's cost: per-layer routing is $\sim\!59\%$ of a
+Qwen-0.5B prefill (at DSA's reported $58\%$), and the lever that makes it cheap is **cross-layer sharing from a
+mid donor layer** — measured cutting it to $\sim\!6\%$ with single-needle retrieval preserved (the first
+measurement of the "$\div 5$" folklore; sharing from layer 0 fails). A trained $d_r{=}16$ routing projection
+rebuts the "low-rank is a bust" verdict on real keys ($0.32 \to 0.65$ block agreement) but is itself too lossy
+to drive retrieval — the honest boundary. This gives a falsifiable signature for any production selector: cheap
+$\Leftrightarrow$ shared from a mid layer, preserving single-needle recall while sagging on isolated/multi-hop.
+
 **Routability.** The regularizer (7.2) reduced lossless branch-and-bound selection cost from $26.5\%$ to
 $4.2\%$ of keys at zero accuracy cost (Section 7.2). The reduction was robust across head dimension and showed
 no capacity trade-off down to $d=$ (number of clusters), since query-specific anisotropy needs only $\sim\!1$

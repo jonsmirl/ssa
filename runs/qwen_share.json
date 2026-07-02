@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "model": "Qwen/Qwen2.5-0.5B",
+    "budget": 0.12,
+    "block": 128,
+    "note": "route_share = routing wall-clock / prefill wall-clock (the DSA-comparable number); donor=k shares selection to layers >k, layers <k route per-layer"
+  },
+  "rows": [
+    {
+      "arm": "per_layer_d16",
+      "n": 8192,
+      "donor": null,
+      "proj": true,
+      "niah_acc": 0.0,
+      "niah2_acc": 0.2222,
+      "prefill_ms": 136.67,
+      "route_ms": 30.754,
+      "route_share": 0.225,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "arm": "per_layer_fulld",
+      "n": 8192,
+      "donor": null,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "prefill_ms": 141.74,
+      "route_ms": 86.31,
+      "route_share": 0.6089,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "arm": "share_from_0_fulld",
+      "n": 8192,
+      "donor": 0,
+      "proj": false,
+      "niah_acc": 0.0,
+      "niah2_acc": 0.0,
+      "prefill_ms": 106.13,
+      "route_ms": 1.78,
+      "route_share": 0.0168,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "arm": "share_from_11_d16",
+      "n": 8192,
+      "donor": 11,
+      "proj": true,
+      "niah_acc": 0.0,
+      "niah2_acc": 0.2222,
+      "prefill_ms": 115.71,
+      "route_ms": 14.725,
+      "route_share": 0.1273,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "arm": "share_from_11_fulld",
+      "n": 8192,
+      "donor": 11,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "prefill_ms": 122.06,
+      "route_ms": 17.357,
+      "route_share": 0.1422,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "arm": "share_from_18_fulld",
+      "n": 8192,
+      "donor": 18,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "prefill_ms": 125.62,
+      "route_ms": 23.61,
+      "route_share": 0.1879,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "arm": "share_from_4_fulld",
+      "n": 8192,
+      "donor": 4,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "prefill_ms": 104.74,
+      "route_ms": 6.592,
+      "route_share": 0.0629,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "arm": "per_layer_d16",
+      "n": 32768,
+      "donor": null,
+      "proj": true,
+      "niah_acc": 0.0,
+      "niah2_acc": 0.0,
+      "prefill_ms": 608.17,
+      "route_ms": 91.077,
+      "route_share": 0.1498,
+      "peak_mem_gb": 2.609
+    },
+    {
+      "arm": "per_layer_fulld",
+      "n": 32768,
+      "donor": null,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 0.6667,
+      "prefill_ms": 610.6,
+      "route_ms": 99.33,
+      "route_share": 0.1627,
+      "peak_mem_gb": 2.609
+    },
+    {
+      "arm": "share_from_0_fulld",
+      "n": 32768,
+      "donor": 0,
+      "proj": false,
+      "niah_acc": 0.0,
+      "niah2_acc": 0.0,
+      "prefill_ms": 507.11,
+      "route_ms": 4.797,
+      "route_share": 0.0095,
+      "peak_mem_gb": 2.617
+    },
+    {
+      "arm": "share_from_11_d16",
+      "n": 32768,
+      "donor": 11,
+      "proj": true,
+      "niah_acc": 0.0,
+      "niah2_acc": 0.0,
+      "prefill_ms": 559.26,
+      "route_ms": 45.405,
+      "route_share": 0.0812,
+      "peak_mem_gb": 2.617
+    },
+    {
+      "arm": "share_from_11_fulld",
+      "n": 32768,
+      "donor": 11,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 0.6667,
+      "prefill_ms": 556.69,
+      "route_ms": 45.612,
+      "route_share": 0.0819,
+      "peak_mem_gb": 2.617
+    },
+    {
+      "arm": "share_from_18_fulld",
+      "n": 32768,
+      "donor": 18,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 0.6667,
+      "prefill_ms": 586.14,
+      "route_ms": 73.245,
+      "route_share": 0.125,
+      "peak_mem_gb": 2.617
+    },
+    {
+      "arm": "share_from_4_fulld",
+      "n": 32768,
+      "donor": 4,
+      "proj": false,
+      "niah_acc": 1.0,
+      "niah2_acc": 0.8889,
+      "prefill_ms": 522.22,
+      "route_ms": 18.661,
+      "route_share": 0.0357,
+      "peak_mem_gb": 2.618
+    }
+  ]
+}

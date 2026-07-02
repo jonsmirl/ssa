@@ -39,12 +39,20 @@ class SSAConfig:
     edgeworth: bool = False    # add the (diagonal) 3rd-cumulant/skew term to routing (outlier detector)
     dense_layers: tuple = ()   # layer_idx values to leave DENSE (bypass selection) — e.g. the worst router
     impl: str = "analytic"     # "analytic" = O(n²) score+mask (quality); "flex" = the fused kernel (speed)
+    share_route_from: int | None = None  # donor layer: compute the selection once here, reuse above it
+    share_below: str = "per_layer"       # layers below the donor: "per_layer" | "dense"
+    proj_path: str | None = None         # a trained RoutingProjection (.pt) — route in the shared low-dim space
 
 
 # module-level config the registered interface reads; the kappa-sweep driver mutates this.
 CFG = SSAConfig()
 # fallback for sliding layers (and full layers when route is disabled); set at install time.
 _FALLBACK = None
+# trained routing projection (loaded from CFG.proj_path at install), and the donor-layer BlockMask cache.
+_PROJ = None
+_SHARE = {"sig": None, "bm": None}
+# measured router wall-clock accumulator (longctx_share.py reads this to get route_ms / prefill_ms).
+ROUTE_MS = 0.0
 
 
 def repeat_kv(x: torch.Tensor, n: int) -> torch.Tensor:
@@ -129,30 +137,47 @@ def _selection_mask(q, k, cfg: SSAConfig, qpos=None, kpos=None):
     return torch.where(allow, 0.0, torch.tensor(NEG, device=q.device))
 
 
-def _flex_forward(query, k, v, cfg, scaling, dense=False):
-    """The fused block-sparse kernel path (prefill only): route -> BlockMask -> flex_attention, never
-    materializing scores. query,k,v are (b,hq,n,d) (GQA already expanded by the caller). n is padded up
-    to a block multiple; a token-causal mask_mod that also drops pad keys (kv < n) preserves exact
-    causality even with block-granular selection. Returns (b,hq,n,d)."""
+def _flex_mask(query, k, cfg, dense, proj, n):
+    """Route -> BlockMask (the selection). Timed as the router; shareable across layers (same shape)."""
+    import time
     from ssa import ssa_kernel as K
     from torch.nn.attention.flex_attention import BlockMask
-    b, hq, n, d = query.shape
+    global ROUTE_MS
     blk = cfg.block
     pad = (-n) % blk
-    if pad:
-        query, k, v = (F.pad(t, (0, 0, 0, pad)) for t in (query, k, v))
     N = n + pad
+    qq = F.pad(query, (0, 0, 0, pad)) if pad else query
+    kk = F.pad(k, (0, 0, 0, pad)) if pad else k
+    if query.is_cuda:
+        torch.cuda.synchronize()
+    t0 = time.time()
     kv_num, kv_idx, _ = K.block_route_budget(
-        query, k, blk, budget_frac=(1.0 if dense else cfg.budget_frac),
+        qq, kk, blk, budget_frac=(1.0 if dense else cfg.budget_frac),
         top_c=(None if dense else cfg.top_c), local=cfg.local_w, beta=cfg.beta,
-        edgeworth=cfg.edgeworth, n_real=n)
+        edgeworth=cfg.edgeworth, n_real=n, sub=None, proj=proj)
 
     def mm(bb, hh, qi, kv):
         return (kv <= qi) & (kv < n)                                 # token-causal AND drop pad keys
 
     bm = BlockMask.from_kv_blocks(kv_num, kv_idx, BLOCK_SIZE=blk, mask_mod=mm, seq_lengths=(N, N))
+    if query.is_cuda:
+        torch.cuda.synchronize()
+    ROUTE_MS += (time.time() - t0) * 1000
+    return bm, N, pad
+
+
+def _flex_forward(query, k, v, cfg, scaling, dense=False, proj=None, bm_pad=None):
+    """The fused block-sparse kernel path (prefill only). `bm_pad` = a (BlockMask, N, pad) reused from the
+    donor layer (cross-layer sharing); else route here. Returns (out (b,hq,n,d), (bm,N,pad))."""
+    from ssa import ssa_kernel as K
+    b, hq, n, d = query.shape
+    if bm_pad is None:
+        bm_pad = _flex_mask(query, k, cfg, dense, proj, n)
+    bm, N, pad = bm_pad
+    if pad:
+        query, k, v = (F.pad(t, (0, 0, 0, pad)) for t in (query, k, v))
     out = K._flex(query, k, v, block_mask=bm, scale=scaling)
-    return out[:, :, :n]
+    return out[:, :, :n], bm_pad
 
 
 def ssa_attention_forward(module, query, key, value, attention_mask=None,
@@ -180,7 +205,20 @@ def ssa_attention_forward(module, query, key, value, attention_mask=None,
     # the fused kernel path — prefill-shaped CUDA calls only; decode (q_len==1), chunked prefill
     # (q_len != kv_len), and CPU fall through to the analytic path below (already decode-correct).
     if cfg.impl == "flex" and query.is_cuda and q_len == kv_len and q_len > cfg.block:
-        out = _flex_forward(query, k, v, cfg, scaling, dense=is_dense)
+        li = getattr(module, "layer_idx", None)
+        donor = cfg.share_route_from
+        bm_pad = None
+        if donor is not None and li is not None:
+            if li < donor:                                          # below the donor: route per-layer (honest cost)
+                is_dense = is_dense or cfg.share_below == "dense"
+            elif li > donor:                                        # consumer: reuse the donor's selection
+                sig = (tuple(query.shape), kv_len, str(query.device))
+                if _SHARE["sig"] == sig:
+                    bm_pad = _SHARE["bm"]
+        out, made = _flex_forward(query, k, v, cfg, scaling, dense=is_dense, proj=_PROJ, bm_pad=bm_pad)
+        if donor is not None and li == donor:                      # donor stashes its selection for consumers
+            _SHARE["sig"] = (tuple(query.shape), kv_len, str(query.device))
+            _SHARE["bm"] = made
         return out.transpose(1, 2).contiguous(), None
     # absolute query positions: prefer cache_position (KV-cache incremental decode); else assume the
     # queries are the last q_len of a left-aligned sequence. kv_len != q_len during generation.
@@ -205,9 +243,13 @@ def install_ssa(model, **cfg_kwargs):
     """Register SSA as the model's attention implementation. Sliding layers fall back to the
     model's prior kernel; full layers route. Validate the wiring with the GPU smoke test —
     the routing math itself is unit-tested in test_gemma_ssa.py."""
-    global _FALLBACK
+    global _FALLBACK, _PROJ
     for k, val in cfg_kwargs.items():
         setattr(CFG, k, val)
+    _SHARE["sig"] = None; _SHARE["bm"] = None
+    if CFG.proj_path:
+        from ssa.routing_space import RoutingProjection
+        _PROJ = RoutingProjection.load(CFG.proj_path)
     from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS
     prior = getattr(model.config, "_attn_implementation", None) or "sdpa"
     try:

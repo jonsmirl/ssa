@@ -58,3 +58,54 @@ projection — it drives a **live kernel to a measured 2.9× of the floor at 12M
 **benign geometry**. So the claim is *achievable in practice on one GPU under exactly the benign-geometry
 condition the floor analysis names* — not refuted, pinned (and the geometry condition is load-bearing: the
 multi-hop measurement shows the chain collapsing off it).
+
+## P7 — The Certified Causal Cascade (CCC): an optimal selector, built and measured
+
+The floor program showed the *ingredients* of a cheap selector; P7 composes them into one selector and
+measures which parts pay off. Five components (`cascade_router.py`, `routing_space.py`, `longctx_share.py`):
+(1) a shared low-dim **routing space**, (2) **sub-block max-pool** summaries (spike sensitivity), (3) a
+**chunked-causal streaming index** (prefill/decode one path), (4) an **outlier side-channel** (the k=c·q
+impossibility case), (5) per-query **certificates + escalation**. Design rationale: the assessment's open
+question is "what does SubQ's selector cost?" — DSA's eats 58% of prefill at 1M; this asks what an optimal
+selector costs, and which components are load-bearing.
+
+**The certificate is sound** (`test_ccc_certificates.py`, zero violations on clustered AND random): certified
+⇒ the selected top-κ parent blocks equal the exact top-κ under the routing metric. Fire-rate is
+geometry-dependent — **0.89 clustered / 0.50 random at 1M** (benign geometry certifies; adversarial escalates).
+The full cascade runs end-to-end to **12M (980 ms, 6.67 GB)** single-head.
+
+**Which component rescues which regime** (`ccc_quality.py`, needle-block recall at 64K):
+
+| regime | ivf (block) | +sub-block | +outlier |
+|---|---|---|---|
+| benign (coherent span) | 1.00 | 1.00 | 1.00 |
+| **isolated** (unit-norm needle) | 0.00 | 0.05 | 0.05 |
+| spike c=2 (modest high-norm) | 0.23 | 0.38 | **1.00** |
+| spike c=8 (large high-norm) | 1.00 | 1.00 | 1.00 |
+
+Sub-block granularity rescues large spikes; the outlier channel uniquely rescues the *moderate* c=2 spike
+(0.38→1.00) that sub-block still washes out; **isolated unit-norm needles stay hard for every cheap selector
+(0.05)** — the impossibility wall in miniature, exactly as the trilemma predicts. No component is free of it.
+
+**The trained routing space — the P2 rebuttal** (`routing_space.py`): P2's "low-rank routing is a bust
+(5–14%)" tested an *untrained random* projection. On real Qwen keys, untrained random reproduces the bust
+(**0.32** block-Jaccard), but a **trained d_r=16 projection reaches 0.65 (0.77 at d_r=32)** — ~2× — and
+generalizes to a held-out code doc (0.58). So low-rank routing is viable for approximate ranking, *not* a
+bust. **But** driving the real model, the d_r=16 projection collapses NIAH to 0.00 — 0.65 Jaccard is too
+lossy (and it is centroid-vs-cumulant metric-mismatched): the honest boundary is that low-rank routing ranks
+blocks approximately but is not accurate enough to drive attention losslessly at d_r=16.
+
+**Cross-layer sharing — the ÷5 measured** (`longctx_share.py`, the first measurement of what
+`router_variants.py` only asserted): per-layer full-d routing costs **~59% of prefill at 8K on Qwen2.5-0.5B**
+(comparable to DSA's 58%!); **sharing the selection from a mid layer (donor=4) cuts it to ~6% with NIAH and
+two-hop preserved at 1.00** — a measured ~10× reduction. But the donor choice matters: sharing from **layer 0
+collapses NIAH to 0.00** (early layers route positionally, not by content) — the analytic ÷5 assumed any layer
+transfers; the measurement shows only mid layers do. The DSA-comparable number (routing share of total
+prefill) is thus **measured**, and the lever that makes the selector cheap is cross-layer sharing from the
+right donor, not the low-dim projection.
+
+**Tie to the assessment.** The open "what does SubQ's selector cost?" now has a constructive answer and a
+falsifiable signature: a selector isomorphic to CCC has a routing share that (a) is single-digit % once shared
+from a mid layer, and (b) preserves single-needle retrieval but sags on isolated/multi-hop — exactly the
+NIAH≫MRCR split SubQ reports. If SubQ's selector share is large, they haven't solved it (explaining the gated
+access); if small with the predicted quality split, it is isomorphic to this.

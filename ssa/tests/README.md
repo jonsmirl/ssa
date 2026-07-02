@@ -13,7 +13,7 @@ pytest ssa/tests -k samuelson    # by keyword
 pytest ssa/tests -q              # quiet
 ```
 
-Expected: **54 passed** on CPU (**64** with CUDA + faiss — 10 GPU-gated kernel tests self-skip on CPU).
+Expected: **86 collected** (with CUDA + faiss; GPU-gated kernel/cascade tests self-skip on CPU).
 
 ## What each file checks
 
@@ -57,6 +57,23 @@ Expected: **54 passed** on CPU (**64** with CUDA + faiss — 10 GPU-gated kernel
 - `test_flex_full_budget_matches_dense_sdpa`, `test_flex_matches_analytic_at_full_budget`,
   `test_flex_no_future_leak`, `test_flex_pad_nonmultiple_length` (GPU) — the fused path equals dense / the
   analytic path, never leaks the future, and handles non-block-multiple lengths.
+
+**`test_cascade_router.py`** — the Certified Causal Cascade selector (`cascade_router.py`; GPU+faiss).
+- full-budget == dense; causal/own/unique selection; exhaustive == brute-force sub-block max-pool;
+  chunking invariance; decode == prefill; the `block_route_budget(sub=)` flag (identity + spike recall).
+
+**`test_ccc_certificates.py`** — certificate/escalation/outlier soundness (GPU+faiss).
+- `test_certificate_soundness` (clustered AND random): certified ⇒ selection == exact routing-metric top-κ,
+  **zero violations** (the hard gate); radii admissible / exact after rebuild; escalation monotone; the
+  outlier channel recovers a hidden high-norm spike; warm-start rebuild preserves the index.
+
+**`test_routing_space.py`** — the trained routing projection (`routing_space.py`, CPU/GPU).
+- identity projection == full scores; KL decreases with training; PCA orthonormal; save/load roundtrip;
+  the `route_recall` routing-space hook is a no-op at identity; trained beats random on clustered geometry.
+
+**`test_share_route.py`** — cross-layer sharing + the projection hook (`gemma_ssa.py`).
+- `block_route_budget(proj=identity)` == centroid routing (CPU); donor stashes / consumer reuses the mask
+  (GPU); full-budget shared == dense (GPU); decode ignores sharing (falls to analytic).
 
 **`test_ssa_extrapolation.py`** — the RoPE model (paper §8.1), no training.
 - `test_rope_preserves_norm` — the rotary map is an isometry.
