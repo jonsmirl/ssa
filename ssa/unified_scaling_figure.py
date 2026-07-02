@@ -4,11 +4,12 @@ rising at the top). One frame for the whole program:
   * dense O(n²)             — "today's models", the rising curve (measured + projected).
   * our flat-router kernel  — MEASURED (4K→262K) + projected; stays well below dense but its speedup is
                               capped because the argsort BlockMask build (~n^2.12) rises nearly as fast.
-  * our IVF-router kernel   — projected (the faiss-GPU IVF router, GPU-measured to 8M, removes the maskbuild)
-                              — drops onto the floor.
+  * our IVF-router kernel   — MEASURED end-to-end (single-head) to 12M (ssa_flex_ivf: faiss-GPU IVF router
+                              + FlexAttention, maskbuild ~0) — lands ~2.9× the floor, no longer a projection.
   * n·κ floor               — the attention-only cost (the lowest any selector can reach).
   * SubQ                    — its claim as compute = dense / reported speedup (published 7.2×,52.2× + 1,000×@12M).
-Built from paper/figures/{kernel_speed_measured,cost_profile}.json. Run: python3 -m ssa.unified_scaling_figure
+Built from paper/figures/{kernel_speed_measured,cost_profile,router_gpu_compare,ivf_kernel_e2e}.json.
+Run: python3 -m ssa.unified_scaling_figure
 """
 from __future__ import annotations
 import json
@@ -62,16 +63,22 @@ ax.text(1.31e7, dense_law(12e6), "  dense O(n²)", color="#e8806f", fontsize=9, 
 # our flat-router kernel
 ax.plot(n_m, ssa_m, color="#f2c14e", lw=2.6, marker="o", ms=4.5, label="our flat-router kernel — measured")
 ax.plot(xe, flat_kernel(xe), color="#f2c14e", lw=1.9, ls=(0, (5, 3)))
-# our IVF-router kernel — from the MEASURED faiss-GPU IVF router (router_gpu_compare) + attention floor
-gr = json.load(open("paper/figures/router_gpu_compare.json"))
-ivf_n = np.array([r["n"] for r in gr], float)
-ivf_router_meas = np.array([r["ivf_ms"] for r in gr], float)
-ivf_kernel_meas = floor(ivf_n) + ivf_router_meas              # attention + measured IVF router (maskbuild ~0)
-ax.plot(ivf_n, ivf_kernel_meas, color="#3fbf90", lw=2.5, marker="s", ms=6, zorder=6,
-        label="IVF-router kernel — measured router + analytic floor (projection)")
-pr = np.polyfit(np.log(ivf_n), np.log(ivf_router_meas), 1)   # extrapolate the measured router to 12M
-xv = np.logspace(np.log10(ivf_n[-1]), np.log10(12e6), 30)
-ax.plot(xv, floor(xv) + np.exp(pr[1]) * xv ** pr[0], color="#3fbf90", lw=1.9, ls=(0, (4, 3)))
+# our IVF-router kernel — MEASURED end-to-end, single-head, all the way to 12M (ssa_flex_ivf)
+ek = json.load(open("paper/figures/ivf_kernel_e2e.json"))
+er = ek["rows"]
+ivf_n = np.array([r["n"] for r in er], float)
+ivf_total = np.array([r["total_ms"] for r in er], float)      # route + maskbuild(~0) + attention, measured
+ax.plot(ivf_n, ivf_total, color="#3fbf90", lw=2.5, marker="s", ms=6, zorder=6,
+        label="IVF kernel — MEASURED end-to-end (single-head, →12M)")
+# single-head dense reference (H=1): measured to dense_max, then the fitted n² law (so the speedup is
+# read within one head-count, not across the H=8 curves above)
+d1_meas = [(r["n"], r["dense_ms"]) for r in er if not r["dense_is_fit"]]
+dn1 = np.array([m[0] for m in d1_meas], float); dm1 = np.array([m[1] for m in d1_meas], float)
+ax.plot(dn1, dm1, color="#e8806f", lw=1.4, ls=":", alpha=0.8, marker="o", ms=3,
+        label="dense O(n²) — single-head ref (measured)")
+fitp = ek["dense_fit"]
+xdf = np.logspace(np.log10(dn1[-1]), np.log10(12e6), 30)
+ax.plot(xdf, fitp["a"] * xdf ** fitp["p"], color="#e8806f", lw=1.2, ls=(0, (1, 2)), alpha=0.6)
 # floor
 ax.plot(xall, floor(xall), color="#9a9aff", lw=1.6, ls=(0, (1, 2)), label="n·κ floor (attention-only)")
 # SubQ claim (as compute)
@@ -81,8 +88,8 @@ ax.scatter(sub_n[2:], sub_ms[2:], marker="*", s=320, color="#ff5d5d", edgecolor=
 
 ax.annotate("flat kernel: speedup capped\n(argsort BlockMask ~ n²·¹²)", xy=(12e6, flat_kernel(12e6)),
             xytext=(8e5, 9e3), color="#e8d6a0", fontsize=8, arrowprops=dict(arrowstyle="->", color="#e8d6a0", lw=0.8))
-ax.annotate("IVF router GPU-measured to 8M\n→ projected kernel toward the floor", xy=(4194304, floor(4194304) + 31.4),
-            xytext=(2.4e4, 1.7e3), color="#9fd9c4", fontsize=8, arrowprops=dict(arrowstyle="->", color="#9fd9c4", lw=0.8))
+ax.annotate("IVF kernel MEASURED to 12M\n(single-head, ~2.9× the floor)", xy=(ivf_n[-1], ivf_total[-1]),
+            xytext=(2.4e4, 1.1e3), color="#9fd9c4", fontsize=8, arrowprops=dict(arrowstyle="->", color="#9fd9c4", lw=0.8))
 
 ax.set_xticks([4096, 16384, 65536, 262144, 1048576, 12e6]); ax.set_xticklabels(["4K", "16K", "64K", "256K", "1M", "12M"])
 ax.set_xlim(4096, 1.55e7); ax.set_ylim(0.15, 3e6)
@@ -95,15 +102,16 @@ ax.set_title("Attention compute: dense O(n²), our kernels, the floor, and SubQ'
 ax.grid(True, which="major", color="#2a2a2a", lw=0.5)
 ax.legend(loc="upper left", fontsize=7.8, framealpha=0.12, labelcolor="#ddd")
 fig.text(0.012, 0.012, "SubQ's claim plotted as compute = (our dense fit) / (its reported speedup); ratios "
-         "across hardware. IVF-kernel line projects the GPU-measured IVF router (router_gpu_compare) into the "
-         "full kernel; floor = the linear attention term; benign geometry (P1).",
+         "across hardware. IVF-kernel + its dense ref are SINGLE-HEAD (H=8 does not fit at 12M: K alone 12.3 GB); "
+         "measured to 12M (dense ref fitted past 4M). Flat/dense O(n²) curves above are H=8. floor = linear "
+         "attention term; benign geometry (P1).",
          color="#6f6f6f", fontsize=6.3)
 fig.tight_layout(rect=(0, 0.028, 1, 1))
 out = "paper/figures/unified_scaling.png"
 fig.savefig(out, dpi=150, facecolor=fig.get_facecolor())
 print(f"wrote {out}")
-print(f"@12M (ms): dense={dense_law(12e6):.0f} flat={flat_kernel(12e6):.0f} ivf={ivf_kernel(12e6):.0f} "
-      f"floor={floor(12e6):.0f} ; SubQ-claim={sub_ms[2]:.0f}")
+print(f"@12M (ms): dense(H8-fit)={dense_law(12e6):.0f} flat(H8)={flat_kernel(12e6):.0f} "
+      f"ivf-MEASURED(H1)={ivf_total[-1]:.0f} floor={floor(12e6):.0f} ; SubQ-claim={sub_ms[2]:.0f}")
 
 
 if __name__ == "__main__":

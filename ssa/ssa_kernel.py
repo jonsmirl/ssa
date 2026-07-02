@@ -58,6 +58,57 @@ def block_route(q, k, block=BLOCK, top_c=8, local=1, routing="cumulant"):
     return kv_num, kv_idx, sel
 
 
+def block_route_budget(q, k, block=BLOCK, budget_frac=0.25, top_c=None, local=1,
+                       beta=2.0, edgeworth=False, n_real=None):
+    """Budget-fraction generalization of block_route with gemma_ssa's routing semantics, for the
+    real-model flex swap. Per query-block i: keep the top `ceil(budget_frac·i)` (or `top_c`) causally-past
+    key-blocks by the cumulant score ⟨q̄,μ⟩ + ½β⟨q̄²,σ²⟩ (+ β²/6·⟨q̄³,m3⟩ if edgeworth), always OR in the
+    own block + `local` predecessors, and stay block-causal. `n_real` masks pad keys out of block stats
+    (the caller pads n up to a block multiple for FlexAttention). The ONLY difference from the analytic
+    _selection_mask is query-BLOCK granularity (queries in a block share their selection) — the effect the
+    swap measures. Returns (kv_num (B,H,nb) int32, kv_idx (B,H,nb,nb) int32, sel bool)."""
+    B, H, n, d = q.shape
+    nb = n // block
+    n_real = n_real or n
+    kb = k.view(B, H, nb, block, d).float()
+    qb = q.view(B, H, nb, block, d).float().mean(3)                  # query-block summary (mean)
+    if n_real < n:                                                   # pad-aware key stats
+        pos = torch.arange(n, device=q.device).view(1, 1, nb, block, 1)
+        valid = (pos < n_real).float()
+        cnt = valid.sum(3).clamp(min=1.0)
+        mu = (kb * valid).sum(3) / cnt
+        cen = (kb - mu.unsqueeze(3)) * valid
+        var = (cen * cen).sum(3) / cnt
+        m3 = (cen ** 3).sum(3) / cnt
+    else:
+        mu = kb.mean(3)
+        var = kb.var(3, unbiased=False)
+        m3 = ((kb - mu.unsqueeze(3)) ** 3).mean(3)
+    r = (torch.einsum('bhqd,bhcd->bhqc', qb, mu)
+         + 0.5 * beta * torch.einsum('bhqd,bhcd->bhqc', qb * qb, var))
+    if edgeworth:
+        r = r + (beta ** 2 / 6.0) * torch.einsum('bhqd,bhcd->bhqc', qb ** 3, m3)
+    qi = torch.arange(nb, device=q.device)
+    routable = qi[:, None] > qi[None, :]                            # key block strictly before query block
+    r = r.masked_fill(~routable[None, None], float("-inf"))
+    nvis = routable.sum(-1)                                          # = i for query block i
+    keep = torch.full_like(nvis, top_c) if top_c is not None \
+        else torch.clamp((budget_frac * nvis.float()).ceil().long(), min=1)
+    top = max(1, min(int(keep.max().item()), nb))
+    sel = torch.zeros(B, H, nb, nb, dtype=torch.bool, device=q.device)
+    idx = r.topk(top, dim=-1).indices                              # (B,H,nb,top)
+    ranks = torch.arange(top, device=q.device)
+    keep_mask = ranks[None, :] < keep[:, None]                      # (nb,top): honor per-query-block budget
+    sel.scatter_(-1, idx, keep_mask[None, None].expand(B, H, nb, top))
+    causal = qi[:, None] >= qi[None, :]
+    for L in range(local + 1):                                      # own block + `local` predecessors
+        sel |= ((qi[:, None] - L == qi[None, :])[None, None] & causal[None, None])
+    sel &= causal[None, None]
+    kv_num = sel.sum(-1).to(torch.int32)
+    kv_idx = torch.argsort(sel.int(), dim=-1, descending=True, stable=True).to(torch.int32)
+    return kv_num, kv_idx, sel
+
+
 def ssa_flex(q, k, v, block=BLOCK, top_c=8, local=1, routing="cumulant"):
     """Full SSA inference: route -> sparse BlockMask -> fused block-sparse attention."""
     kv_num, kv_idx, _ = block_route(q, k, block, top_c, local, routing)
@@ -83,6 +134,7 @@ def _time(fn, *a, reps=8):
 def benchmark_speed():
     print("\n[1] WALL-CLOCK speedup vs dense FlashAttention (H=8, d=64, fp16, top_c=8 blocks + local)")
     print(f"  {'n (ctx)':>9} {'dense (ms)':>11} {'SSA (ms)':>9} {'speedup':>8} {'attn frac':>10}")
+    rows = []
     for n in (4096, 8192, 16384, 32768, 65536, 131072, 262144):
         q = torch.randn(1, 8, n, 64, device=DEV, dtype=torch.float16)
         k = torch.randn_like(q); v = torch.randn_like(q)
@@ -92,7 +144,9 @@ def benchmark_speed():
         nb = n // BLOCK
         frac = sel.sum(-1).float().mean().item() / ((nb + 1) / 2)
         print(f"  {n:>9} {td:>11.2f} {ts:>9.2f} {td/ts:>7.1f}x {frac*100:>9.1f}%")
+        rows.append({"n": n, "dense_ms": td, "ssa_ms": ts, "speedup": td / ts})
         del q, k, v
+    return rows
 
 
 @torch.no_grad()
@@ -127,11 +181,22 @@ def benchmark_needle(top_c=4):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default="", help="write the measured speed table to this JSON "
+                    "(e.g. paper/figures/kernel_speed_measured.json — the figure's data source)")
+    args = ap.parse_args()
     torch.manual_seed(0)
     print("=" * 84)
     print("A GENUINE SUBQUADRATIC SSA KERNEL — measured wall-clock, not asserted FLOPs")
     print("=" * 84)
-    benchmark_speed()
+    rows = benchmark_speed()
+    if args.out:
+        import json
+        import os
+        os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+        json.dump(rows, open(args.out, "w"), indent=2)
+        print(f"\nwrote {args.out}")
     benchmark_needle()
     print("\n" + "=" * 84)
     print("  The fused block-sparse kernel turns O(n·k) into a MEASURED speedup that grows with context")

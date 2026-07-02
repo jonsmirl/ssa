@@ -1,0 +1,300 @@
+{
+  "meta": {
+    "model": "Qwen/Qwen2.5-0.5B",
+    "block": 128,
+    "beta": 2.0,
+    "gpu": "RTX 4080 16GB",
+    "torch": "2.10.0+cu128",
+    "seed": 0,
+    "lm_loss_max_len": 4096,
+    "note": "dense baseline = stock SDPA; flex = fused kernel swap; \u226565K under YaRN \u00d74 (rope tag); speedup compares dense vs SSA at equal n and rope only"
+  },
+  "rows": [
+    {
+      "impl": "dense",
+      "n": 8192,
+      "budget": 1.0,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8469,
+      "prefill_ms": 124.76,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "impl": "analytic",
+      "n": 8192,
+      "budget": 1.0,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 2332.95,
+      "peak_mem_gb": 10.659
+    },
+    {
+      "impl": "analytic",
+      "n": 8192,
+      "budget": 0.25,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 0.6667,
+      "lm_loss": 3.8537,
+      "prefill_ms": 3479.73,
+      "peak_mem_gb": 10.659
+    },
+    {
+      "impl": "analytic",
+      "n": 8192,
+      "budget": 0.12,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 0.7778,
+      "lm_loss": 3.8537,
+      "prefill_ms": 3162.19,
+      "peak_mem_gb": 10.659
+    },
+    {
+      "impl": "flex",
+      "n": 8192,
+      "budget": 1.0,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 163.19,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "impl": "flex",
+      "n": 8192,
+      "budget": 0.25,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 130.13,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "impl": "flex",
+      "n": 8192,
+      "budget": 0.12,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 130.4,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "impl": "flex",
+      "n": 8192,
+      "budget": 0.06,
+      "rope": "native",
+      "niah_acc": 0.8889,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 125.12,
+      "peak_mem_gb": 1.407
+    },
+    {
+      "impl": "dense",
+      "n": 16384,
+      "budget": 1.0,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8469,
+      "prefill_ms": 329.07,
+      "peak_mem_gb": 1.807
+    },
+    {
+      "impl": "flex",
+      "n": 16384,
+      "budget": 1.0,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 410.51,
+      "peak_mem_gb": 1.807
+    },
+    {
+      "impl": "flex",
+      "n": 16384,
+      "budget": 0.25,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 295.46,
+      "peak_mem_gb": 1.807
+    },
+    {
+      "impl": "flex",
+      "n": 16384,
+      "budget": 0.12,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 281.22,
+      "peak_mem_gb": 1.807
+    },
+    {
+      "impl": "flex",
+      "n": 16384,
+      "budget": 0.06,
+      "rope": "native",
+      "niah_acc": 0.8889,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 271.29,
+      "peak_mem_gb": 1.807
+    },
+    {
+      "impl": "dense",
+      "n": 32768,
+      "budget": 1.0,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8469,
+      "prefill_ms": 912.59,
+      "peak_mem_gb": 2.609
+    },
+    {
+      "impl": "flex",
+      "n": 32768,
+      "budget": 1.0,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 1103.25,
+      "peak_mem_gb": 2.609
+    },
+    {
+      "impl": "flex",
+      "n": 32768,
+      "budget": 0.25,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 0.7778,
+      "lm_loss": 3.8537,
+      "prefill_ms": 689.01,
+      "peak_mem_gb": 2.609
+    },
+    {
+      "impl": "flex",
+      "n": 32768,
+      "budget": 0.12,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 0.6667,
+      "lm_loss": 3.8537,
+      "prefill_ms": 599.58,
+      "peak_mem_gb": 2.609
+    },
+    {
+      "impl": "flex",
+      "n": 32768,
+      "budget": 0.06,
+      "rope": "native",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8537,
+      "prefill_ms": 567.06,
+      "peak_mem_gb": 2.609
+    },
+    {
+      "impl": "dense",
+      "n": 65536,
+      "budget": 1.0,
+      "rope": "yarn4",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8752,
+      "prefill_ms": 2755.44,
+      "peak_mem_gb": 4.211
+    },
+    {
+      "impl": "flex",
+      "n": 65536,
+      "budget": 1.0,
+      "rope": "yarn4",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8764,
+      "prefill_ms": 3043.59,
+      "peak_mem_gb": 4.211
+    },
+    {
+      "impl": "flex",
+      "n": 65536,
+      "budget": 0.12,
+      "rope": "yarn4",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8764,
+      "prefill_ms": 1282.39,
+      "peak_mem_gb": 4.211
+    },
+    {
+      "impl": "flex",
+      "n": 65536,
+      "budget": 0.06,
+      "rope": "yarn4",
+      "niah_acc": 0.7778,
+      "niah2_acc": 0.7778,
+      "lm_loss": 3.8764,
+      "prefill_ms": 1164.6,
+      "peak_mem_gb": 4.211
+    },
+    {
+      "impl": "dense",
+      "n": 131072,
+      "budget": 1.0,
+      "rope": "yarn4",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8752,
+      "prefill_ms": 9326.31,
+      "peak_mem_gb": 7.417
+    },
+    {
+      "impl": "flex",
+      "n": 131072,
+      "budget": 1.0,
+      "rope": "yarn4",
+      "niah_acc": 1.0,
+      "niah2_acc": 1.0,
+      "lm_loss": 3.8764,
+      "prefill_ms": 11264.74,
+      "peak_mem_gb": 7.417
+    },
+    {
+      "impl": "flex",
+      "n": 131072,
+      "budget": 0.12,
+      "rope": "yarn4",
+      "niah_acc": 0.8889,
+      "niah2_acc": 0.4444,
+      "lm_loss": 3.8764,
+      "prefill_ms": 3218.93,
+      "peak_mem_gb": 7.417
+    },
+    {
+      "impl": "flex",
+      "n": 131072,
+      "budget": 0.06,
+      "rope": "yarn4",
+      "niah_acc": 1.0,
+      "niah2_acc": 0.7778,
+      "lm_loss": 3.8764,
+      "prefill_ms": 2707.24,
+      "peak_mem_gb": 7.417
+    }
+  ]
+}

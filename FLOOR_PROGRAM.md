@@ -25,18 +25,36 @@ floor, and SubQ's claim) and `router_gpu_compare.png` (the measured GPU router).
 - **The floor itself is set by geometry and crushed by co-training** (25%→0.4%). So the two multiplicative
   levers — lower the floor (co-train) and close the gap (IVF router) — *both* work, on benign geometry.
 
+## P6 — the IVF router wired into the kernel, measured end-to-end to 12M (`ivf_kernel.py`, `ivf_decode.py`)
+The isolation caveat is retired. The IVF router now emits the `from_kv_blocks` contract directly and drives a
+full FlexAttention forward (`ssa_flex_ivf`), built with `compute_q_blocks=False` so the dense `(nb,nb+1)`
+transpose — 38.7 GB at nb=98,304 — is skipped. **Measured single-head, to 12M, on the 16 GB card:**
+
+| n | router (ms) | maskbuild (ms) | attention=floor (ms) | total (ms) | gap to floor | peak |
+|---|---|---|---|---|---|---|
+| 1M | 13.5 | 0.002 | 3.2 | 16.1 | 5.0× | 0.55 GB |
+| 4M | 36.4 | 0.003 | 13.5 | 52.0 | 3.9× | 2.18 GB |
+| **12M** | **101.4** | **0.003** | **47.5** | **139.5** | **2.9×** | **6.55 GB** |
+
+The projected 40.7 s maskbuild at 12M is now **sub-millisecond**; the gap to the floor is a *measured* 2.9×
+(was a 128× projection for the flat kernel). The standalone router sweep also now runs to **12M (94 ms; flat
+OOMs at 8M and 12M)**. Decode (`ivf_decode.py`): the IVF-routed step is **flat in n** (~0.53 ms, 1M→12M) vs a
+dense step's growing prefix read (2.6→29.6 ms) — **55× at 12M**, both measured.
+
 ## Honest scope
-- The IVF router is now **measured on the GPU** (`router_gpu_compare.py`, faiss-gpu, no transfer): it runs
-  linearly to **8M at 64 ms** — the only router past the flat router's memory wall (the single-head GEMM OOMs
-  at 8M; the kernel's real `block_route` OOMs at ~1M). What remains extrapolated is the **8M→12M step** and the
-  **full-kernel** integration (the IVF was timed as a router in isolation, not yet
-  wired into `ssa_flex`); both on **benign** geometry. Adversarial / multi-hop geometry breaks the benign
-  assumption (the P1 50% floor; the SubQ MRCR sag).
+- The end-to-end 12M result is **single-head** (H=8 does not fit — K alone is 12.3 GB) and on **synthetic
+  random keys**, so it is a **speed** result; selection quality is the P1/P3/P4 story, on **benign** geometry.
+  Adversarial / multi-hop geometry breaks the benign assumption (the P1 50% floor; the SubQ MRCR sag, now
+  reproduced by `multihop_analysis.py`). What remains: **multi-head, real-model keys** at the 12M endpoint.
+- The decode index is add-only (no quantizer retrain) — valid over the measured 128 steps; a serving loop
+  retrains every R blocks as centroids drift.
 - The treecode wins raw selection cost but its wall-clock constant is the known blocker; faiss-ivf is the
-  pragmatic choice. A fused faiss-gpu (or treecode) kernel + a real ≥40 GB-GPU 12M run is the next step.
+  pragmatic choice and the one now wired in. A **multi-head, real-model ≥40 GB-GPU 12M run** is the next step.
 
 ## Tie to the SubQ assessment
-SubQ's "1,000× at 12M" needs both pieces this program demonstrates in projection: a **floor-lowering
-training stage** (their RL ≈ our co-training, 60×) **and** a **sub-linear indexer** (≈ our IVF router,
-reaching the floor) — and both only on **benign geometry**. So the claim is *achievable in principle under
-exactly the benign-geometry condition the floor analysis names* — not refuted, pinned.
+SubQ's "1,000× at 12M" needs both pieces this program demonstrates: a **floor-lowering training stage** (their
+RL ≈ our co-training, 60×) **and** a **sub-linear indexer** (≈ our IVF router). The second is no longer a
+projection — it drives a **live kernel to a measured 2.9× of the floor at 12M** — and both hold only on
+**benign geometry**. So the claim is *achievable in practice on one GPU under exactly the benign-geometry
+condition the floor analysis names* — not refuted, pinned (and the geometry condition is load-bearing: the
+multi-hop measurement shows the chain collapsing off it).

@@ -3,7 +3,7 @@ The kappa-sweep driver: frozen-swap SSA quality-vs-budget on a real model. RESUM
 truncated GPU window still yields the curve. This is the script the GPU hands off to:
 
     1) smoke gate   — kappa=100% must reproduce the pre-swap dense forward (fail-fast: catches a broken
-                      512-dim / K=V / QK-norm handling on Gemma's full layers before wasting the window);
+                      256-dim / K=V / QK-norm handling on Gemma's full layers before wasting the window);
     2) kappa sweep  — for each (context length, budget) measure NIAH accuracy (the load-bearing signal)
                       and LM loss (the weak, local-window-dominated signal), writing a checkpoint after
                       every cell so a re-run skips finished work.
@@ -27,7 +27,7 @@ import json
 import time
 import argparse
 
-from ssa.gemma_ssa_eval import niah_accuracy, lm_loss
+from ssa.gemma_ssa_eval import niah_accuracy, lm_loss, two_hop_accuracy
 
 # a small held-out real-text set for the LM-loss signal (distinct registers, no incidental needles)
 LM_TEXTS = [
@@ -85,7 +85,8 @@ def smoke_gate(model, tok, block, device, route_full_only=True):
 
 
 def sweep(model, tok, lengths, budgets, blocks, depths, trials, out, device,
-          max_new=12, route_full_only=True, edgeworth=False, beta=2.0, dense_layers=()):
+          max_new=12, route_full_only=True, edgeworth=False, beta=2.0, dense_layers=(),
+          twohop_trials=3):
     from ssa import gemma_ssa as G
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     rows = {}
@@ -98,22 +99,39 @@ def sweep(model, tok, lengths, budgets, blocks, depths, trials, out, device,
         json.dump({"rows": sorted(rows.values(), key=lambda r: (r["n"], r.get("block", 256), -r["budget"]))},
                   open(out, "w"), indent=2)
 
+    def set_cfg(blk, b):
+        G.CFG = G.SSAConfig(block=blk, budget_frac=b, route_full_only=route_full_only,
+                            edgeworth=edgeworth, beta=beta, dense_layers=dense_layers)
+
     for n in sorted(lengths):                       # cheapest length first -> a full curve lands early
         for blk in blocks:
             for b in budgets:                       # budgets passed 1.0-first (dense ref before sparse)
                 if (n, blk, b) in rows:
-                    print(f"  [skip] n={n} block={blk} budget={b}", flush=True)
+                    r = rows[(n, blk, b)]
+                    if twohop_trials and "niah2_acc" not in r:   # backfill only the missing metric
+                        set_cfg(blk, b)
+                        r["niah2_acc"] = round(two_hop_accuracy(model, tok, n, trials=twohop_trials,
+                                                                device=device), 4)
+                        r["niah2_trials"] = twohop_trials
+                        save()
+                        print(f"  [backfill 2hop] n={n} block={blk} budget={b} niah2={r['niah2_acc']:.3f}",
+                              flush=True)
+                    else:
+                        print(f"  [skip] n={n} block={blk} budget={b}", flush=True)
                     continue
-                G.CFG = G.SSAConfig(block=blk, budget_frac=b, route_full_only=route_full_only,
-                                    edgeworth=edgeworth, beta=beta, dense_layers=dense_layers)
+                set_cfg(blk, b)
                 t0 = time.time()
                 acc = niah_accuracy(model, tok, n, depths=depths, trials=trials,
                                     max_new_tokens=max_new, device=device)
+                acc2 = (round(two_hop_accuracy(model, tok, n, trials=twohop_trials, device=device), 4)
+                        if twohop_trials else None)
                 ll = lm_loss(model, tok, LM_TEXTS, max_len=n, device=device)
                 rows[(n, blk, b)] = {"n": n, "block": blk, "budget": b, "niah_acc": round(acc, 4),
+                                     "niah2_acc": acc2, "niah2_trials": twohop_trials,
                                      "lm_loss": round(ll, 4), "sec": round(time.time() - t0, 1)}
                 save()
-                print(f"  [done] n={n:>7} block={blk:>4} budget={b:<5} niah={acc:.3f} lm={ll:.4f} "
+                print(f"  [done] n={n:>7} block={blk:>4} budget={b:<5} niah={acc:.3f} "
+                      f"niah2={acc2 if acc2 is None else f'{acc2:.3f}'} lm={ll:.4f} "
                       f"({rows[(n, blk, b)]['sec']}s)", flush=True)
     return rows
 
@@ -133,6 +151,8 @@ def main():
     ap.add_argument("--edgeworth", action="store_true", help="add the 3rd-cumulant (skew) routing term")
     ap.add_argument("--beta", type=float, default=2.0, help="cumulant routing temperature")
     ap.add_argument("--dense-layers", default="", help="comma list of layer_idx to leave dense")
+    ap.add_argument("--twohop-trials", type=int, default=3, help="two-hop chain trials/cell (0 disables)")
+    ap.add_argument("--no-twohop", action="store_true", help="skip the two-hop metric entirely")
     args = ap.parse_args()
 
     lengths = [int(x) for x in args.lengths.split(",")]
@@ -150,18 +170,22 @@ def main():
     ok, _, _ = smoke_gate(model, tok, blocks[0], device, route_full_only)
     if not ok:
         print("ABORT: smoke gate failed — the kappa=100% path does not reproduce dense. Fix the "
-              "full-layer swap before sweeping (likely the 512-dim/K=V or QK-norm handling).")
+              "full-layer swap before sweeping (likely the 256-dim/K=V or QK-norm handling).")
         return
 
     print(f"  routing: edgeworth={args.edgeworth} beta={args.beta} dense_layers={dense_layers}", flush=True)
+    twohop_trials = 0 if args.no_twohop else args.twohop_trials
     rows = sweep(model, tok, lengths, budgets, blocks, depths, args.niah_trials,
                  args.out, device, route_full_only=route_full_only,
-                 edgeworth=args.edgeworth, beta=args.beta, dense_layers=dense_layers)
+                 edgeworth=args.edgeworth, beta=args.beta, dense_layers=dense_layers,
+                 twohop_trials=twohop_trials)
 
-    print("\n=== kappa-sweep: NIAH accuracy (headline) + LM loss vs (block, budget) ===")
-    print(f"{'n':>8} {'block':>6} {'budget':>7} {'NIAH':>7} {'LM loss':>9}")
+    print("\n=== kappa-sweep: NIAH (single) + 2-hop (chain) + LM loss vs (block, budget) ===")
+    print(f"{'n':>8} {'block':>6} {'budget':>7} {'NIAH':>7} {'2hop':>7} {'LM loss':>9}")
     for r in sorted(rows.values(), key=lambda r: (r["n"], r.get("block", 256), -r["budget"])):
-        print(f"{r['n']:>8} {r.get('block', 256):>6} {r['budget']:>7.2f} {r['niah_acc']:>7.3f} {r['lm_loss']:>9.4f}")
+        n2 = r.get("niah2_acc")
+        print(f"{r['n']:>8} {r.get('block', 256):>6} {r['budget']:>7.2f} {r['niah_acc']:>7.3f} "
+              f"{'—' if n2 is None else f'{n2:>7.3f}'} {r['lm_loss']:>9.4f}")
     print(f"\nwrote {args.out}")
 
 
