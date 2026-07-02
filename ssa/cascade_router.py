@@ -21,6 +21,7 @@ the untouched baseline this is compared against. faiss stays outside compiled re
 Run:  python3 -m ssa.cascade_router                 # -> paper/figures/ccc_kernel.json
 """
 from __future__ import annotations
+import time
 import torch
 from torch.nn.attention.flex_attention import BlockMask
 from ssa.ssa_kernel import BLOCK, _causal_mod, _flex, dense
@@ -433,5 +434,129 @@ def ccc_prefill(q, k, v, block=BLOCK, certify=False, **cfg):
     return out, kv_num, kv_idx, cert
 
 
+# ---------------------------------------------------------------------------------------------------
+# benchmark: the selector-share decomposition
+# ---------------------------------------------------------------------------------------------------
+
+def _gen(n, d, geometry, g):
+    """(1,1,n,d) q,k,v. 'random' = the speed rig; 'clustered' = where certificates fire."""
+    if geometry == "random":
+        q = torch.empty(1, 1, n, d, device=DEV, dtype=torch.float16)
+        k = torch.empty_like(q); v = torch.empty_like(q)
+        for t in (q, k, v):
+            t.view(-1).normal_(generator=g)
+        return q, k, v
+    nb4 = n // 32
+    nc = max(8, int(nb4 ** 0.5))
+    ctr = torch.randn(nc, d, generator=g, device=DEV)
+    a = torch.randint(0, nc, (nb4,), generator=g, device=DEV)
+    k = (ctr[a].repeat_interleave(32, 0) + 0.1 * torch.randn(n, d, generator=g, device=DEV)).half()
+    nbq = n // BLOCK
+    qc = ctr[torch.randint(0, nc, (nbq,), generator=g, device=DEV)]
+    q = (qc.repeat_interleave(BLOCK, 0) + 0.2 * torch.randn(n, d, generator=g, device=DEV)).half()
+    v = torch.randn(n, d, generator=g, device=DEV, dtype=torch.float16)
+    return q.view(1, 1, n, d), k.view(1, 1, n, d), v.view(1, 1, n, d)
+
+
+def _sync_ms(fn):
+    torch.cuda.synchronize(); s = time.time(); r = fn(); torch.cuda.synchronize()
+    return (time.time() - s) * 1000, r
+
+
+@torch.no_grad()
+def decompose_ccc(n, d=64, geometry="random", certify=True, chunk_blocks=1024, g=None, attn_reps=4, **cfg):
+    """Single-head streaming decomposition: append (summaries+index-maintain) / route (search+cert+outlier)
+    / maskbuild / attention (the floor). selector_share = everything but attention. One streaming pass."""
+    nb = n // BLOCK
+    q, k, v = _gen(n, d, geometry, g)
+    torch.cuda.reset_peak_memory_stats()
+    cc = CausalCascade(d, block=BLOCK, n_hint=n, chunk_blocks=chunk_blocks, **cfg)
+    W = min(cc.top_c + cc.local + 1 + cc.outlier_cap, nb)
+    kv_num = torch.empty(1, 1, nb, dtype=torch.int32, device=DEV)
+    kv_idx = torch.zeros(1, 1, nb, W, dtype=torch.int32, device=DEV)
+    cb = chunk_blocks * BLOCK
+    append_ms = route_ms = 0.0
+    certs, rounds = [], []
+    rebuilds = 0
+    for t in range(0, n, cb):
+        e = min(n, t + cb)
+        cbr = cc.committed_at_rebuild
+        a_ms, _ = _sync_ms(lambda: cc.append(k[0, 0, t:e]))
+        r_ms, out = _sync_ms(lambda: cc.route(q[0, 0, t:e], qpos=t, certify=certify))
+        kn, ki, cert, st = out
+        if cc.committed_at_rebuild != cbr and t > 0:
+            rebuilds += 1
+        kv_num[0, 0, t // BLOCK:e // BLOCK] = kn
+        kv_idx[0, 0, t // BLOCK:e // BLOCK] = ki
+        append_ms += a_ms; route_ms += r_ms
+        if cert is not None:
+            certs.append(cert.float().mean().item())
+            rounds.append(st["rounds"].float().mean().item())
+    mb_ms, bm = _sync_ms(lambda: _build_mask(kv_num, kv_idx, n, BLOCK))
+    at_ms = _t_attn(q, k, v, bm, attn_reps)
+    selector = append_ms + route_ms + mb_ms
+    total = selector + at_ms
+    peak = torch.cuda.max_memory_allocated() / 1e9
+    del q, k, v, kv_num, kv_idx, bm, cc
+    torch.cuda.empty_cache()
+    import numpy as np
+    return {"n": n, "nb": nb, "geometry": geometry, "certify": certify, "rebuilds": rebuilds,
+            "append_ms": append_ms, "route_ms": route_ms, "maskbuild_ms": mb_ms, "attention_ms": at_ms,
+            "total_ms": total, "selector_ms": selector,
+            "selector_share": selector / total if total else None,
+            "amortized_share_L24": selector / (selector + 24 * at_ms) if at_ms else None,
+            "cert_rate": float(np.mean(certs)) if certs else None,
+            "mean_rounds": float(np.mean(rounds)) if rounds else None, "peak_mem_gb": peak}
+
+
+def _t_attn(q, k, v, bm, reps):
+    for _ in range(2):
+        _flex(q, k, v, block_mask=bm)
+    torch.cuda.synchronize(); s = time.time()
+    for _ in range(reps):
+        _flex(q, k, v, block_mask=bm)
+    torch.cuda.synchronize()
+    return (time.time() - s) / reps * 1000
+
+
+def main():
+    import argparse
+    import json
+    import numpy as np
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--ns", type=int, nargs="+", default=[262144, 1048576, 4194304, 8388608, 12582912])
+    ap.add_argument("--geometry", default="clustered", choices=["random", "clustered"])
+    ap.add_argument("--no-cert", action="store_true")
+    ap.add_argument("--out", default="paper/figures/ccc_kernel.json")
+    args = ap.parse_args()
+    torch._dynamo.config.cache_size_limit = 64
+    g = torch.Generator(device=DEV).manual_seed(0)
+    decompose_ccc(262144, geometry=args.geometry, certify=not args.no_cert, chunk_blocks=1024, g=g)  # warm compile
+    print("=" * 100)
+    print(f"THE CERTIFIED CAUSAL CASCADE — selector-share decomposition, single-head ({args.geometry} keys)")
+    print("=" * 100)
+    print(f"  {'n':>10} {'append':>8} {'route':>8} {'maskbld':>8} {'attn':>8} {'total':>9} "
+          f"{'sel.share':>9} {'amort/L24':>9} {'cert':>6} {'peak':>6}")
+    rows = []
+    for n in args.ns:
+        r = decompose_ccc(n, geometry=args.geometry, certify=not args.no_cert,
+                          chunk_blocks=1024, g=g, attn_reps=4 if n <= (1 << 21) else 2)
+        rows.append(r)
+        cr = f"{r['cert_rate']:.2f}" if r["cert_rate"] is not None else "—"
+        print(f"  {n:>10} {r['append_ms']:>8.1f} {r['route_ms']:>8.1f} {r['maskbuild_ms']:>8.2f} "
+              f"{r['attention_ms']:>8.1f} {r['total_ms']:>9.1f} {r['selector_share']:>9.3f} "
+              f"{r['amortized_share_L24']:>9.3f} {cr:>6} {r['peak_mem_gb']:>6.2f}", flush=True)
+        import os
+        os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+        json.dump({"meta": {"H": 1, "d": 64, "block": BLOCK, "sub": 32, "geometry": args.geometry,
+                            "certify": not args.no_cert, "seed": 0, "gpu": "RTX 4080 16GB",
+                            "note": "single-head; selector_share = (append+route+maskbuild)/total; "
+                                    "amortized_share_L24 = selector/(selector+24·attention) is an ARITHMETIC "
+                                    "composition on the single-head rig (real multi-layer = Qwen leg); "
+                                    "certificates certify selector==routing-metric top-κ, not attention error"},
+                   "rows": rows}, open(args.out, "w"), indent=2)
+    print(f"  wrote {args.out}")
+
+
 if __name__ == "__main__":
-    main()   # noqa: F821  (decompose_ccc + main added in Phase D)
+    main()

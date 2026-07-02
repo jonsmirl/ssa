@@ -43,15 +43,16 @@ def cotrained(lam, n_clusters=64, cs=128, d=64, noise=0.20, seed=0):
     return _norm(K), _norm(Q)
 
 
-def kappa_min(K, Q, order, target=0.90, min_dist=0, B=None, seed=0):
-    """Smallest budget_abs κ with recall ≥ target (returns (κ_min, recall_there, recall_at_max))."""
+def kappa_min(K, Q, order, target=0.90, min_dist=0, B=None, seed=0, K_route=None, Q_route=None):
+    """Smallest budget_abs κ with recall ≥ target (returns (κ_min, recall_there, recall_at_max)).
+    K_route/Q_route (optional) cluster+rank in a routing representation (dense target stays full-space)."""
     n = len(K)
     B = B or max(8, int(round(n ** 0.5)))
     grid = sorted(set(int(n * f) for f in (0.004, 0.008, 0.016, 0.03, 0.06, 0.12, 0.25, 0.5)))
     last = 0.0
     for kap in grid:
         rec, tot = route_recall(K, Q, B, budget_abs=kap, order=order, min_dist=min_dist,
-                                max_queries=200, seed=seed)
+                                max_queries=200, seed=seed, K_route=K_route, Q_route=Q_route)
         last = rec
         if rec >= target and tot > 0:
             return kap, rec, None
