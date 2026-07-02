@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "block": 128,
+    "sub": 32,
+    "kind": "quality",
+    "seed": 0
+  },
+  "rows": [
+    {
+      "n": 65536,
+      "regime": "benign",
+      "c": 0,
+      "trials": 40,
+      "ivf": 1.0,
+      "+subblock": 1.0,
+      "+outlier": 1.0
+    },
+    {
+      "n": 65536,
+      "regime": "isolated",
+      "c": 0,
+      "trials": 40,
+      "ivf": 0.0,
+      "+subblock": 0.05,
+      "+outlier": 0.05
+    },
+    {
+      "n": 65536,
+      "regime": "spike",
+      "c": 2,
+      "trials": 40,
+      "ivf": 0.225,
+      "+subblock": 0.375,
+      "+outlier": 1.0
+    },
+    {
+      "n": 65536,
+      "regime": "spike",
+      "c": 4,
+      "trials": 40,
+      "ivf": 0.35,
+      "+subblock": 1.0,
+      "+outlier": 1.0
+    },
+    {
+      "n": 65536,
+      "regime": "spike",
+      "c": 8,
+      "trials": 40,
+      "ivf": 1.0,
+      "+subblock": 1.0,
+      "+outlier": 1.0
+    }
+  ],
+  "fire_rate": [
+    {
+      "n": 1048576,
+      "geometry": "clustered",
+      "cert_rate": 0.890869140625,
+      "mean_rounds": 0.5213623046875
+    },
+    {
+      "n": 1048576,
+      "geometry": "random",
+      "cert_rate": 0.5,
+      "mean_rounds": 1.0
+    }
+  ]
+}

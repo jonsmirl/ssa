@@ -220,7 +220,8 @@ def bandb_budget(K, Q, B, budget_frac=None, budget_abs=None, causal=True, qpos=N
 
 
 def route_recall(K, Q, B, budget_frac=None, budget_abs=None, order="relevance",
-                 causal=True, qpos=None, max_queries=300, seed=0, min_dist=0):
+                 causal=True, qpos=None, max_queries=300, seed=0, min_dist=0,
+                 K_route=None, Q_route=None):
     """APPROXIMATE cluster-routing selector done RIGHT: rank clusters by a RELEVANCE score (not the
     conservative admissible bound, which inflates diffuse clusters), open the top ones until the budget
     is spent, return recall vs the dense top-1. `order`:
@@ -228,37 +229,42 @@ def route_recall(K, Q, B, budget_frac=None, budget_abs=None, order="relevance",
       'cumulant'  : s_b = ⟨q, μ_b⟩ + ½ qᵀ Σ_b q          (clue #1: + the second cumulant / Laplace log-sum-exp)
       'ub'        : s_b = ⟨q, μ_b⟩ + ‖q‖ R_b             (the admissible upper bound — right for LOSSLESS, not this)
     `min_dist > 0` counts only long-RANGE targets. This is the honest test of whether the geometry
-    supports cheap APPROXIMATE long-range retrieval."""
+    supports cheap APPROXIMATE long-range retrieval.
+    `K_route`/`Q_route` (a lower-dim ROUTING representation): if given, clustering AND cluster ranking
+    happen in that space, while the dense TARGET and within-cluster refinement stay in full (K,Q) space —
+    the κ_min-in-routing-space measurement (does a projection preserve which clusters to open?)."""
     rng = np.random.default_rng(seed)
     n = len(K)
-    members, mu, R = kmeans(K, B, seed=seed)
+    Kr = K if K_route is None else K_route                          # routing representation for clustering/ranking
+    Qr = Q if Q_route is None else Q_route
+    members, mu, R = kmeans(Kr, B, seed=seed)
     members = [np.asarray(m) for m in members]
     Sig = None
     if order == "cumulant":
-        Sig = np.zeros((B, K.shape[1], K.shape[1]), np.float32)
+        Sig = np.zeros((B, Kr.shape[1], Kr.shape[1]), np.float32)
         for b in range(B):
             if len(members[b]) > 1:
-                Sig[b] = np.cov(K[members[b]].T).astype(np.float32)
+                Sig[b] = np.cov(Kr[members[b]].T).astype(np.float32)
     if qpos is None:
         lo = max(64, n // 4)
         qpos = rng.choice(np.arange(lo, n), min(max_queries, n - lo), replace=False)
     hits, tot = 0, 0
     for i in qpos:
-        q = Q[i]; qn = float(np.linalg.norm(q))
+        q = Q[i]; qr = Qr[i]; qn = float(np.linalg.norm(qr))
         cand_mask = (np.arange(n) <= i) if causal else np.ones(n, bool)
         ncand = int(cand_mask.sum())
         if ncand < 2:
             continue
-        sc_all = np.where(cand_mask, K @ q, -1e30)
+        sc_all = np.where(cand_mask, K @ q, -1e30)                  # target in FULL space
         tgt = int(sc_all.argmax())
         if min_dist > 0 and (i - tgt) < min_dist:
             continue
         if order == "relevance":
-            s = mu @ q
+            s = mu @ qr
         elif order == "ub":
-            s = mu @ q + qn * R
+            s = mu @ qr + qn * R
         else:
-            s = mu @ q + 0.5 * np.einsum("bij,i,j->b", Sig, q, q)
+            s = mu @ qr + 0.5 * np.einsum("bij,i,j->b", Sig, qr, qr)
         budget = budget_abs if budget_abs is not None else budget_frac * ncand
         sstar, best, cost = -1e30, -1, 0
         for b in np.argsort(s)[::-1]:
