@@ -199,25 +199,28 @@ endpoint still need more than a 16 GB card. Selection quality at long context is
 
 ## The "zero attention" pivot — now measured, and the same prediction sharpens
 
-Whedon's headline pivot is *"we're not a sparse attention company either… we'll be the first to leapfrog
-ourselves"* with **non-attention architectures** ("zero attention" — continuous state, world-model
+Whedon's headline pivot is *"we're not a sparse attention company either… we will be the first people to
+leapfrog ourselves"* with **non-attention architectures** ("zero attention" — continuous state, world-model
 inspiration, "rethink the objective function"). The rig now has a measured probe of that corner
 (`FLOOR_PROGRAM.md` § P8, `fastweight*.py`): small exact fast-weight memories (the DeltaNet/Titans family)
-tested against six machine-checked predictions. Three findings bear directly on SubQ's next model:
+tested against six predictions (five with a machine-checked anchor; the load-bearing one empirical). Three
+findings bear directly on SubQ's next model:
 
 1. **"Drop attention" replaces a function, not a component.** The capacity of a memory is set by its READ
    rule: a contracted linear read `o = S q` is rank-d capped (measured collapse at m≈d); the exponential
-   capacity attention has comes from the *softmax* read (`softmax_capacity`). A zero-attention model keeps
+   capacity that attention has comes from the *softmax* read (`softmax_capacity`, measured to m=512). A zero-attention model keeps
    whatever fixed-state capacity its read rule allows — and pays for separation on the *write* side instead
    of the read side (the search penalty vanishes, which is the real efficiency case for the corner).
 2. **Compression cannot serve query-only relevance — measured.** A needle salient only at read time is lost
    by a surprise-gated fixed memory (recall 0.10) where selection recovers it (1.00). Write-time compression
    commits to what to keep *before the question exists*; NIAH is write-salient (kept), multi-hop / query-only
-   retrieval is not (lost). So the exact NIAH≫MRCR split SubQ already reports is, for this corner,
-   `fold_not_hopfield` + the proved `chain_le_weakest` — a **theorem**, not a training gap.
-3. **Length-robustness forces a growing state.** A fixed memory forgets across a distribution shift
-   (pre-shift recall 0.90→0.10); only a growing (slot-birth) state preserves both regimes — which is why every
-   production "SSM" is really a hybrid with interleaved attention, the very hybrids Whedon dismisses.
+   retrieval is not (lost). This is an *empirical* measurement (no theorem); the multi-hop half of the split
+   is backed by the proved composition bound `chain_le_weakest` (∏ρ ≤ min hop), which the rig also reproduces
+   (measured joint chain 0.15 ≤ ∏ρ 0.25 ≤ min hop 0.49).
+3. **A fold breaks a fixed memory.** A fixed (forgetting-gated) memory fades across a distribution shift
+   (pre-shift recall 0.90→0.10); a growing (slot-birth) state preserves both regimes — one remedy the fold
+   theorem (`fold_not_hopfield`, discontinuity) permits. This is why the leading production long-context SSMs
+   (Nemotron, Jamba, Qwen-Next) are *hybrids* with interleaved attention — the very hybrids Whedon dismisses.
 
 **The sharpened, falsifiable prediction.** SubQ's zero-attention model will lead its benchmark table with
 NIAH/RULER (write-salient, near-perfect) and be **quiet on multi-hop / query-only retrieval at length** — and

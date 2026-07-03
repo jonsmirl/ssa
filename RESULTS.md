@@ -1236,13 +1236,14 @@ have not solved it (explaining the gated access).
 P0–P7 measured the SELECTION corner (route to the few keys that matter, at read time). P8 builds the
 COMPRESSION corner — a fixed- or growing-state memory written at inference time (the Mamba/DeltaNet/Titans
 family, SubQ's "zero attention") — as small EXACT reference implementations (d ≤ 128, no training) and
-measures them against six machine-checked predictions from the companion Lean development
-(`Substrate/Inference/*.lean`, sorry-free). Recall is the standard associative decode (argmax over stored
-value embeddings). These are mechanism measurements, not a trained LM.
+measures them against predictions from the companion Lean development (`Substrate/Inference/*.lean`,
+sorry-free): **five have a machine-checked anchor** (P1, P2, P4, P5, P6); P3 — the load-bearing
+selection/compression split — is a purely empirical prediction with no theorem. Recall is the standard
+associative decode (argmax over stored value embeddings). These are mechanism measurements, not a trained LM.
 
 **P1 — the READ rule sets the capacity class** (`softmax_capacity`, RetrievalMarginRecognition.lean). Over
 the SAME stored pairs, the zero-attention linear read `o = S q` is rank-d capped; a softmax read over the
-same keys is exponential:
+same keys holds far past m=d (measured to m=512; `softmax_capacity` gives the exponential capacity):
 
 | read | m=8 | m=64 | m=128 | m=256 | m=512 |
 |---|---|---|---|---|---|
@@ -1253,8 +1254,10 @@ same keys is exponential:
 Recall collapses near m≈d for the linear read and holds far past it for softmax — capacity is a property
 of the READ, not the stored substrate. This is why "drop attention" replaces a *function*, not a component.
 
-**P2 — the write rule is coherence control** (`capacity_search_tension`, SearchTradeoff.lean). On exactly
-orthogonal keys the delta rule (erase-before-write) is exact to m=d. Under overload (m>d, mild coherence):
+**P2 — the write rule is coherence control** (`capacityBound_antitone`, SearchTradeoff.lean — separation
+raises capacity; the delta rule maintains it). On exactly orthogonal keys the delta rule is exact to m=d
+(so are additive and gated_delta — orthogonality makes any outer-product write exact). Under overload
+(m>d, mild coherence):
 
 | m | additive | delta | gated_delta |
 |---|---|---|---|
@@ -1264,29 +1267,34 @@ orthogonal keys the delta rule (erase-before-write) is exact to m=d. Under overl
 | 256 | 0.22 | **0.25** | 0.18 |
 
 **Honest, nuanced:** the delta rule's advantage is real but *small* on random keys and only in deep overload
-(m≥192); at m≤d additive is already within capacity. The delta rule's decisive wins are elsewhere —
-exactness on orthogonal keys (above) and same-key conflict resolution (P4) — not overload capacity per se.
+(m≥192); at m≤d additive is already within capacity, and on orthogonal keys all three rules are equally exact.
+The delta rule's distinctive win is same-key conflict resolution (P4), not overload capacity per se.
 
-**P3 — write-time vs read-time relevance (the load-bearing result)** (n=512 ≫ d=64):
+**P3 — write-time vs read-time relevance (the load-bearing result; no theorem — empirical)** (n=512, d=64):
 
 | regime | surprise-gated fixed memory | selection (attention) |
 |---|---|---|
 | needle salient **at write time** | 0.95 | 1.00 |
 | needle salient **only at read time** | **0.10** | **1.00** |
 
-**Reading.** A fixed-state memory with a surprise gate keeps a needle whose relevance is decidable at write
-time (0.95); it **cannot** keep a needle that only the read-time query makes relevant (0.10), while selection
-recovers it (1.00). This is the cleanest measured statement of *compression ≠ selection*: the write rule
-cannot keep what the future query has not yet asked for. It is why a zero-attention model will keep posting
-near-perfect NIAH (write-salient) and sag on query-only / multi-hop retrieval.
+**Reading.** The gate keeps only the top-10% of writes by write-time surprise. A needle salient *at write
+time* (an off-distribution key) is in that top tier and is kept (0.95); a needle salient *only at read time*
+is i.i.d. with the background, so its surprise rank is uniform and the gate keeps it with only ~0.1
+probability (hence recall 0.10) — while selection over the full kept stream recovers it (1.00). The mechanism
+is exactly *compression ≠ selection*: the write rule must commit to what to keep *before the question exists*,
+so no write-time signal can retain a needle only the read-time query makes relevant. (The gate keeps ~52 < d=64
+facts, so this is a write-time-commitment failure, not a capacity-overflow one.) It is why a zero-attention
+model will keep posting near-perfect NIAH (write-salient) and sag on query-only / multi-hop retrieval.
 
 **P4 — a same-key conflict needs a tag** (`tag_resolves_conflict`, ContinualLearning.lean). Write one key,
 two values: additive averages (0.42 / 0.25 — neither cleanly), delta keeps only the latest (0.00 / 1.00),
-an episodic tag k⊕bucket recovers **both** (0.95 / 1.00). One map cannot store two values for one key
-(`same_input_conflict_unservable`); the tag makes them distinct keys.
+an episodic tag k⊕bucket (a *salient* tag, scaled to 2× the key norm so the two tagged keys are
+well-separated) recovers **both** (0.95 / 1.00; with a plain unit-norm tag it is 0.60 / 1.00). One map cannot
+store two values for one key (`same_input_conflict_unservable`); the tag makes them distinct keys.
 
-**P5 — a fold forces state growth** (`fold_not_hopfield` + `detectability_is_a_fold`). A mid-stream
-distribution shift (keys rotate to an orthogonal region), pre-shift recall as the post-shift burst grows:
+**P5 — a fold breaks a fixed memory; growth restores it** (`fold_not_hopfield` + `detectability_is_a_fold`).
+A mid-stream distribution shift (keys move to a fresh, near-orthogonal random region), pre-shift recall as
+the post-shift burst grows:
 
 | post-shift writes | fixed (gated) pre-shift | slot-birth pre-shift | slot-birth #slots |
 |---|---|---|---|
@@ -1294,16 +1302,23 @@ distribution shift (keys rotate to an orthogonal region), pre-shift recall as th
 | 48 | 0.40 | 0.75 | 8.7 |
 | 192 | **0.10** | **0.65** | 8.7 |
 
-The bounded fixed memory fades the pre-shift facts (0.90→0.10); the slot-birth memory grows a partition at
-the fold and preserves them (0.65) — length-robustness across a shift **requires** a growing state.
+The fixed baseline here is a *forgetting-gated* memory (gated_delta, decay 0.98): as the post-shift burst
+grows it fades the pre-shift facts (0.90→0.10) — partly the forgetting gate, and, in deep overload
+(204 facts ≫ d=48), capacity. The slot-birth memory grows a partition at the fold and keeps the pre-shift
+slot untouched (0.65). `fold_not_hopfield` proves the fold's selected state is *discontinuous in the driver*,
+so no fixed-energy continuous descent tracks it; growing the state is *one* remedy (a larger fixed state or a
+branch jump are others the theorem doesn't exclude) — and the one measured here.
 
-**P6 — the composition law is architecture-independent** (`chain_le_weakest`, RetrievalMarginRecognition.lean).
-A 2-hop chain through a fast-weight memory: ρ1=0.53, ρ2=0.74, ∏ρ=0.39, measured chain=0.53 — the proved
-bounds hold (∏ρ ≤ chain ≤ min hop). The multi-hop sag the selection rig measured is a theorem for this corner
-too: NIAH≫multi-hop, whichever corner you build.
+**P6 — the composition law** (`chain_le_weakest`, RetrievalMarginRecognition.lean). With per-hop rates
+measured **independently** (each hop its own fresh noisy cue): ρ1=0.51, ρ2=0.49, so the composition
+prediction ∏ρ=0.25. `chain_le_weakest` proves **∏ρ ≤ min hop** (0.25 ≤ 0.49 ✓) — the theorem is about the
+product. The *measured joint chain* (feeding hop-1's noisy output into hop-2) is 0.15 — it tracks ∏ρ and sags
+below it because chaining propagates hop-1's error. So the multi-hop sag the selection rig measured holds
+for this corner too (NIAH≫multi-hop), but the machine-checked part is ∏ρ ≤ min hop, not the measured chain.
 
 **Honest scope.** d ≤ 128 reference implementations, synthetic keys/values, recall via associative decode —
 mechanism measurements, not a trained language model, and no wall-clock claims. The Lean theorems are
-Layer-A structural results (finite-dimensional, idealized); they rule out corners and justify write rules,
-they do not hand you hyperparameters. Five of six predictions reproduced cleanly; P2's overload-capacity
-advantage for the delta rule is weaker than folklore (reported as measured, not tuned to pass).
+Layer-A structural results (finite-dimensional, idealized); they rule out corners and characterize the write
+side, they do not hand you hyperparameters. Five predictions have a machine-checked anchor and reproduced
+(P2's overload-capacity edge for the delta rule is weaker than folklore, reported as measured); P3, the
+load-bearing selection/compression split, is empirical (no theorem).

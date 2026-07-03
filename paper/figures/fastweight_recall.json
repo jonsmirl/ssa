@@ -41,11 +41,12 @@
     },
     {
       "test": "P6",
-      "rho1": 0.525,
-      "rho2": 0.74,
-      "prod": 0.3885,
-      "chain": 0.525,
-      "min_hop": 0.525
+      "rho1": 0.51,
+      "rho2": 0.493,
+      "prod": 0.252,
+      "chain": 0.147,
+      "min_hop": 0.493,
+      "prod_le_min_hop": true
     }
   ]
 }

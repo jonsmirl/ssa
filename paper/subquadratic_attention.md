@@ -529,14 +529,16 @@ $\Leftrightarrow$ shared from a mid layer, preserving single-needle recall while
 
 **The compression corner, measured.** The trilemma has a second corner — a fixed- or growing-state memory
 written at inference time (the "zero attention" / DeltaNet/Titans family). Small exact reference memories,
-measured against machine-checked predictions, place it precisely. The READ rule sets the capacity class: a
-contracted linear read $o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$) while a softmax read over
-the same pairs is exponential — capacity is a property of the read, not the substrate. The load-bearing
-measurement is that **compression $\neq$ selection**: a needle salient only at read time is lost by a
-surprise-gated fixed memory (recall $0.10$) where selection recovers it ($1.00$) — write-time compression
-cannot keep what the future query has not yet made relevant. A distribution shift is a fold that forces the
-state to grow (a fixed memory's pre-shift recall decays $0.90\to0.10$; a slot-birth memory holds $0.65$), and a
-two-hop chain through the memory obeys the proved $\prod\rho \le \text{chain} \le \min$-hop. So the
+measured against Lean predictions, place it. The READ rule sets the capacity class: a contracted linear read
+$o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$) while a softmax read over the same pairs holds
+far past $m=d$ (measured to $m=512$; `softmax_capacity` gives the exponential form) — capacity is a
+property of the read, not the substrate. The load-bearing measurement (empirical, no theorem) is that
+**compression $\neq$ selection**: a needle salient only at read time is lost by a surprise-gated fixed memory
+(recall $0.10$) where selection recovers it ($1.00$) — write-time compression cannot keep what the future
+query has not yet made relevant. A distribution shift is a fold a fixed memory cannot track
+(`fold_not_hopfield`: its pre-shift recall decays $0.90\to0.10$; a growing slot-birth state holds
+$0.65$), and the proved composition bound $\prod\rho \le \min$-hop (`chain_le_weakest`) is reproduced,
+with the measured joint chain sagging below $\prod\rho$. So the
 NIAH-$\gg$-multi-hop split is architecture-independent: it holds whichever corner of the trilemma one builds.
 
 **Routability.** The regularizer (7.2) reduced lossless branch-and-bound selection cost from $26.5\%$ to

@@ -114,24 +114,27 @@ access); if small with the predicted quality split, it is isomorphic to this.
 
 P0–P7 mapped the SELECTION corner of the trilemma; P8 builds the COMPRESSION corner (fixed-/growing-state
 memory written at inference time — the Mamba/DeltaNet/Titans family, SubQ's "zero attention") as small
-exact reference implementations and measures them against six machine-checked predictions from
-`Substrate/Inference/*.lean` (sorry-free). Files: `fastweight{,_capacity,_recall,_shift}.py`.
+exact reference implementations and measures them against six predictions from `Substrate/Inference/*.lean`
+(sorry-free) — **five with a machine-checked anchor**, one (P3) purely empirical. Files:
+`fastweight{,_capacity,_recall,_shift}.py`.
 
 | prediction | Lean anchor | measured |
 |---|---|---|
-| the READ rule sets the capacity class | `softmax_capacity` | linear read collapses at m≈d; softmax over the same pairs is exponential (holds to m=512) ✓ |
-| the write rule is coherence control | `capacity_search_tension` | delta exact on orthogonal keys; only a *small* overload edge on random keys (honest: additive competitive at m≤d) ~ |
-| **write-time vs read-time relevance** | (the selection/compression split) | a read-time-salient needle is LOST by a gated fixed memory (0.10) but recovered by selection (1.00) — **compression ≠ selection** ✓ |
-| a same-key conflict needs a tag | `tag_resolves_conflict` | additive averages, delta keeps latest, tag recovers BOTH (0.95/1.00) ✓ |
-| a fold forces state growth | `fold_not_hopfield` | fixed pre-shift recall 0.90→0.10; slot-birth holds 0.65 by growing the state ✓ |
-| the composition law is architecture-independent | `chain_le_weakest` | 2-hop chain through the memory obeys ∏ρ ≤ chain ≤ min hop ✓ |
+| the READ rule sets the capacity class | `softmax_capacity` | linear read collapses at m≈d; softmax over the same pairs holds to m=512 (theorem: exponential) ✓ |
+| the write rule is coherence control | `capacityBound_antitone` | delta exact on orthogonal keys (so are additive/gated there); a *small* overload edge on random keys — additive competitive at m≤d ~ |
+| **write-time vs read-time relevance** | *(empirical — no theorem)* | a read-time-salient needle is LOST by a gated fixed memory (0.10) but recovered by selection (1.00) — **compression ≠ selection** ✓ |
+| a same-key conflict needs a tag | `tag_resolves_conflict` | additive averages, delta keeps latest, a salient tag recovers BOTH (0.95/1.00; plain tag 0.60/1.00) ✓ |
+| a fold breaks a fixed memory | `fold_not_hopfield` | gated fixed pre-shift recall 0.90→0.10; slot-birth holds 0.65 (growth is one remedy the theorem allows) ✓ |
+| the composition law | `chain_le_weakest` | ∏ρ ≤ min hop (0.25 ≤ 0.49, the theorem); the measured joint chain sags to 0.15 ✓ |
 
 **What it settles.** The read rule sets the capacity class (not the substrate); the write rule is coherence
-control; write-time compression *cannot* serve query-only relevance (the load-bearing result — why NIAH stays
-easy and multi-hop sags for this corner too); episodic tags and a growing state are forced by theorems, not
-optional. The trilemma does not evaporate when you drop attention — it tells you which corner you moved to.
+control; write-time compression *cannot* serve query-only relevance (the load-bearing result, empirical — why
+NIAH stays easy and multi-hop sags for this corner too); episodic tags help and a fixed memory cannot track a
+fold (growth is one remedy). The trilemma does not evaporate when you drop attention — it tells you which
+corner you moved to.
 
 **Tie to the assessment.** SubQ's "zero attention" pivot now has a measured rig and a sharpened falsifiable
 prediction: any write-time-compression model will lead its benchmark table with NIAH/RULER (write-salient)
-and be quiet on multi-hop / query-only retrieval — because for this corner that split is `fold_not_hopfield`
-+ `chain_le_weakest`, a theorem, not a training gap. Pinned, not refuted.
+and be quiet on multi-hop / query-only retrieval — because for this corner the multi-hop sag is the proved
+`chain_le_weakest` (∏ρ ≤ min hop) plus the empirical write-time-commitment failure, not a training gap.
+Pinned, not refuted.
