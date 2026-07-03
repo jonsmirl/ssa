@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "seed": "0..",
+    "decode": "argmax over stored values",
+    "note": "d\u226464 reference memories; the selection baseline is attention over the full kept stream (unbounded memory) \u2014 the read-time-choice control"
+  },
+  "rows": [
+    {
+      "test": "P3",
+      "regime": "write_salient",
+      "n": 512,
+      "d": 64,
+      "gated_fixed": 0.95,
+      "selection": 1.0
+    },
+    {
+      "test": "P3",
+      "regime": "read_salient",
+      "n": 512,
+      "d": 64,
+      "gated_fixed": 0.1,
+      "selection": 1.0
+    },
+    {
+      "test": "P4",
+      "memory": "additive",
+      "recall_v1": 0.425,
+      "recall_v2": 0.25
+    },
+    {
+      "test": "P4",
+      "memory": "delta",
+      "recall_v1": 0.0,
+      "recall_v2": 1.0
+    },
+    {
+      "test": "P4",
+      "memory": "tagged-delta",
+      "recall_v1": 0.95,
+      "recall_v2": 1.0
+    },
+    {
+      "test": "P6",
+      "rho1": 0.525,
+      "rho2": 0.74,
+      "prod": 0.3885,
+      "chain": 0.525,
+      "min_hop": 0.525
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "d": 48,
+    "rule": "gated_delta",
+    "decay": 0.98,
+    "trials": 20,
+    "birth_threshold": 1.1,
+    "note": "d=48 reference memories; recall = associative decode over that regime's values"
+  },
+  "rows": [
+    {
+      "n_post": 8,
+      "fixed_pre": 0.904,
+      "fixed_post": 0.975,
+      "fixed_slots": 1.0,
+      "birth_pre": 0.946,
+      "birth_post": 0.969,
+      "birth_slots": 8.35
+    },
+    {
+      "n_post": 24,
+      "fixed_pre": 0.729,
+      "fixed_post": 0.744,
+      "fixed_slots": 1.0,
+      "birth_pre": 0.887,
+      "birth_post": 0.798,
+      "birth_slots": 8.7
+    },
+    {
+      "n_post": 48,
+      "fixed_pre": 0.4,
+      "fixed_post": 0.473,
+      "fixed_slots": 1.0,
+      "birth_pre": 0.754,
+      "birth_post": 0.548,
+      "birth_slots": 8.7
+    },
+    {
+      "n_post": 96,
+      "fixed_pre": 0.121,
+      "fixed_post": 0.232,
+      "fixed_slots": 1.0,
+      "birth_pre": 0.675,
+      "birth_post": 0.282,
+      "birth_slots": 8.7
+    },
+    {
+      "n_post": 192,
+      "fixed_pre": 0.096,
+      "fixed_post": 0.121,
+      "fixed_slots": 1.0,
+      "birth_pre": 0.654,
+      "birth_post": 0.149,
+      "birth_slots": 8.7
+    }
+  ]
+}

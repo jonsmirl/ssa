@@ -1,0 +1,444 @@
+{
+  "meta": {
+    "write_step": 1.0,
+    "read_temp": 8.0,
+    "trials": 8,
+    "seed": "0..7",
+    "decode": "argmax over stored values",
+    "note": "d\u2264128 reference memories; recall is associative decode, not an LM"
+  },
+  "rows": [
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "linear",
+      "rule": "additive",
+      "m": 8,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "linear",
+      "rule": "additive",
+      "m": 32,
+      "recall": 0.984375
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "linear",
+      "rule": "additive",
+      "m": 64,
+      "recall": 0.8203125
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "linear",
+      "rule": "additive",
+      "m": 128,
+      "recall": 0.453125
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "linear",
+      "rule": "additive",
+      "m": 256,
+      "recall": 0.15673828125
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "linear",
+      "rule": "additive",
+      "m": 512,
+      "recall": 0.048095703125
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 8,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 32,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 64,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 128,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 256,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 32,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 512,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "linear",
+      "rule": "additive",
+      "m": 8,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "linear",
+      "rule": "additive",
+      "m": 32,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "linear",
+      "rule": "additive",
+      "m": 64,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "linear",
+      "rule": "additive",
+      "m": 128,
+      "recall": 0.982421875
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "linear",
+      "rule": "additive",
+      "m": 256,
+      "recall": 0.7607421875
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "linear",
+      "rule": "additive",
+      "m": 512,
+      "recall": 0.33056640625
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 8,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 32,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 64,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 128,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 256,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 64,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 512,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "linear",
+      "rule": "additive",
+      "m": 8,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "linear",
+      "rule": "additive",
+      "m": 32,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "linear",
+      "rule": "additive",
+      "m": 64,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "linear",
+      "rule": "additive",
+      "m": 128,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "linear",
+      "rule": "additive",
+      "m": 256,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "linear",
+      "rule": "additive",
+      "m": 512,
+      "recall": 0.97705078125
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 8,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 32,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 64,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 128,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 256,
+      "recall": 1.0
+    },
+    {
+      "test": "P1",
+      "d": 128,
+      "read": "softmax",
+      "rule": "additive",
+      "m": 512,
+      "recall": 1.0
+    },
+    {
+      "test": "P2a",
+      "d": 64,
+      "m": 64,
+      "keys": "orthogonal",
+      "rule": "additive",
+      "recall": 1.0
+    },
+    {
+      "test": "P2a",
+      "d": 64,
+      "m": 64,
+      "keys": "orthogonal",
+      "rule": "delta",
+      "recall": 1.0
+    },
+    {
+      "test": "P2a",
+      "d": 64,
+      "m": 64,
+      "keys": "orthogonal",
+      "rule": "gated_delta",
+      "recall": 1.0
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 32,
+      "coherence": 0.1,
+      "rule": "additive",
+      "recall": 0.9765625
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 32,
+      "coherence": 0.1,
+      "rule": "delta",
+      "recall": 0.9609375
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 32,
+      "coherence": 0.1,
+      "rule": "gated_delta",
+      "recall": 0.9296875
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 64,
+      "coherence": 0.1,
+      "rule": "additive",
+      "recall": 0.8515625
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 64,
+      "coherence": 0.1,
+      "rule": "delta",
+      "recall": 0.81640625
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 64,
+      "coherence": 0.1,
+      "rule": "gated_delta",
+      "recall": 0.640625
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 128,
+      "coherence": 0.1,
+      "rule": "additive",
+      "recall": 0.546875
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 128,
+      "coherence": 0.1,
+      "rule": "delta",
+      "recall": 0.4931640625
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 128,
+      "coherence": 0.1,
+      "rule": "gated_delta",
+      "recall": 0.3388671875
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 192,
+      "coherence": 0.1,
+      "rule": "additive",
+      "recall": 0.30403645522892475
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 192,
+      "coherence": 0.1,
+      "rule": "delta",
+      "recall": 0.3281250037252903
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 192,
+      "coherence": 0.1,
+      "rule": "gated_delta",
+      "recall": 0.24023437686264515
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 256,
+      "coherence": 0.1,
+      "rule": "additive",
+      "recall": 0.21826171875
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 256,
+      "coherence": 0.1,
+      "rule": "delta",
+      "recall": 0.24755859375
+    },
+    {
+      "test": "P2b",
+      "d": 64,
+      "m": 256,
+      "coherence": 0.1,
+      "rule": "gated_delta",
+      "recall": 0.17578125
+    }
+  ]
+}
