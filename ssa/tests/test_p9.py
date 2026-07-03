@@ -74,6 +74,32 @@ def test_jepa_loss_decreases_with_training():
     assert loss.item() < first - 0.05, (first, loss.item())
 
 
+def test_salient_task_queries_the_marked_pair():
+    from ssa.p9_tasks import MQARSalient
+    t = MQARSalient(n_keys=32, n_vals=32)
+    ids, tgt = t.batch(8, 6, device="cpu")
+    assert ids.shape == (8, 2 * 6 + 2) and (tgt != -100).sum() == 8      # one target per row
+    for b in range(8):
+        qpos = int((tgt[b] != -100).nonzero()[0])
+        assert ids[b, qpos] == t.MARK                                    # the query is the salient key
+        # the marked pair's value appears somewhere in the context
+        assert tgt[b, qpos].item() in ids[b, :2 * 6].tolist()
+
+
+def test_2hop_target_is_reachable_by_chaining():
+    from ssa.p9_tasks import MQAR2Hop
+    t = MQAR2Hop(n_tokens=96)
+    ids, tgt = t.batch(16, 5, device="cpu")
+    assert ids.shape == (16, 2 * 5 + 2)
+    for b in range(16):
+        qpos = int((tgt[b] != -100).nonzero()[0])
+        k1 = int(ids[b, qpos]); v2 = int(tgt[b, qpos])
+        ctx = ids[b, :2 * 5].tolist()
+        keys, vals = ctx[0::2], ctx[1::2]
+        k2 = vals[keys.index(k1)]                                        # hop 1: k1 -> k2
+        assert vals[keys.index(k2)] == v2                               # hop 2: k2 -> v2 == target
+
+
 @pytest.mark.skipif(not cuda, reason="training smoke is GPU-paced")
 def test_training_smoke_learns_above_chance():
     """Each mixer, on a tiny MQAR curriculum, beats chance — the harness trains end to end."""
