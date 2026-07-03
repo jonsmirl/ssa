@@ -199,6 +199,18 @@ endpoint still need more than a 16 GB card. Selection quality at long context is
 
 ## The "zero attention" pivot — now measured, and the same prediction sharpens
 
+**Does zero attention work? — the bottom line.** Yes for half the problem, provably not for the other half,
+and training does not move the boundary. It **works** where relevance is decidable *at write time* and fits
+the state: within-capacity associative recall, and write-salient needles — NIAH/RULER stays genuinely
+near-perfect — and the efficiency case is real, because the search penalty moves to the write side and
+vanishes. It **fails**, by capacity and not by tuning, where the query decides what mattered *after* the write:
+read-time-only relevance (recall 0.10 vs selection's 1.00), retrieval past the state dimension (the rank-*d*
+wall), and multi-hop chains (∏ρ ≤ min-hop). P9 closes the obvious escape hatch — the recipe's
+*training-dependent* half, a **learned** write gate plus a future-prediction objective, is a null ingredient:
+it does not lift the read-time wall. So zero attention does not *replace* attention; it moves you to a
+different corner of the same trilemma with a different, sharper failure mode — which is why the frontier
+long-context SSMs (Nemotron, Jamba, Qwen-Next) all keep interleaved attention. The measured basis follows.
+
 Whedon's headline pivot is *"we're not a sparse attention company either… we will be the first people to
 leapfrog ourselves"* with **non-attention architectures** ("zero attention" — continuous state, world-model
 inspiration, "rethink the objective function"). The rig now has a measured probe of that corner
@@ -216,7 +228,12 @@ findings bear directly on SubQ's next model:
    commits to what to keep *before the question exists*; NIAH is write-salient (kept), multi-hop / query-only
    retrieval is not (lost). This is an *empirical* measurement (no theorem); the multi-hop half of the split
    is backed by the proved composition bound `chain_le_weakest` (∏ρ ≤ min hop), which the rig also reproduces
-   (measured joint chain 0.15 ≤ ∏ρ 0.25 ≤ min hop 0.49).
+   (measured joint chain 0.15 ≤ ∏ρ 0.25 ≤ min hop 0.49). **P9 now measures the *trained* version** — a small
+   micro-LM with a *learned* write gate and a JEPA future-prediction aux loss (the training-dependent half of
+   the recipe, the half P8 could not reach) — and the split survives training: the DeltaNet rank-d wall
+   persists end-to-end, the learned gate is a **null ingredient** (write-salient is solved *without* it because
+   training shapes the keepable keys itself; read-salient walls *with* it), and the aux loss is flat in its
+   weight. Training sharpens the split, it does not close it (`p9_*.py`, `FLOOR_PROGRAM.md` § P9).
 3. **A fold breaks a fixed memory.** A fixed (forgetting-gated) memory fades across a distribution shift
    (pre-shift recall 0.90→0.10); a growing (slot-birth) state preserves both regimes — one remedy the fold
    theorem (`fold_not_hopfield`, discontinuity) permits. This is why the leading production long-context SSMs
@@ -226,7 +243,10 @@ findings bear directly on SubQ's next model:
 NIAH/RULER (write-salient, near-perfect) and be **quiet on multi-hop / query-only retrieval at length** — and
 will either grow its state with context or quietly retain an attention/retrieval path. If it ships a
 NIAH-led table with no multi-hop-at-length number (the same shape as SubQ 1.1), that is the predicted
-signature, not a coincidence. Pinned, not refuted — the calibrated verdict now covers the *next* architecture
+signature, not a coincidence. **P9 extends this to the *trained* model:** the signature is not an artifact of
+using hand-built memories — a learned write gate and a future-prediction objective (the recipe's
+training-dependent half) do not remove the read-side capacity limit, so the prediction stands for the trained
+next architecture too. Pinned, not refuted — the calibrated verdict now covers the *next* architecture
 before it ships.
 
 ## What this rig cannot settle

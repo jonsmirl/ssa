@@ -74,30 +74,37 @@ def test_jepa_loss_decreases_with_training():
     assert loss.item() < first - 0.05, (first, loss.item())
 
 
-def test_salient_task_queries_the_marked_pair():
+def test_salient_task_queries_the_marked_pairs():
+    """Multi-marker write-salient MQAR: every reserved marker key {0..K-1} is queried, and each target value
+    is the value bound to that marker in the context."""
     from ssa.p9_tasks import MQARSalient
-    t = MQARSalient(n_keys=32, n_vals=32)
-    ids, tgt = t.batch(8, 6, device="cpu")
-    assert ids.shape == (8, 2 * 6 + 2) and (tgt != -100).sum() == 8      # one target per row
+    K, npairs = 4, 8
+    t = MQARSalient(n_keys=32, n_vals=32, n_markers=K)
+    ids, tgt = t.batch(8, npairs, device="cpu")
+    assert ids.shape == (8, 2 * npairs + 1 + K) and (tgt != -100).sum() == 8 * K   # K targets per row
     for b in range(8):
-        qpos = int((tgt[b] != -100).nonzero()[0])
-        assert ids[b, qpos] == t.MARK                                    # the query is the salient key
-        # the marked pair's value appears somewhere in the context
-        assert tgt[b, qpos].item() in ids[b, :2 * 6].tolist()
+        qpos = (tgt[b] != -100).nonzero().flatten().tolist()
+        qkeys = sorted(int(ids[b, p]) for p in qpos)
+        assert qkeys == list(range(K))                                   # the queries are exactly the markers
+        ctx_keys = ids[b, 0:2 * npairs:2].tolist(); ctx_vals = ids[b, 1:2 * npairs:2].tolist()
+        for p in qpos:
+            mk = int(ids[b, p])
+            assert tgt[b, p].item() == ctx_vals[ctx_keys.index(mk)]      # target = value bound to that marker
 
 
-def test_2hop_target_is_reachable_by_chaining():
+def test_2hop_targets_are_reachable_by_chaining():
+    """Multi-chain 2-hop: every queried head k1 chains k1→k2→v2 to its target through the context pairs."""
     from ssa.p9_tasks import MQAR2Hop
-    t = MQAR2Hop(n_tokens=96)
-    ids, tgt = t.batch(16, 5, device="cpu")
-    assert ids.shape == (16, 2 * 5 + 2)
+    C, npairs = 4, 12
+    t = MQAR2Hop(n_tokens=96, n_chains=C)
+    ids, tgt = t.batch(16, npairs, device="cpu")
+    assert ids.shape == (16, 2 * npairs + 1 + C) and (tgt != -100).sum() == 16 * C
     for b in range(16):
-        qpos = int((tgt[b] != -100).nonzero()[0])
-        k1 = int(ids[b, qpos]); v2 = int(tgt[b, qpos])
-        ctx = ids[b, :2 * 5].tolist()
-        keys, vals = ctx[0::2], ctx[1::2]
-        k2 = vals[keys.index(k1)]                                        # hop 1: k1 -> k2
-        assert vals[keys.index(k2)] == v2                               # hop 2: k2 -> v2 == target
+        ctx = ids[b, :2 * npairs].tolist(); keys, vals = ctx[0::2], ctx[1::2]
+        for p in (tgt[b] != -100).nonzero().flatten().tolist():
+            k1 = int(ids[b, p]); v2 = int(tgt[b, p])
+            k2 = vals[keys.index(k1)]                                    # hop 1: k1 -> k2
+            assert vals[keys.index(k2)] == v2                            # hop 2: k2 -> v2 == target
 
 
 @pytest.mark.skipif(not cuda, reason="training smoke is GPU-paced")

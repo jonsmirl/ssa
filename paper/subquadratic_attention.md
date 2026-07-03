@@ -541,6 +541,25 @@ $0.65$), and the proved composition bound $\prod\rho \le \min$-hop (`chain_le_we
 with the measured joint chain sagging below $\prod\rho$. So the
 NIAH-$\gg$-multi-hop split is architecture-independent: it holds whichever corner of the trilemma one builds.
 
+**The compression corner, trained.** The reference memories above are untrained; the zero-attention recipe's
+load-bearing half is *training-dependent* — a learned write gate and an auxiliary future-prediction objective.
+We reach it with a small micro-LM (d=128, head_dim $d_h=16$) trained end-to-end on MQAR with a token-mixer
+swappable between the two corners at matched state (DeltaNet state $d_h$ vs an SSA budget $\kappa\approx d_h$).
+Three measurements. (i) *Capacity:* trained selection (dense, SSA) is flat in load, while the trained DeltaNet
+groks the task and holds to $m\approx d_h$ then walls at the same rank-$d_h$ boundary — training moves the wall,
+it does not remove it. (ii) *The learned write gate is a null ingredient:* on write-salient MQAR (keep-worthy
+pairs use reserved marker keys, identifiable at write time) the no-gate delta rule already solves it — training
+shapes the $\le d_h$ keepable keys itself; on read-salient MQAR nothing lifts the compression wall, gate or no
+gate. (iii) *The future-prediction auxiliary loss is flat in its weight* on the read-salient wall. So the
+training-dependent half of the recipe does not close the gap: where keeping is possible training already does
+it, and where relevance is read-time-only no write policy can serve it — the trained mirror of the
+$0.10$-vs-$1.00$ split, and the composition sag persists for the compression corner under training as well.
+The bottom line: dropping attention does not dissolve the trilemma but relocates within it — a compression
+memory *works* where relevance is fixed at write time and within its state (write-salient recall, NIAH), and
+*fails*, by capacity rather than by any trainable objective, on read-time-only relevance, past-capacity
+retrieval, and multi-hop chains. This is why the frontier long-context state-space models remain *hybrids*
+with interleaved attention.
+
 **Routability.** The regularizer (7.2) reduced lossless branch-and-bound selection cost from $26.5\%$ to
 $4.2\%$ of keys at zero accuracy cost (Section 7.2). The reduction was robust across head dimension and showed
 no capacity trade-off down to $d=$ (number of clusters), since query-specific anisotropy needs only $\sim\!1$

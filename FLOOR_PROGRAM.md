@@ -138,3 +138,31 @@ prediction: any write-time-compression model will lead its benchmark table with 
 and be quiet on multi-hop / query-only retrieval — because for this corner the multi-hop sag is the proved
 `chain_le_weakest` (∏ρ ≤ min hop) plus the empirical write-time-commitment failure, not a training gap.
 Pinned, not refuted.
+
+## P9 — The trained comparison: does a learned write gate close the compression gap?
+
+P8 measured the compression corner with **hand-built, untrained** memories. P9 reaches the half P8 could not:
+the **training-dependent** ingredients of the zero-attention recipe — a *learned* write gate and an auxiliary
+future-prediction ("rethink the objective function") loss. A small micro-LM (d=128, head_dim dh=16) is trained
+end-to-end on MQAR with a swappable token-mixer at matched state: `dense`/`ssa` (selection), `deltanet`
+(compression, with the learned gate), `linear` (compression lower bound). Files: `p9_microlm.py`,
+`p9_tasks.py`, `p9_compare.py`.
+
+| question | measured (trained) |
+|---|---|
+| **D1** does training move the rank-d wall? | trained DeltaNet groks the op and holds to m≈dh, then **walls at m≈dh=16** (`softmax_capacity` is the read-side reason); selection (dense/ssa) stays flat; both compression variants degrade past dh — DeltaNet *more* (erase forgets older queried pairs) than additive linear at mild overload. The wall moves under training, it does not vanish |
+| **D2** does a learned write gate + aux lift read-salient? | **NO — the gate is a null ingredient.** Write-salient is solved *without* a gate (training shapes the ≤dh keepable keys); read-salient walls with or without gate/aux (read-time relevance is a capacity limit, not a training gap). The trained mirror of P8's 0.10-vs-1.00 |
+| **D3** does training beat the composition sag? | selection chains 2-hop cleanly; the compression corner **sags** as load rises (composition compounds the per-hop loss on top of the capacity wall) — consistent with `chain_le_weakest` |
+| **D4** does the future-prediction aux help? | **flat in λ** — the auxiliary objective does not lift the read-time-relevance wall (reported as measured, not tuned) |
+
+**What it settles.** Training does **not** close the selection/compression gap — it sharpens it. The
+rank-d wall of a contracted read survives end-to-end training (D1); the specific training-dependent lever the
+zero-attention recipe leans on — a *learned* write gate — is a null ingredient (D2): where keeping is possible
+training already does it without a gate, and where relevance is read-time-only no write policy (gated or aux-
+regularized) can serve it (D2/D4). The composition sag persists for the compression corner (D3). This is the
+trained confirmation of P8's empirical split.
+
+**Tie to the assessment.** The sharpened prediction now covers the *trained* next model, not just a hand-built
+memory: a write-time-compression model — even with a learned write gate and a latent-future objective — will
+lead NIAH/RULER (write-salient) and stay quiet on multi-hop / query-only retrieval at length, because for this
+corner the gap is a read-side capacity limit that training does not remove. Pinned, not refuted.

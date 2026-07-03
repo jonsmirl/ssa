@@ -13,7 +13,7 @@ pytest ssa/tests -k samuelson    # by keyword
 pytest ssa/tests -q              # quiet
 ```
 
-Expected: **94 collected** (with CUDA + faiss; GPU-gated kernel/cascade tests self-skip on CPU).
+Expected: **103 collected** (with CUDA + faiss; GPU-gated kernel/cascade/training tests self-skip on CPU).
 
 ## What each file checks
 
@@ -79,6 +79,19 @@ Expected: **94 collected** (with CUDA + faiss; GPU-gated kernel/cascade tests se
 - delta rule exact to m=d on orthogonal keys, additive not on correlated keys (coherence control);
   write/read determinism; gated-decay forgetting; a tag resolves a same-key conflict (both values); slot-birth
   preserves what a decaying fixed memory forgets across a shift; the proved chain ≤ weakest-hop bound.
+
+**`test_p9.py`** — the trained comparison harness (`p9_microlm.py`, `p9_tasks.py`; mostly CPU, one GPU-gated
+training smoke).
+- `test_deltanet_scan_matches_fastweight_reference` — the differentiable delta-rule scan reproduces the
+  `fastweight` delta write exactly on orthogonal keys.
+- `test_ssa_mixer_full_budget_equals_dense`, `test_all_mixers_forward_shape` — the SSA mixer equals dense at
+  full budget; all four token-mixers produce the right shapes.
+- `test_gate_in_unit_interval_and_open_init`, `test_linear_mixer_is_causal`, `test_jepa_loss_decreases_with_training`
+  — the learned write gate is in (0,1) and initialized open; linear attention is causal; the JEPA aux loss
+  trains down.
+- `test_salient_task_queries_the_marked_pairs`, `test_2hop_targets_are_reachable_by_chaining` — the
+  write-salient (marker-key) and 2-hop MQAR tasks are well-formed (targets recoverable by the intended path).
+- `test_training_smoke_learns_above_chance` (GPU-gated) — each mixer trains end to end above chance.
 
 **`test_ssa_extrapolation.py`** — the RoPE model (paper §8.1), no training.
 - `test_rope_preserves_norm` — the rotary map is an isometry.

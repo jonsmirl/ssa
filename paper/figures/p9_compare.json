@@ -1,0 +1,160 @@
+{
+  "meta": {
+    "d": 128,
+    "n_head": 8,
+    "head_dim": 16,
+    "ssa_kappa": 16,
+    "seeds": [
+      0,
+      1
+    ],
+    "gpu": "RTX 4080 16GB",
+    "note": "trained micro-LM; synthetic MQAR (not natural language); recall at query positions"
+  },
+  "rows": [
+    {
+      "test": "D1",
+      "mixer": "dense",
+      "recall": {
+        "2": 1.0,
+        "4": 1.0,
+        "8": 1.0,
+        "16": 1.0,
+        "24": 1.0,
+        "32": 1.0
+      }
+    },
+    {
+      "test": "D1",
+      "mixer": "ssa",
+      "recall": {
+        "2": 1.0,
+        "4": 1.0,
+        "8": 0.999,
+        "16": 0.982,
+        "24": 0.938,
+        "32": 0.906
+      }
+    },
+    {
+      "test": "D1",
+      "mixer": "deltanet",
+      "recall": {
+        "2": 1.0,
+        "4": 0.999,
+        "8": 0.996,
+        "16": 0.854,
+        "24": 0.752,
+        "32": 0.681
+      }
+    },
+    {
+      "test": "D1",
+      "mixer": "linear",
+      "recall": {
+        "2": 0.996,
+        "4": 0.997,
+        "8": 0.993,
+        "16": 0.962,
+        "24": 0.924,
+        "32": 0.885
+      }
+    },
+    {
+      "test": "D2",
+      "regime": "read_salient",
+      "arm": "ssa (selection)",
+      "recall": 0.889
+    },
+    {
+      "test": "D2",
+      "regime": "read_salient",
+      "arm": "deltanet no-gate",
+      "recall": 0.588
+    },
+    {
+      "test": "D2",
+      "regime": "read_salient",
+      "arm": "deltanet +gate",
+      "recall": 0.681
+    },
+    {
+      "test": "D2",
+      "regime": "read_salient",
+      "arm": "deltanet +gate+aux",
+      "recall": 0.607
+    },
+    {
+      "test": "D2",
+      "regime": "write_salient",
+      "arm": "ssa (selection)",
+      "recall": 0.999
+    },
+    {
+      "test": "D2",
+      "regime": "write_salient",
+      "arm": "deltanet no-gate",
+      "recall": 0.998
+    },
+    {
+      "test": "D2",
+      "regime": "write_salient",
+      "arm": "deltanet +gate",
+      "recall": 0.999
+    },
+    {
+      "test": "D2",
+      "regime": "write_salient",
+      "arm": "deltanet +gate+aux",
+      "recall": 0.999
+    },
+    {
+      "test": "D3",
+      "mixer": "dense",
+      "recall": {
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.911,
+        "6": 0.979,
+        "8": 1.0
+      }
+    },
+    {
+      "test": "D3",
+      "mixer": "ssa",
+      "recall": {
+        "2": 1.0,
+        "3": 0.997,
+        "4": 0.878,
+        "6": 1.0,
+        "8": 1.0
+      }
+    },
+    {
+      "test": "D3",
+      "mixer": "deltanet",
+      "recall": {
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.995,
+        "6": 0.948,
+        "8": 0.839
+      }
+    },
+    {
+      "test": "D4",
+      "aux_weight": 0.0,
+      "recall": 0.638
+    },
+    {
+      "test": "D4",
+      "aux_weight": 0.3,
+      "recall": 0.569
+    },
+    {
+      "test": "D4",
+      "aux_weight": 1.0,
+      "recall": 0.639
+    }
+  ]
+}

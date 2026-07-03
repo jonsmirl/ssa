@@ -14,7 +14,7 @@ Four token-mixers, bracketing the trilemma's two corners (all `attn_fn(q,k,v)->o
   - `deltanet` : the COMPRESSION corner — a differentiable causal scan of the delta rule
                  S_t = S_{t-1} + β_t(v_t − S_{t-1}k_t)k_tᵀ, o_t = S_t q̂_t, with an optional LEARNED per-token
                  write gate β_t = sigmoid(w_g·k_t) (the trained write policy).
-  - `linear`   : additive write S += v kᵀ, no gate — the compression lower bound.
+  - `linear`   : additive write S += v kᵀ, no gate — the simplest compression write (no erase, no gate).
 
 Plus a JEPA-style future-prediction auxiliary loss (`FuturePredictor` + stop-grad future-summary target).
 
@@ -52,22 +52,23 @@ def deltanet_mix(q, k, v, gate=None, beta=1.0):
     per-token write strength LEARNED; else the constant `beta`. Sequential over n (BPTT), batched over (B,H)."""
     B, H, n, dh = q.shape
     kk = _norm(k); qq = _norm(q)
-    if gate is not None:
-        betas = torch.sigmoid(gate(k)).squeeze(-1)                     # (B,H,n) learned write strength
-    S = q.new_zeros(B, H, dh, dh)
+    betas = torch.sigmoid(gate(k)) if gate is not None else None       # (B,H,n,1) learned write strength
+    # fold (B,H) into one batch dim so the per-step ops are single batched bmm calls (fewer kernel launches)
+    K = kk.reshape(B * H, n, dh); Q = qq.reshape(B * H, n, dh); V = v.reshape(B * H, n, dh)
+    Bt = betas.reshape(B * H, n, 1) if gate is not None else None
+    S = q.new_zeros(B * H, dh, dh)
     outs = []
     for t in range(n):
-        kt, vt, qt = kk[:, :, t], v[:, :, t], qq[:, :, t]             # (B,H,dh)
-        corr = vt - torch.einsum('bhij,bhj->bhi', S, kt)               # v − S k  (the erase term)
-        outer = torch.einsum('bhi,bhj->bhij', corr, kt)               # (B,H,dh,dh)
-        bt = betas[:, :, t][..., None, None] if gate is not None else beta   # (B,H,1,1) or scalar
-        S = S + bt * outer
-        outs.append(torch.einsum('bhij,bhj->bhi', S, qt))             # read o = S q̂
-    return torch.stack(outs, dim=2)
+        kt = K[:, t:t + 1]; vt = V[:, t:t + 1]; qt = Q[:, t:t + 1]     # (BH,1,dh)
+        corr = vt - torch.bmm(kt, S)                                   # v − k S  (row-vec convention: o = q S)
+        bt = Bt[:, t:t + 1] if gate is not None else beta              # (BH,1,1) or scalar
+        S = S + bt * torch.bmm(kt.transpose(1, 2), corr)               # + β kᵀ(v − kS)
+        outs.append(torch.bmm(qt, S))                                  # read o = q̂ S
+    return torch.stack(outs, dim=1).reshape(B, H, n, dh)
 
 
 def linear_mix(q, k, v):
-    """Vanilla additive linear attention (causal) — the compression lower bound. S_t = Σ_{s≤t} v_s k̂_sᵀ,
+    """Vanilla additive linear attention (causal) — the simplest compression write (no erase/gate). S_t = Σ_{s≤t} v_s k̂_sᵀ,
     o_t = S_t q̂_t = Σ_{s≤t} v_s ⟨k̂_s, q̂_t⟩ (cumulative, no gate, no erase)."""
     kk = _norm(k); qq = _norm(q)
     kv = torch.einsum('bhsi,bhsj->bhsij', v, kk)                       # per-step outer products

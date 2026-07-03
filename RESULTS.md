@@ -1322,3 +1322,84 @@ Layer-A structural results (finite-dimensional, idealized); they rule out corner
 side, they do not hand you hyperparameters. Five predictions have a machine-checked anchor and reproduced
 (P2's overload-capacity edge for the delta rule is weaker than folklore, reported as measured); P3, the
 load-bearing selection/compression split, is empirical (no theorem).
+
+## The trained comparison — does a learned write gate close the compression gap? — (`p9_*.py`)
+
+**Bottom line.** Zero attention works where relevance is fixed *at write time* and fits the state
+(within-capacity recall, write-salient needles) and fails, by capacity and not by tuning, where the query
+decides relevance *after* the write (read-time-only, past-capacity, multi-hop). The training-dependent half of
+the recipe — a learned write gate + a future-prediction loss — does **not** move that boundary (D2/D4).
+Training sharpens the selection/compression split; it does not close it. The measurements:
+
+P8 measured the compression corner with **hand-built, untrained** memories and found the load-bearing split:
+write-time compression cannot serve read-time-only relevance (recall 0.10 vs selection's 1.00). P8 could not
+reach the **training-dependent** half of the zero-attention recipe — a *learned* write policy plus an
+auxiliary future-prediction objective ("rethink the objective function"). P9 trains a small micro-LM
+end-to-end whose token-mixer is swappable between the two corners, at matched state, on MQAR, and measures
+that half directly. Four mixers, all `attn_fn(q,k,v)→o` on the shared `ssa_demo.Block` backbone (d=128, head_dim
+**dh=16** = the DeltaNet state dim; SSA budget **κ≈dh**): `dense` (selection, κ=n), `ssa` (selection at budget
+κ), `deltanet` (compression — a differentiable delta-rule scan `S_t=S_{t-1}+β_t(v_t−S_{t-1}k_t)k_tᵀ`, `o=q̂S`,
+with an optional *learned* write gate β_t=σ(w_g·k_t)), `linear` (the simplest compression write: additive, no
+erase, no gate). Recall = masked-CE accuracy at query positions; multi-query MQAR (min(m,16) queries, the proven
+`ssa_checkpoint` recipe); a long first curriculum stage so every mixer groks the retrieval op (vanilla linear
+is slowest — ~2.5k steps, no erase term); 2 seeds, mean reported.
+
+**D1 — trained capacity vs load (the frontier).** Recall vs #pairs m at fixed state (dh=16):
+
+| mixer | m=2 | m=4 | m=8 | m=16 | m=24 | m=32 |
+|---|---|---|---|---|---|---|
+| **dense** — selection (κ=n) | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| **ssa** — selection (κ≈dh) | 1.00 | 1.00 | 1.00 | 0.98 | 0.94 | 0.91 |
+| **deltanet** — compression (state dh=16) | 1.00 | 1.00 | 1.00 | 0.85 | 0.75 | 0.68 |
+| **linear** — compression, no gate | 1.00 | 1.00 | 0.99 | 0.96 | 0.92 | 0.89 |
+
+**Reading.** Trained selection (dense) is flat at ~1.0 across the whole sweep; SSA at a matched budget κ≈dh
+holds nearly flat (a gentle dip only at the tightest overload). Both **compression** variants hold *within*
+the state (m≤dh) and degrade past it — training does NOT dissolve the rank-dh wall P8 measured untrained (it
+moves under training, it does not vanish). An honest surprise on *which* corner degrades faster: at these mild
+overloads (m≤2·dh) with trained near-orthogonal keys, **the delta rule (DeltaNet) degrades *more* than
+additive linear** — its erase-before-write forgets the older pairs that later get queried, where additive
+accumulation keeps them all (with interference). P8's delta-rule advantage was measured only in *deep* overload
+(m≫d) on random keys; it does not carry to this trained, mild-overload regime. Frontier: `p9_frontier.png`.
+
+**D2 — read- vs write-salient at overload (m=32 > dh), the headline (trained P3).** Does a *learned* write
+gate + the JEPA aux loss lift DeltaNet at overload?
+
+| regime | ssa (selection) | deltanet no-gate | deltanet +gate | deltanet +gate+aux |
+|---|---|---|---|---|
+| **read-salient** (stock MQAR) | 0.89 | 0.59 | 0.68 | 0.61 |
+| **write-salient** (reserved marker keys) | 1.00 | 1.00 | 1.00 | 1.00 |
+
+**Reading — the learned gate does not close the gap, for two opposite reasons.** On **write-salient** (the
+keep-worthy pairs use reserved marker keys, identifiable at write time), the no-gate delta rule *already*
+solves it (≈1.0) — training shapes the ≤dh marker keys to be robust, so an explicit write gate adds nothing. On
+**read-salient** (stock MQAR, the query is unknown at write time), the gate and the aux loss leave DeltaNet
+near its capacity floor (≈0.6, a small and seed-noisy bump over the no-gate baseline) — **far below selection**
+(SSA ≈0.9, dense ≈1.0). So the specific training-dependent ingredient P9 set out to test — a learned write
+gate — does not close the gap: where keeping is possible training already does it, and where relevance is
+read-time-only no write policy approaches selection. This is the trained mirror of P8's 0.10-vs-1.00 split.
+Figure: `p9_gate.png`.
+
+**D3 — trained 2-hop composition (trained P6).** Single chain among distractors, chain recall vs load (4
+layers; a progressive-load curriculum is what groks 2-hop at this scale — cold-start does not):
+
+| mixer | m=2 | m=3 | m=4 | m=6 | m=8 |
+|---|---|---|---|---|---|
+| dense | 1.00 | 1.00 | 0.91 | 0.98 | 1.00 |
+| ssa | 1.00 | 1.00 | 0.88 | 1.00 | 1.00 |
+| deltanet | 1.00 | 1.00 | 0.99 | 0.95 | 0.84 |
+
+**Reading.** Selection (dense, ssa) chains the two hops cleanly across the sweep; the compression corner holds
+at low load but **sags as distractors raise the capacity pressure on top of the chaining** — consistent with
+`chain_le_weakest` (the composition compounds the per-hop loss). Selection chains; compression sags.
+
+**D4 — the JEPA aux-weight λ sweep (read-salient DeltaNet+gate, overload).** The "rethink the objective
+function" ingredient, swept: λ=0→0.64, λ=0.3→0.57, λ=1→0.64 — **flat in λ**. The future-prediction auxiliary loss does not lift the
+read-time-relevance wall (reported as measured; λ was not tuned to force a story).
+
+**Honest scope.** Still synthetic MQAR (not natural language), but TRAINED end-to-end — the half P8 could not
+reach. d=128 micro-LM, head_dim 16, one RTX 4080; recall at query positions; no wall-clock claims. The
+measured verdict sharpens rather than closes the split: the learned write gate + future-prediction aux — the
+training-dependent half of the zero-attention recipe — help exactly where a write-time signal already exists
+(and there training alone suffices) and cannot manufacture one where relevance is read-time-only. Selection's
+advantage on read-time relevance survives training.

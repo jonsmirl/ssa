@@ -98,6 +98,9 @@ pretrained models on first run.
 | `fastweight_capacity.py` | the READ rule sets the capacity class (linear rank-d wall vs softmax exponential); the write rule is coherence control | §11 |
 | `fastweight_recall.py` | write-time vs read-time relevance (**compression ≠ selection**), same-key conflicts need tags, the 2-hop chain bound | §11 |
 | `fastweight_shift.py` | a fold breaks a fixed memory — it forgets across a shift; a growing (slot-birth) state preserves it | §11 |
+| `p9_microlm.py` | the trained comparison: a swappable micro-LM (dense / SSA / DeltaNet+learned-gate / linear token-mixers) + a JEPA future-prediction aux loss | §11 |
+| `p9_tasks.py` | the trained-MQAR suite — load sweep, write-salient (marker keys) vs read-salient, 2-hop chains | §11 |
+| `p9_compare.py` | trained selection-vs-compression sweeps: the capacity frontier, the null gate/aux result, the composition sag | §11 |
 | `ssa_checkpoint.py` | trains a small (~12M) SSA model with the gentle curriculum | §8 |
 | `ssa_extrapolation.py` | zero-shot length extrapolation under rotary position vs a learned-positional control | §8.1 |
 | `staged_extension.py` | the staging ladder: extend → cheap adapt → extend, reaching 32× the trained length | §8.2 |
@@ -170,6 +173,13 @@ pretrained models on first run.
   (forgets 0.90→0.10 across a shift) where slot-birth holds 0.65; and the composition prediction ∏ρ ≤ min hop
   (proved, `chain_le_weakest`) with the measured chain sagging below — so NIAH≫multi-hop holds for the
   compression corner too.
+- **The trained comparison — a learned write gate does not close the gap (P9, `p9_*.py`).** A micro-LM trained
+  end-to-end on MQAR with a swappable token-mixer at matched state (head_dim dh=16): trained selection
+  (dense/SSA) is flat in load while trained **DeltaNet still walls at m≈dh** — training moves the rank-d wall,
+  it does not remove it. The specific training-dependent lever — a *learned* write gate — is a **null
+  ingredient**: write-salient (marker keys) is solved *without* it, read-salient walls *with* it, and the JEPA
+  future-prediction aux loss is flat in its weight. Training sharpens P8's compression≠selection split rather
+  than closing it.
 
 ## Scope — what is and isn't demonstrated
 
@@ -203,6 +213,11 @@ read the headlines with that seam in mind.
   Five of six predictions carry a machine-checked anchor (P3, the load-bearing selection/compression split,
   is empirical); P2's overload-capacity edge for the delta rule is reported as measured (weaker than folklore),
   and P6's machine-checked part is ∏ρ ≤ min hop — the measured joint chain is reported separately.
+- The **trained comparison (P9)** is a `d=128` micro-LM (head_dim 16) trained end-to-end on **synthetic MQAR
+  (not natural language)**, one RTX 4080, recall at query positions, no wall-clock claims. It reaches the
+  training-dependent half of the zero-attention recipe that P8 could not; the null gate/aux result (D2/D4) is
+  empirical, and the DeltaNet wall / composition sag echo the read-side `softmax_capacity` / `chain_le_weakest`
+  anchors without being new proofs.
 
 See [`RESULTS.md`](RESULTS.md) for the full tables and context.
 
