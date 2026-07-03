@@ -13,7 +13,7 @@ pytest ssa/tests -k samuelson    # by keyword
 pytest ssa/tests -q              # quiet
 ```
 
-Expected: **86 collected** (with CUDA + faiss; GPU-gated kernel/cascade tests self-skip on CPU).
+Expected: **94 collected** (with CUDA + faiss; GPU-gated kernel/cascade tests self-skip on CPU).
 
 ## What each file checks
 
@@ -74,6 +74,11 @@ Expected: **86 collected** (with CUDA + faiss; GPU-gated kernel/cascade tests se
 **`test_share_route.py`** — cross-layer sharing + the projection hook (`gemma_ssa.py`).
 - `block_route_budget(proj=identity)` == centroid routing (CPU); donor stashes / consumer reuses the mask
   (GPU); full-budget shared == dense (GPU); decode ignores sharing (falls to analytic).
+
+**`test_fastweight.py`** — the zero-attention / fast-weight memory (`fastweight.py`, CPU).
+- delta rule exact to m=d on orthogonal keys, additive not on correlated keys (coherence control);
+  write/read determinism; gated-decay forgetting; a tag resolves a same-key conflict (both values); slot-birth
+  preserves what a decaying fixed memory forgets across a shift; the proved chain ≤ weakest-hop bound.
 
 **`test_ssa_extrapolation.py`** — the RoPE model (paper §8.1), no training.
 - `test_rope_preserves_norm` — the rotary map is an isometry.

@@ -197,6 +197,35 @@ on one GPU under exactly the benign-geometry condition the floor analysis names*
 remains: this is single-head and synthetic-keys — a **speed** result; multi-head, real-model keys at the 12M
 endpoint still need more than a 16 GB card. Selection quality at long context is the separate P1/P3/P4 story.)
 
+## The "zero attention" pivot — now measured, and the same prediction sharpens
+
+Whedon's headline pivot is *"we're not a sparse attention company either… we'll be the first to leapfrog
+ourselves"* with **non-attention architectures** ("zero attention" — continuous state, world-model
+inspiration, "rethink the objective function"). The rig now has a measured probe of that corner
+(`FLOOR_PROGRAM.md` § P8, `fastweight*.py`): small exact fast-weight memories (the DeltaNet/Titans family)
+tested against six machine-checked predictions. Three findings bear directly on SubQ's next model:
+
+1. **"Drop attention" replaces a function, not a component.** The capacity of a memory is set by its READ
+   rule: a contracted linear read `o = S q` is rank-d capped (measured collapse at m≈d); the exponential
+   capacity attention has comes from the *softmax* read (`softmax_capacity`). A zero-attention model keeps
+   whatever fixed-state capacity its read rule allows — and pays for separation on the *write* side instead
+   of the read side (the search penalty vanishes, which is the real efficiency case for the corner).
+2. **Compression cannot serve query-only relevance — measured.** A needle salient only at read time is lost
+   by a surprise-gated fixed memory (recall 0.10) where selection recovers it (1.00). Write-time compression
+   commits to what to keep *before the question exists*; NIAH is write-salient (kept), multi-hop / query-only
+   retrieval is not (lost). So the exact NIAH≫MRCR split SubQ already reports is, for this corner,
+   `fold_not_hopfield` + the proved `chain_le_weakest` — a **theorem**, not a training gap.
+3. **Length-robustness forces a growing state.** A fixed memory forgets across a distribution shift
+   (pre-shift recall 0.90→0.10); only a growing (slot-birth) state preserves both regimes — which is why every
+   production "SSM" is really a hybrid with interleaved attention, the very hybrids Whedon dismisses.
+
+**The sharpened, falsifiable prediction.** SubQ's zero-attention model will lead its benchmark table with
+NIAH/RULER (write-salient, near-perfect) and be **quiet on multi-hop / query-only retrieval at length** — and
+will either grow its state with context or quietly retain an attention/retrieval path. If it ships a
+NIAH-led table with no multi-hop-at-length number (the same shape as SubQ 1.1), that is the predicted
+signature, not a coincidence. Pinned, not refuted — the calibrated verdict now covers the *next* architecture
+before it ships.
+
 ## What this rig cannot settle
 
 It reconstructs the recipe, not SubQ's code. It cannot say whether SubQ solved the router-cost problem this

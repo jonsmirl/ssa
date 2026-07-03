@@ -527,6 +527,18 @@ rebuts the "low-rank is a bust" verdict on real keys ($0.32 \to 0.65$ block agre
 to drive retrieval — the honest boundary. This gives a falsifiable signature for any production selector: cheap
 $\Leftrightarrow$ shared from a mid layer, preserving single-needle recall while sagging on isolated/multi-hop.
 
+**The compression corner, measured.** The trilemma has a second corner — a fixed- or growing-state memory
+written at inference time (the "zero attention" / DeltaNet/Titans family). Small exact reference memories,
+measured against machine-checked predictions, place it precisely. The READ rule sets the capacity class: a
+contracted linear read $o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$) while a softmax read over
+the same pairs is exponential — capacity is a property of the read, not the substrate. The load-bearing
+measurement is that **compression $\neq$ selection**: a needle salient only at read time is lost by a
+surprise-gated fixed memory (recall $0.10$) where selection recovers it ($1.00$) — write-time compression
+cannot keep what the future query has not yet made relevant. A distribution shift is a fold that forces the
+state to grow (a fixed memory's pre-shift recall decays $0.90\to0.10$; a slot-birth memory holds $0.65$), and a
+two-hop chain through the memory obeys the proved $\prod\rho \le \text{chain} \le \min$-hop. So the
+NIAH-$\gg$-multi-hop split is architecture-independent: it holds whichever corner of the trilemma one builds.
+
 **Routability.** The regularizer (7.2) reduced lossless branch-and-bound selection cost from $26.5\%$ to
 $4.2\%$ of keys at zero accuracy cost (Section 7.2). The reduction was robust across head dimension and showed
 no capacity trade-off down to $d=$ (number of clusters), since query-specific anisotropy needs only $\sim\!1$

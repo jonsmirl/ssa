@@ -94,6 +94,10 @@ pretrained models on first run.
 | `routing_space.py` | a trained low-dim routing projection — the P2 "low-rank is a bust" rebuttal (untrained 0.32 → trained 0.65 block-Jaccard on real Qwen keys) | §7 |
 | `longctx_share.py` | cross-layer routing sharing, **measured** — routing's share of prefill 59% → 6% (donor=4), NIAH preserved; the analytic ÷5 made real | §9 |
 | `ccc_quality.py` | which cascade component rescues which regime (sub-block ↔ spikes, outlier ↔ moderate spikes, isolated stays hard) | §10 |
+| `fastweight.py` | zero-attention / fast-weight memory (additive / delta / gated-delta writes; linear + softmax reads; slot birth) — the compression corner | §11 |
+| `fastweight_capacity.py` | the READ rule sets the capacity class (linear rank-d wall vs softmax exponential); the write rule is coherence control | §11 |
+| `fastweight_recall.py` | write-time vs read-time relevance (**compression ≠ selection**), same-key conflicts need tags, the 2-hop chain bound | §11 |
+| `fastweight_shift.py` | a fold forces state growth — a fixed memory forgets across a shift; slot-birth preserves it | §11 |
 | `ssa_checkpoint.py` | trains a small (~12M) SSA model with the gentle curriculum | §8 |
 | `ssa_extrapolation.py` | zero-shot length extrapolation under rotary position vs a learned-positional control | §8.1 |
 | `staged_extension.py` | the staging ladder: extend → cheap adapt → extend, reaching 32× the trained length | §8.2 |
@@ -158,6 +162,13 @@ pretrained models on first run.
   **cross-layer sharing cuts routing from 59% of prefill to 6% (donor=4) with NIAH preserved** — the analytic ÷5
   made real. The trained low-dim routing space rebuts P2's "bust" (0.32 → 0.65 block-Jaccard on real keys) but
   is too lossy at d_r=16 to drive retrieval losslessly — an honest boundary.
+- **The other corner — zero-attention memory, measured against the theorems (P8, `fastweight*.py`).** Small exact
+  fast-weight memories (DeltaNet/Titans family) measured against six machine-checked predictions. The
+  load-bearing one: a needle salient **only at read time** is lost by a surprise-gated fixed memory (0.10) but
+  recovered by selection (1.00) — **compression ≠ selection**. Also measured: the READ rule sets the capacity
+  class (linear rank-d wall vs softmax exponential); a fold forces state growth (fixed memory forgets 0.90→0.10
+  across a shift, slot-birth holds 0.65); the 2-hop chain obeys the proved `chain ≤ min hop` — so NIAH≫multi-hop
+  is a theorem for the compression corner too.
 
 ## Scope — what is and isn't demonstrated
 
@@ -186,6 +197,10 @@ read the headlines with that seam in mind.
 - The **"(proved)"** results are machine-checked in a *separate* Lean development
   (`Substrate.Inference.PhaseTransition.Algebra.*`) that is **not shipped in this repo**; the prose maps to
   *lower bounds / sufficient conditions*, not equalities (see the paper's bibliography).
+- The **zero-attention (P8)** results are `d ≤ 128` reference implementations on synthetic keys — mechanism
+  measurements against the Lean predictions, **not a trained language model** and with no wall-clock claims;
+  five of six predictions reproduced cleanly, and P2's overload-capacity edge for the delta rule is reported
+  as measured (weaker than folklore), not tuned to pass.
 
 See [`RESULTS.md`](RESULTS.md) for the full tables and context.
 

@@ -572,6 +572,18 @@ ${\sim}6\%$ with single-needle retrieval preserved (the first measurement of the
 from layer~0 fails). A trained $d_r{=}16$ projection rebuts the ``low-rank is a bust'' verdict on real keys
 ($0.32 \to 0.65$ block agreement) but is itself too lossy to drive retrieval---the honest boundary.
 
+\paragraph{The compression corner, measured.} The trilemma has a second corner---a fixed- or growing-state
+memory written at inference time (the ``zero attention'' / DeltaNet/Titans family). Small exact reference
+memories, measured against machine-checked predictions, place it. The READ rule sets the capacity class: a
+linear read $o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$) while a softmax read over the same
+pairs is exponential---capacity is a property of the read, not the substrate. The load-bearing measurement is
+that \textbf{compression $\neq$ selection}: a needle salient only at read time is lost by a surprise-gated fixed
+memory (recall $0.10$) where selection recovers it ($1.00$)---write-time compression cannot keep what the future
+query has not yet made relevant. A distribution shift is a fold forcing the state to grow (a fixed memory's
+pre-shift recall decays $0.90\to0.10$; slot-birth holds $0.65$), and a two-hop chain obeys the proved
+$\prod\rho \le \text{chain} \le \min$-hop. The NIAH-$\gg$-multi-hop split is thus architecture-independent---it
+holds whichever corner of the trilemma one builds.
+
 \paragraph{Routability.} The regularizer~\eqref{eq:reg} reduced lossless branch-and-bound selection cost from
 $26.5\%$ to $4.2\%$ of keys. (Accuracy is $1.000$ by construction---admissible-bound branch-and-bound always
 returns the exact argmax---so the measured quantity is the \emph{cost}, not task accuracy.) The reduction was

@@ -109,3 +109,29 @@ falsifiable signature: a selector isomorphic to CCC has a routing share that (a)
 from a mid layer, and (b) preserves single-needle retrieval but sags on isolated/multi-hop — exactly the
 NIAH≫MRCR split SubQ reports. If SubQ's selector share is large, they haven't solved it (explaining the gated
 access); if small with the predicted quality split, it is isomorphic to this.
+
+## P8 — The other corner: zero-attention / fast-weight memory, measured
+
+P0–P7 mapped the SELECTION corner of the trilemma; P8 builds the COMPRESSION corner (fixed-/growing-state
+memory written at inference time — the Mamba/DeltaNet/Titans family, SubQ's "zero attention") as small
+exact reference implementations and measures them against six machine-checked predictions from
+`Substrate/Inference/*.lean` (sorry-free). Files: `fastweight{,_capacity,_recall,_shift}.py`.
+
+| prediction | Lean anchor | measured |
+|---|---|---|
+| the READ rule sets the capacity class | `softmax_capacity` | linear read collapses at m≈d; softmax over the same pairs is exponential (holds to m=512) ✓ |
+| the write rule is coherence control | `capacity_search_tension` | delta exact on orthogonal keys; only a *small* overload edge on random keys (honest: additive competitive at m≤d) ~ |
+| **write-time vs read-time relevance** | (the selection/compression split) | a read-time-salient needle is LOST by a gated fixed memory (0.10) but recovered by selection (1.00) — **compression ≠ selection** ✓ |
+| a same-key conflict needs a tag | `tag_resolves_conflict` | additive averages, delta keeps latest, tag recovers BOTH (0.95/1.00) ✓ |
+| a fold forces state growth | `fold_not_hopfield` | fixed pre-shift recall 0.90→0.10; slot-birth holds 0.65 by growing the state ✓ |
+| the composition law is architecture-independent | `chain_le_weakest` | 2-hop chain through the memory obeys ∏ρ ≤ chain ≤ min hop ✓ |
+
+**What it settles.** The read rule sets the capacity class (not the substrate); the write rule is coherence
+control; write-time compression *cannot* serve query-only relevance (the load-bearing result — why NIAH stays
+easy and multi-hop sags for this corner too); episodic tags and a growing state are forced by theorems, not
+optional. The trilemma does not evaporate when you drop attention — it tells you which corner you moved to.
+
+**Tie to the assessment.** SubQ's "zero attention" pivot now has a measured rig and a sharpened falsifiable
+prediction: any write-time-compression model will lead its benchmark table with NIAH/RULER (write-salient)
+and be quiet on multi-hop / query-only retrieval — because for this corner that split is `fold_not_hopfield`
++ `chain_le_weakest`, a theorem, not a training gap. Pinned, not refuted.
