@@ -165,3 +165,31 @@ def test_block_route_budget_sub_flag_identity_and_recall():
     _, _, blk_sel = block_route_budget(q2, k2, top_c=1, local=0, sub=None)
     assert bool(sub_sel[0, 0, qblk, 1]), "sub-block routing should find the coherent sub-block's parent"
     # the sub-block score (~1.0) strictly exceeds the diluted 128-block score (~0.25)
+
+
+@skip
+def test_starved_probe_pads_never_reach_the_mask():
+    """faiss pads a starved probe (probed lists jointly holding < search_k vectors) with id -1 and score
+    ~-3.4e38 — NOT -inf, so it passed the scores>NEG guard and could emit parent block -1 into the
+    BlockMask. Starve deterministically (fixed one-hot centroids, 4 members/cell, nprobe=1, search_k=16)
+    and pin: pads are masked to NEG with non-negative ids, D_last follows the exhaustive convention,
+    and route() emits only real past blocks."""
+    from ssa.cascade_router import CausalCascade, NEG
+    d, nlist, per = 32, 8, 4
+    cc = CausalCascade(d=d, block=128, sub=32, top_c=8, local=1, nprobe=1,
+                       nlist=nlist, max_escalations=0, search_k=16)
+    C = torch.eye(nlist, d, device="cuda")                          # one centroid per one-hot direction
+    g = torch.Generator(device="cuda").manual_seed(0)
+    X = C.repeat_interleave(per, 0) + 0.01 * torch.randn(nlist * per, d, generator=g, device="cuda")
+    cc._kmeans = lambda X, iters=6: C                               # fixed centroids -> exactly 4 per cell
+    cc.means = X.float(); cc.n_sub = X.shape[0]; cc.committed = X.shape[0]
+    cc._build_index()
+    dvals, ids, dlast = cc._search_committed(C[:1].clone(), search_k=16, nprobe=1)
+    assert (dvals == NEG).any(), "construction failed to starve the probe"
+    assert (ids >= 0).all()
+    assert dlast[0] == NEG                                          # exhaustive: nothing lost to truncation
+    q_chunk = torch.randn(cc.block, d, generator=g, device="cuda", dtype=torch.float16) + 4 * C[0].half()
+    kv_num, kv_idx, cert, _ = cc.route(q_chunk, qpos=cc.n_sub * cc.sub, certify=True)
+    nb_global = cc.n_sub * cc.sub // cc.block + 1
+    assert (kv_idx >= 0).all() and (kv_idx < nb_global).all()
+    assert not bool(cert[0])                                        # starved + tiny budget: fails closed

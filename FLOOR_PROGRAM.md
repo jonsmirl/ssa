@@ -38,8 +38,10 @@ transpose — 38.7 GB at nb=98,304 — is skipped. **Measured single-head, to 12
 
 The projected 40.7 s maskbuild at 12M is now **sub-millisecond**; the gap to the floor is a *measured* 2.9×
 (was a 128× projection for the flat kernel). The standalone router sweep also now runs to **12M (94 ms; flat
-OOMs at 8M and 12M)**. Decode (`ivf_decode.py`): the IVF-routed step is **flat in n** (~0.53 ms, 1M→12M) vs a
-dense step's growing prefix read (2.6→29.6 ms) — **55× at 12M**, both measured.
+OOMs at 8M and 12M)**. Decode (`ivf_decode.py`): the IVF-routed step is **flat in n** (~0.6 ms, 1M→12M) vs a
+fair fp16 flash-decode step's growing prefix read (0.5→5.3 ms) — **9.1× at 12M**, crossover ~1M–2M, both
+measured. (An earlier "55×" was against a naive fp32-upcasting dense reference, ~5× slower than the fair fp16
+row; it is kept in the benchmark as `dense_naive_step_ms_mean` but no longer headlined.)
 
 ## Honest scope
 - The end-to-end 12M result is **single-head** (H=8 does not fit — K alone is 12.3 GB) and on **synthetic

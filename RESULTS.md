@@ -1060,19 +1060,27 @@ the P1/P3/P4 story, unchanged; the dense speedup numerator is measured, the 8M/1
 
 **Decode path** (`ivf_decode.py`) — the serving cost the "serving paradox" only asserted, now measured on both
 sides. Per generated token: maintain block-means incrementally (add-only IVF index, so it holds only completed
-past blocks ⇒ automatically causal), IVF-search the one query, gather ≈κ keys, one κ-length softmax row. Dense
-reads the whole causal prefix (measurable even at 12M):
+past blocks ⇒ automatically causal), IVF-search the one query, gather ≈κ keys, one κ-length softmax row. The
+dense reference is a **fair** one — an fp16 flash-decode row (sdpa, q_len=1) over the whole causal prefix, no
+fp32 K/V copy (measurable even at 12M):
 
-| n | SSA step (ms) | dense step (ms) | speedup | search (ms) | gather+attend (ms) |
-|---|---|---|---|---|---|
-| 1M | 0.55 | 2.58 | 5× | 0.13 | 0.55 |
-| 4M | 0.53 | 9.83 | 19× | 0.13 | 0.54 |
-| **12M** | **0.53** | **29.58** | **55×** | **0.13** | **0.56** |
+| n | SSA step (ms) | dense step (ms) | naive fp32 dense (ms) | speedup | vs naive | search (ms) | gather+attend (ms) |
+|---|---|---|---|---|---|---|---|
+| 1M | 0.60 | 0.52 | 2.58 | 0.9× | 4× | 0.12 | 0.54 |
+| 2M | 0.56 | 0.91 | 5.17 | 1.6× | 9× | 0.13 | 0.53 |
+| 4M | 0.55 | 1.80 | 10.26 | 3.3× | 19× | 0.13 | 0.55 |
+| 8M | 0.54 | 3.59 | 20.48 | 6.6× | 38× | 0.13 | 0.55 |
+| **12M** | **0.58** | **5.27** | **30.96** | **9.1×** | **54×** | **0.13** | **0.56** |
 
-The SSA decode step is **flat in n** (κ fixed at ~1,280 keys: 0.55 ms at 1M → 0.53 ms at 12M) while dense
-grows with the prefix (2.6 → 29.6 ms) — a **55× per-step gap at 12M**. **Honest scope:** single head; synthetic
-keys (speed only); add-only index with no quantizer retrain (valid over the 128 measured steps; a real serving
-loop retrains every R blocks as centroids drift, noted in the JSON meta).
+The SSA decode step is **flat in n** (κ fixed at ~1,280 keys: ~0.6 ms from 1M to 12M) while the fair dense
+step grows linearly with the prefix (0.5 → 5.3 ms) — a **9.1× per-step gap at 12M**, with the crossover near
+1M–2M (at 1M the fp16 flash-decode step is slightly *faster* than the IVF-routed step). **Correction (was
+inflated):** the previously reported "55×" was measured against a dense reference that upcast the WHOLE prefix
+K/V to fp32 every step — two full-prefix fp32 copies on top of the read, ~5× slower than the fair fp16 row.
+That naive reference is kept in the benchmark (`dense_naive_step_ms_mean`, 2.6 → 31.0 ms — it reproduces the
+old numbers) and the honest headline is 9.1×. **Honest scope:** single head; synthetic keys (speed only);
+add-only index with no quantizer retrain (valid over the 128 measured steps; a real serving loop retrains
+every R blocks as centroids drift, noted in the JSON meta).
 
 ## Multi-hop retrieval — the composition law, measured — (`multihop_analysis.py`)
 

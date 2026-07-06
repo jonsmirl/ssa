@@ -250,6 +250,12 @@ class CausalCascade:
         self.index.nprobe = min(nprobe, self.nlist)
         d, i = self.index.search(qr, kc)
         self.index.nprobe = old
+        pad = i < 0                                                # a starved probe (probed lists jointly
+        if pad.any():                                              # hold < kc vectors) is padded by faiss
+            d = d.masked_fill(pad, NEG)                            # with id -1 / score ~-3.4e38, which is
+            i = i.masked_fill(pad, 0)                              # NOT -inf: mask to NEG so route()'s
+        # scores>NEG guard drops the slot (id 0 is inert), and D_last=NEG is sound — the search returned
+        # every member of the probed lists, so nothing was lost to truncation (the exhaustive convention).
         return d, i.long(), d[:, -1]
 
     def _search_staged(self, qr, qb_start):

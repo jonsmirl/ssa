@@ -7,8 +7,11 @@ never measures it. This does. Per generated token: maintain block means incremen
 the partial tail block; when a block completes, add its mean to the IVF index — build once at prefill,
 add-only, NO quantizer retrain, so the index holds only COMPLETED PAST blocks and selection is
 automatically causal), IVF-search the single query, gather ≈κ keys, one κ-length softmax row
-(`decode_attend`). The dense reference reads the full (pos+1)-length row — measurable even at 12M
-(a 3 GB K/V read ≈ single-digit ms), so BOTH sides are measured, no cost model.
+(`decode_attend`). The dense reference is a FAIR one: an fp16 flash-decode row (sdpa, q_len=1) over the
+full (pos+1)-length prefix with no fp32 K/V copy — measurable even at 12M (a ~3.2 GB fp16 K/V read),
+so BOTH sides are measured, no cost model. The previous fp32-upcasting reference (which copied the whole
+prefix to fp32 every step, overstating the dense cost ~5×) is kept as `dense_decode_naive` and reported
+alongside — the headline speedup uses the fair baseline.
 
 Honest scope: single head; synthetic keys (speed only); add-only index (a real serving loop retrains the
 quantizer every R blocks — centroids drift as n grows materially; noted in the JSON meta).
@@ -22,6 +25,7 @@ import math
 import os
 import time
 import torch
+import torch.nn.functional as F
 from ssa.ssa_kernel import BLOCK
 
 try:
@@ -60,7 +64,21 @@ def decode_attend(qvec, k, v, blocks, pos, block=BLOCK):
 
 @torch.no_grad()
 def dense_decode(qvec, k, v, pos):
-    """Reference: attend the whole causal prefix [0..pos]. Bandwidth-bound, measured at every n."""
+    """FAIR reference: one fp16 flash-decode row (sdpa, q_len=1) over the whole causal prefix [0..pos].
+    No fp32 copy of K/V — reads ~2·(pos+1)·d·2 bytes, the strongest dense step available here.
+    Bandwidth-bound, measured at every n. Pinned against `dense_decode_naive` in test_ivf_decode.py."""
+    d = qvec.shape[-1]
+    out = F.scaled_dot_product_attention(qvec.view(1, 1, 1, d),
+                                         k[:pos + 1].view(1, 1, pos + 1, d),
+                                         v[:pos + 1].view(1, 1, pos + 1, d))
+    return out.view(d)
+
+
+@torch.no_grad()
+def dense_decode_naive(qvec, k, v, pos):
+    """The PREVIOUS reference (kept for the side-by-side): upcasts the WHOLE prefix K/V to fp32 every
+    step — two full-prefix fp32 allocations+copies on top of the read, ~5× slower than `dense_decode`
+    at large n. Reported as dense_naive_step_ms_mean; never used for the headline speedup."""
     d = qvec.shape[-1]
     Kp = k[:pos + 1].float(); Vp = v[:pos + 1].float()
     w = torch.softmax((qvec.float() @ Kp.T) / math.sqrt(d), dim=-1)
@@ -117,17 +135,25 @@ def bench_decode(n, d=64, block=BLOCK, top_c=8, local=1, nprobe=4, steps=128, g=
             ix.add(k[b * block:(b + 1) * block].mean(0, keepdim=True, dtype=torch.float32))
         return dense_decode(qbuf[t], k, v, pos) if timed_dense else o
 
-    # Pass A — throughput (unsynced loop / steps), SSA then dense
+    # Pass A — throughput (unsynced loop / steps), SSA then dense (fair fp16 sdpa) then naive (fp32-upcast)
     for _ in range(3):
         do_step(0)
     torch.cuda.synchronize(); s = time.time()
     for t in range(steps):
         do_step(t)
     torch.cuda.synchronize(); ssa_ms = (time.time() - s) / steps * 1000
+    for _ in range(3):
+        dense_decode(qbuf[0], k, v, n)
     torch.cuda.synchronize(); s = time.time()
     for t in range(steps):
         dense_decode(qbuf[t], k, v, n + t)
     torch.cuda.synchronize(); dense_ms = (time.time() - s) / steps * 1000
+    for _ in range(3):
+        dense_decode_naive(qbuf[0], k, v, n)
+    torch.cuda.synchronize(); s = time.time()
+    for t in range(steps):
+        dense_decode_naive(qbuf[t], k, v, n + t)
+    torch.cuda.synchronize(); naive_ms = (time.time() - s) / steps * 1000
 
     # Pass B — component medians over a short run
     def _med(fn, reps=32):
@@ -140,11 +166,13 @@ def bench_decode(n, d=64, block=BLOCK, top_c=8, local=1, nprobe=4, steps=128, g=
     attend_ms = _med(lambda t: decode_attend(qbuf[t], k, v, sel_blocks(qbuf[t], n + t), n + t, block))
 
     kappa = (top_c + local + 1) * block
-    bw_gb = 3 * (n * d * 2) / 1e9                                        # dense reads ~k+v of the prefix
+    bw_gb = 2 * (n * d * 2) / 1e9                                        # fair dense reads k+v fp16 of the prefix
     del k, v, mu, ix, qbuf
     torch.cuda.empty_cache()
     return {"n": n, "nb": nb, "ssa_step_ms_mean": ssa_ms, "dense_step_ms_mean": dense_ms,
-            "dense_measured": True, "speedup": dense_ms / ssa_ms if ssa_ms else None,
+            "dense_naive_step_ms_mean": naive_ms, "dense_measured": True,
+            "speedup": dense_ms / ssa_ms if ssa_ms else None,
+            "speedup_vs_naive": naive_ms / ssa_ms if ssa_ms else None,
             "search_ms_p50": search_ms, "gather_attend_ms_p50": attend_ms,
             "kappa_keys": kappa, "dense_read_gb": bw_gb, "steps": steps}
 
@@ -160,14 +188,17 @@ def main():
     print("=" * 92)
     print("IVF DECODE — per-step latency, IVF-routed SSA vs dense full-prefix (both measured), single head")
     print("=" * 92)
-    print(f"  {'n':>10} {'nb':>7} {'SSA step':>9} {'dense step':>11} {'speedup':>8} "
-          f"{'search':>8} {'attend':>8} {'κ keys':>8}")
+    print(f"  {'n':>10} {'nb':>7} {'SSA step':>9} {'dense step':>11} {'naive':>9} {'speedup':>8} "
+          f"{'vs naive':>9} {'search':>8} {'attend':>8} {'κ keys':>8}")
     rows = []
     for n in args.ns:
         r = bench_decode(n, steps=args.steps, g=g)
         rows.append(r)
         print(f"  {n:>10} {r['nb']:>7} {r['ssa_step_ms_mean']:>8.3f}m {r['dense_step_ms_mean']:>10.3f}m "
-              f"{(f'{r['speedup']:.0f}x' if r['speedup'] else '—'):>8} {r['search_ms_p50']:>7.3f}m "
+              f"{r['dense_naive_step_ms_mean']:>8.3f}m "
+              f"{(f'{r['speedup']:.1f}x' if r['speedup'] else '—'):>8} "
+              f"{(f'{r['speedup_vs_naive']:.0f}x' if r['speedup_vs_naive'] else '—'):>9} "
+              f"{r['search_ms_p50']:>7.3f}m "
               f"{r['gather_attend_ms_p50']:>7.3f}m {r['kappa_keys']:>8}", flush=True)
         _write(args, rows)
     print(f"\n  SSA decode is ~flat in n (κ fixed); dense grows with the prefix. wrote {args.out}")
@@ -178,7 +209,11 @@ def _write(args, rows):
             "seed": 0, "dtype": "float16", "gpu": "RTX 4080 16GB",
             "index_policy": "prefill-build + add-on-block-complete; no retrain (steps<<n; a serving loop "
                             "would retrain the quantizer every R blocks as centroids drift)",
-            "dense_reference": "measured full-prefix row (bandwidth ~3·n·d·2 bytes in dense_read_gb)"}
+            "dense_reference": "FAIR: measured fp16 flash-decode row (sdpa q_len=1) over the full prefix, "
+                               "no fp32 K/V copy (reads ~2·n·d·2 bytes, in dense_read_gb). The previous "
+                               "fp32-upcasting reference (copies whole-prefix K and V to fp32 every step, "
+                               "~5x slower) is reported as dense_naive_step_ms_mean; the headline speedup "
+                               "uses the fair baseline"}
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     json.dump({"meta": meta, "rows": rows}, open(args.out, "w"), indent=2)
 

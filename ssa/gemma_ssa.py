@@ -21,7 +21,7 @@ Run the unit tests:  pytest ssa/tests/test_gemma_ssa.py
 Install on a model:  from ssa.gemma_ssa import install_ssa; install_ssa(model, budget_frac=0.25)
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 import torch
 import torch.nn.functional as F
 
@@ -242,20 +242,31 @@ def ssa_attention_forward(module, query, key, value, attention_mask=None,
 def install_ssa(model, **cfg_kwargs):
     """Register SSA as the model's attention implementation. Sliding layers fall back to the
     model's prior kernel; full layers route. Validate the wiring with the GPU smoke test —
-    the routing math itself is unit-tested in test_gemma_ssa.py."""
+    the routing math itself is unit-tested in test_gemma_ssa.py.
+
+    Every install starts from SSAConfig() defaults: fields not passed here are RESET, and a stale
+    _PROJ / donor BlockMask never survives into the next arm — pass the full configuration each time.
+    (CFG is reset in place, not rebound, so callers holding a reference keep it.)"""
     global _FALLBACK, _PROJ
+    defaults = SSAConfig()
+    for f in fields(SSAConfig):
+        setattr(CFG, f.name, getattr(defaults, f.name))
     for k, val in cfg_kwargs.items():
         setattr(CFG, k, val)
     _SHARE["sig"] = None; _SHARE["bm"] = None
+    _PROJ = None
     if CFG.proj_path:
         from ssa.routing_space import RoutingProjection
         _PROJ = RoutingProjection.load(CFG.proj_path)
     from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS
     prior = getattr(model.config, "_attn_implementation", None) or "sdpa"
-    try:
-        _FALLBACK = ALL_ATTENTION_FUNCTIONS.get_interface(prior)
-    except Exception:
-        _FALLBACK = ALL_ATTENTION_FUNCTIONS.get("sdpa")
+    if prior == "ssa":                        # re-install: never adopt ourselves as the sliding-layer
+        prior = None if _FALLBACK is not None else "sdpa"   # fallback (infinite recursion); keep the prior one
+    if prior is not None:
+        try:
+            _FALLBACK = ALL_ATTENTION_FUNCTIONS.get_interface(prior)
+        except Exception:
+            _FALLBACK = ALL_ATTENTION_FUNCTIONS.get("sdpa")
     ALL_ATTENTION_FUNCTIONS["ssa"] = ssa_attention_forward
     model.config._attn_implementation = "ssa"
     if hasattr(model.config, "get_text_config"):

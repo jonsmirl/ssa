@@ -87,7 +87,7 @@ pretrained models on first run.
 | `ssa_demo.py` | the full SSA layer end to end: cumulant block routing + local window + exact attention, `O(n·k)`, recovering dense accuracy at a small budget | §4 |
 | `ssa_kernel.py` | a fused block-sparse kernel (PyTorch FlexAttention) that never materializes the `n×n` scores (≈20.6× over dense at 256K) | §4.4 |
 | `ivf_kernel.py` | the faiss-GPU IVF router wired into the kernel (`ssa_flex_ivf`), measured end-to-end to **12M tokens** single-head (139 ms, 6.55 GB; maskbuild ~0) | §4.4 |
-| `ivf_decode.py` | the decode path: per-step IVF-routed SSA vs dense, both measured to 12M (SSA step flat ~0.53 ms; 55× at 12M) | §4.4 |
+| `ivf_decode.py` | the decode path: per-step IVF-routed SSA vs a fair fp16 flash-decode step, both measured to 12M (SSA flat ~0.6 ms; 9.1× at 12M, crossover ~1M–2M) | §4.4 |
 | `multihop_analysis.py` | multi-hop chained retrieval through the block selector — the composition law `chain ≈ ∏ρ` and the mixed-mode collapse | §10 |
 | `longctx_swap.py` | the fast kernel inside a real model (Qwen2.5-0.5B) at 8K–128K: NIAH/two-hop quality + prefill wall-clock vs budget | §9 |
 | `cascade_router.py` | the **Certified Causal Cascade** — one streaming selector composing sub-block max-pool, a warm-start IVF index, an outlier channel, and per-query **sound certificates** + escalation | §10 |
@@ -145,8 +145,9 @@ pretrained models on first run.
   FlexAttention kernel (`from_kv_blocks(compute_q_blocks=False)` skips the 38.7 GB dense transpose) runs a
   **full 12M-token forward in 139 ms and 6.55 GB, single-head** — the argsort maskbuild `n^2.12` wall is now
   **sub-millisecond**, and the gap to the floor is a *measured* **2.9×** (was a 128× projection). The decode
-  path (`ivf_decode.py`) is **flat in n** (~0.53 ms/step) vs dense's growing prefix read — **55× at 12M**.
-  (Single-head, synthetic keys = speed only.)
+  path (`ivf_decode.py`) is **flat in n** (~0.6 ms/step) vs a fair fp16 flash-decode step's growing prefix
+  read — **9.1× at 12M**, crossover ~1M–2M (an earlier 55× was against a naive fp32-upcasting reference, ~5×
+  slower; it is kept in the benchmark but no longer headlined). (Single-head, synthetic keys = speed only.)
 - **Multi-hop retrieval — the composition law self-tested (`multihop_analysis.py`).** A chained retrieval
   through the same block selector obeys `chain ≈ ∏ρ`: benign single needles hold at **1.00** while the **mixed**
   chain (one benign + one isolated hop) collapses to **0.02** — the NIAH@12M (~98%) vs MRCR (65.9%) split the

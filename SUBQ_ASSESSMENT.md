@@ -175,9 +175,12 @@ self-tested; `RESULTS.md` § "Multi-hop retrieval".)
 geometry, while the realized system has a superlinear router, an `O(n)`-per-step decode path, and faithfulness
 that declines with needle distance (block-hit ~78% at a tiny budget, falling over half-context distance on
 random keys). The `O(n)`-per-step decode cost — the part prefill speedups hide — the rig now **measures**
-(`ivf_decode.py`): with a fixed κ the IVF-routed decode step is *flat in n* (~0.53 ms from 1M to 12M) while a
-dense step grows with the prefix (2.6 → 29.6 ms), so the decode advantage is real **but only ~55× at 12M, not
-1,000×**, and it rests on the same benign, add-only-index assumptions. The production speedup is well below the
+(`ivf_decode.py`): with a fixed κ the IVF-routed decode step is *flat in n* (~0.6 ms from 1M to 12M) while a
+fair fp16 flash-decode step grows with the prefix (0.5 → 5.3 ms), so the decode advantage is real **but only
+~9× at 12M, not 1,000×** — and it only breaks even near ~1M–2M of prefix. (An earlier 55× figure was measured
+against a naive fp32-upcasting dense reference, ~5× slower than the fair fp16 row; corrected in RESULTS.md —
+a correction that *strengthens* this section's point.) It rests on the same benign, add-only-index
+assumptions. The production speedup is well below the
 headline — exactly why you would meter it. (The Magic.dev parallel — 100M tokens, claimed 1,000×, $500M raised,
 then public silence — is the cautionary base rate.)
 

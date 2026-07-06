@@ -6,8 +6,10 @@ these validate the routing/selection math so the GPU window is spent on real for
 The load-bearing one is `test_full_budget_equals_dense` (the kappa=100% sanity gate): with the budget
 covering every visible block, SSA must reproduce dense attention bit-for-bit.
 """
+import importlib.util
 import torch
 import torch.nn.functional as F
+from dataclasses import fields
 from types import SimpleNamespace
 import pytest
 
@@ -164,3 +166,28 @@ def test_lower_budget_attends_fewer_keys():
         else:
             counts.append(int((m[0, 0] == 0.0).sum().item()))
     assert counts[0] > counts[1] > counts[2] > counts[3], counts
+
+
+@pytest.mark.skipif(importlib.util.find_spec("transformers") is None,
+                    reason="install_ssa registers via transformers' attention interface")
+def test_install_ssa_resets_state():
+    """Consecutive installs must not inherit the previous arm's state: unspecified CFG fields return to
+    SSAConfig() defaults, a stale trained projection / donor BlockMask is cleared, CFG keeps its identity
+    (callers hold a reference), and a re-install never adopts the ssa fn as its own sliding-layer
+    fallback (infinite recursion). Regression for the cross-arm config/_PROJ leak."""
+    model = SimpleNamespace(config=SimpleNamespace(_attn_implementation="sdpa"))
+    cfg_ref = G.CFG
+    G.install_ssa(model, budget_frac=0.5, dense_layers=(3,), beta=7.0, share_route_from=2)
+    assert G.CFG.budget_frac == 0.5 and G.CFG.dense_layers == (3,) and G.CFG.share_route_from == 2
+    assert model.config._attn_implementation == "ssa"
+    G._PROJ = object()                        # simulate a projection loaded by a previous arm
+    G._SHARE["sig"] = "stale"; G._SHARE["bm"] = "stale"
+    G.install_ssa(model)                      # re-install, no kwargs -> every field back to defaults
+    assert G.CFG is cfg_ref
+    fresh = G.SSAConfig()
+    for f in fields(G.SSAConfig):
+        assert getattr(G.CFG, f.name) == getattr(fresh, f.name), f.name
+    assert G._PROJ is None
+    assert G._SHARE["sig"] is None and G._SHARE["bm"] is None
+    assert G._FALLBACK is not ssa_attention_forward
+    G._FALLBACK = None                        # leave the module state clean for the other tests

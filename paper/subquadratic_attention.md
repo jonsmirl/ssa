@@ -494,8 +494,11 @@ over a dense exact kernel at $n=262{,}144$ on a single accelerator, with the cro
 the whole forward single-head on one 16 GB GPU runs a **12M-token forward in 139 ms and 6.55 GB**, at a *measured*
 $2.9\times$ the $n\!\cdot\!\kappa$ floor (versus the $128\times$ gap the flat kernel projected); the argsort mask
 build collapses to sub-millisecond because the IVF emits block indices directly. The autoregressive decode step
-is **flat in $n$** ($\sim\!0.53$ ms from 1M to 12M at fixed $\kappa$) while a dense step's prefix read grows with
-$n$ ($2.6\to29.6$ ms) — a $55\times$ per-step gap at 12M, both measured. (Single head; synthetic keys — a speed
+is **flat in $n$** ($\sim\!0.6$ ms from 1M to 12M at fixed $\kappa$) while a fair fp16 flash-decode step's prefix
+read grows with $n$ ($0.5\to5.3$ ms) — a $9\times$ per-step gap at 12M with the crossover near 1M–2M, both
+measured. (An earlier $55\times$ figure was measured against a naive dense reference that upcast the whole prefix
+K/V to fp32 every step, ${\sim}5\times$ slower than the fair fp16 row; the naive reference is retained in the
+benchmark but no longer headlined. Single head; synthetic keys — a speed
 result, with selection quality the separate benign-geometry story.)
 
 **Multi-hop composition.** A chained retrieval through the same budgeted block selector obeys the composition law
