@@ -84,6 +84,15 @@ This is Depue's *"the scaling and speedup numbers don't line up,"* made quantita
 **but it proves what 1,000× would *require*, not that this rig delivers it** (the treecode is unbuilt at scale;
 see the "fully subquadratic" row and `README` § Scope).
 
+Two disciplines this finding owes its own reader. **Symmetry:** the rig's headline 1,629× at 12M
+(`RESULTS.md`) divides a *measured* SSA forward by a **fitted** dense denominator (the `n^1.98` law, measured
+to 4M and extrapolated 3×) — the same move criticized here at larger stretch, disclosed in place there; neither
+number is a two-sided measurement at 12M. **Sensitivity:** extrapolating SubQ's two points under the
+*observed* sub-linear rate (`α≈0.95` over 128K→1M) instead of the idealized linear `n/κ` model lands ≈560× at
+12M — even further below 1,000× than the linear 630×, so the gap is robust to which extrapolation one
+prefers (the linear model is the reading *most generous* to SubQ, and it still falls short). The finding
+survives both checks; stating them is what keeps it symmetric.
+
 ## The July 2026 interview: the anchors drift toward the rig, and the strong claim quietly narrows
 
 A July 2026 interview (The New Stack, Lardinois; plus the full video transcript) moves several things, none in

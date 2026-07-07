@@ -8,8 +8,9 @@ when does it work?**
 > **On the *(proved)* claims below.** Results marked *(proved)* — and the theorem names cited inline
 > (`samuelson_prune_gate`, `ellipsoidal_search_bound`, `temperedLogPartition_max_sandwich`,
 > `lossless_selector_reads_every_key`, `hierarchical_prune`, `dropped_combination_error_bound`, …) — are
-> machine-checked in the Substrate Lean 4 development, module
-> `Substrate.Inference.PhaseTransition.Algebra.*` (axiom-pure, no `sorry`/`admit`). That formalization is
+> machine-checked in the Substrate Lean 4 development — namespace `Substrate.Inference.PhaseTransition`,
+> sources under `Substrate/Inference/Algebra/` and `Substrate/Inference/Shadow/` (axiom-pure, no
+> `sorry`/`admit`). That formalization is
 > maintained separately and is **not** included in this public repository; the theorem names are the
 > pointers into it. The Python in this repo *measures* those results — it does not prove them.
 

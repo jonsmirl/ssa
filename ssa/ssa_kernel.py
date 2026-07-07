@@ -142,6 +142,9 @@ def _time(fn, *a, reps=8):
 
 
 def benchmark_speed():
+    # 7 shapes exactly fit dynamo's default cache of 8; one more shape (or a guard respecialization)
+    # would silently drop _flex to eager mid-benchmark and corrupt the largest-n timings.
+    torch._dynamo.config.cache_size_limit = 64
     print("\n[1] WALL-CLOCK speedup vs dense FlashAttention (H=8, d=64, fp16, top_c=8 blocks + local)")
     print(f"  {'n (ctx)':>9} {'dense (ms)':>11} {'SSA (ms)':>9} {'speedup':>8} {'attn frac':>10}")
     rows = []

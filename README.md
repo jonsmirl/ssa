@@ -206,8 +206,9 @@ read the headlines with that seam in mind.
 - **Multi-hop is the honest failure mode:** the composition law (`multihop_analysis.py`) and the real-model
   two-hop task (`longctx_swap.py`, `gemma_ssa_eval.py`) both show the chain sagging where single needles hold —
   the benign-geometry condition is load-bearing, not incidental.
-- The **"(proved)"** results are machine-checked in a *separate* Lean development
-  (`Substrate.Inference.PhaseTransition.Algebra.*`) that is **not shipped in this repo**; the prose maps to
+- The **"(proved)"** results are machine-checked in a *separate* Lean development (namespace
+  `Substrate.Inference.PhaseTransition`, sources under `Substrate/Inference/Algebra/` and
+  `Substrate/Inference/Shadow/`) that is **not shipped in this repo**; the prose maps to
   *lower bounds / sufficient conditions*, not equalities (see the paper's bibliography).
 - The **zero-attention (P8)** results are `d ≤ 128` reference implementations on synthetic keys — mechanism
   measurements against the Lean predictions, **not a trained language model** and with no wall-clock claims.

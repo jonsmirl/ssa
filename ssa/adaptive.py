@@ -5,9 +5,9 @@ The flat router (co_train.py) picks a FIXED set of clusters and is approximate (
 dense ceiling). The FMM/Barnes-Hut clue: refine adaptively. Give each cluster an ADMISSIBLE upper
 bound on its best member's score,
 
-    UB_b(q) = q . mu_b + R_b ,   R_b = max_{j in b} || k_j - mu_b ||   (radius),
+    UB_b(q) = q . mu_b + ||q|| R_b ,   R_b = max_{j in b} || k_j - mu_b ||   (radius),
 
-since q.k_j = q.mu_b + q.(k_j - mu_b) <= q.mu_b + ||k_j - mu_b||. Best-first branch-and-bound: open
+since q.k_j = q.mu_b + q.(k_j - mu_b) <= q.mu_b + ||q|| ||k_j - mu_b||. Best-first branch-and-bound: open
 clusters in descending UB, track the best score found s*, and STOP once the next cluster's UB <= s*
 (no unopened cluster can hold a better key). With an admissible bound this is EXACT (recall = the
 dense ceiling) at ADAPTIVE cost; with a budget cap it is an anytime approximation. We measure whether

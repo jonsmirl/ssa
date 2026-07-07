@@ -7,7 +7,9 @@ constraint on long-context language models. This paper presents **Subquadratic S
 attention mechanism that, for each query, (i) routes to a small content-dependent set of key blocks using
 only per-block summary statistics, (ii) adds a local window, and (iii) performs *exact* softmax attention
 over the selected keys. The per-query work is $O(\kappa)$ in a fixed budget $\kappa \ll n$ plus a sublinear
-routing cost, so the layer runs in $O(n\sqrt{n})$ flat or near-linear with a hierarchical router.
+routing cost: a flat router runs the layer in $O(n\sqrt{n})$ (at block size $b=\sqrt n$, where the budget
+grows as $\sqrt n$), and a hierarchical router runs it near-linearly at fixed $b$ and fixed $\kappa$ — the
+configuration in which retrieval is also flat in $n$ (Section 4.4 keeps the two regimes apart).
 
 A supporting theory establishes when this is sound. A retrieval-margin analysis shows that softmax
 attention recovers a target key with weight $\sigma(\beta\Delta - \log \mu)$, where $\Delta$ is the score
@@ -118,7 +120,9 @@ $$
 \tag{4.1}
 $$
 and a radius $R_c=\max_{j\in c}\lVert k_j-\mu_c\rVert$. In practice $\Sigma_c$ is kept diagonal,
-$\sigma_c^2=\mathrm{diag}\Sigma_c$, so a block's summary is $O(d)$ numbers.
+$\sigma_c^2=\mathrm{diag}\Sigma_c$, so a block's summary is $O(d)$ numbers. (The diagonal form is fine for
+the *heuristic* routing score, but it voids the Samuelson prune *certificate* unless the surrogate bound is
+used — see the diagonal-summary caveat in Section 5.3.)
 
 ### 4.2 Routing score
 
@@ -161,19 +165,32 @@ for each query q_i:                                       # parallel over i
 return O
 ```
 
-### 4.4 Complexity
+### 4.4 Complexity — two regimes, and which claim lives where
 
-Routing is $O(n\,B\,d)$ if every query scores every block, and attention is $O(n\,\kappa\,d)$.
+Routing is $O(n\,B\,d)$ if every query scores every block, and attention is $O(n\,\kappa\,d)$. Two parameter
+regimes must be kept apart, because the cost claim and the retrieval-flatness claim of Section 3 do not live
+in the same one:
 
-- **Flat router**, $B=\sqrt n$, $b=\sqrt n$, fixed $k,w$: routing $O(n^{1.5}d)$, attention
-  $O(n\,\kappa\,d)=O(n^{1.5}d)$. Total $O(n^{1.5}d)$ — already a large saving over $n^2$.
-- **Hierarchical router.** Organize blocks into a tree of summaries and descend it per query with
-  branch-and-bound pruning (Section 5.1), so each query inspects $O(k\log B)$ nodes rather than all $B$.
-  Routing drops toward $O(n\log n\,d)$ and the layer is near-linear in $n$ up to the attention budget
-  $O(n\,\kappa\,d)$.
+- **Cost-optimal flat router**, $B=\sqrt n$, $b=\sqrt n$, fixed block-counts $k,w$: routing $O(n^{1.5}d)$,
+  attention $O(n\,\kappa\,d)=O(n^{1.5}d)$; total $O(n^{1.5}d)$ — already a large saving over $n^2$. But here
+  the key budget $\kappa=(k+w)\sqrt n$ **grows with $n$**: the detectability threshold $\log\kappa$ of
+  Section 3 rises as $\tfrac12\log n$ (the $\log n$ erosion returns at half rate), and the $1/b$ mean
+  attenuation of Section 5.2 worsens as $1/\sqrt n$. Subquadratic, but **not** retrieval-flat.
+- **Retrieval-flat flat router**, $b$ fixed (the measured setting, $b=128$), fixed $k,w$: $\kappa$ is fixed,
+  so recovery is flat in $n$ (Section 3) — but scan-all-blocks routing is $O(n\,B\,d)=O(n^2d/b)$, quadratic
+  up to a constant (the measured $n^{1.76}$ router and $n^{2.12}$ maskbuild walls of Section 10).
+- **Hierarchical router at fixed $b$ and fixed $\kappa$** — the configuration that delivers both. Organize
+  blocks into a tree of summaries and descend it per query with branch-and-bound pruning (Section 5.1), so
+  each query inspects $O(k\log B)$ nodes rather than all $B$ — a benign-geometry cost, not a worst-case
+  guarantee. Routing drops toward $O(n\log n\,d)$ while $\kappa$ stays fixed. The practical instance is the
+  *approximate* IVF router of Section 10 (0.93–0.97 block agreement), which is how the measured 12M-token
+  forward reaches $\sim\!2.9\times$ the $n\,\kappa$ floor — in the cheap+length-robust-but-approximate corner
+  of Section 6, not the certified one.
 
-Either way the dominant $n^2$ term is gone. In a block-sparse kernel implementation the practical speedup
-over a dense exact kernel was $20.6\times$ at $n=262{,}144$ on a single accelerator (Section 10).
+So "$O(n\sqrt n)$ per layer" and "recovery flat in $n$" are claims about **different** configurations, and the
+hierarchical (or IVF) router at fixed $b,\kappa$ is what reconciles them. Either way the dominant $n^2$ term
+is gone. In a block-sparse kernel implementation the practical speedup over a dense exact kernel was
+$20.6\times$ at $n=262{,}144$ on a single accelerator (Section 10).
 
 ---
 
@@ -224,17 +241,26 @@ q,k_\star\rangle=a_\star$ and $b-1$ keys with logit $\approx 0$, then $\langle q
 but $q^\top\Sigma_c q\approx a_\star^2/b$, so the second-order score $r_c\approx a_\star/b +
 (\beta/2)a_\star^2/b$ carries the quadratic outlier signal the mean discards.
 
-**The tempered family and its bias.** Routing by the tempered score
-$r_c^{(\beta)}=\beta^{-1}\log\sum_{j\in c}e^{\beta\langle q,k_j\rangle}$ interpolates between the mean
-($\beta\to0$) and the max ($\beta\to\infty$), and is sandwiched by
+**The tempered family and its bias.** It is the *normalized* tempered mean
+$g_c^{(\beta)}=\beta^{-1}\log\frac1b\sum_{j\in c}e^{\beta\langle q,k_j\rangle}$ — the object expanded in
+(4.2)/A.2 — that interpolates between the mean logit ($\beta\to0$) and the block max ($\beta\to\infty$). The
+unnormalized log-sum-exp $r_c^{(\beta)}=\beta^{-1}\log\sum_{j\in c}e^{\beta\langle q,k_j\rangle}
+= g_c^{(\beta)}+(\log b)/\beta$ differs from it only by a block-size constant (irrelevant when ranking
+equal-size blocks, where the two orderings coincide) and is sandwiched by
 $$
 \max_{j\in c}\langle q,k_j\rangle \;\le\; r_c^{(\beta)} \;\le\; \max_{j\in c}\langle q,k_j\rangle + \frac{\log b}{\beta}.
 \tag{5.3}
 $$
-So $r_c^{(\beta)}$ estimates the block's *best* logit — exactly what selection wants — with bias at most
+So the tempered score estimates the block's *best* logit — exactly what selection wants — with bias at most
 $(\log b)/\beta$. Small $\beta$ smooths over outliers (the centroid failure); large $\beta$ removes the bias
 but amplifies noise and loses the averaging that makes summaries stable. The cumulant form (4.2) is the
-second-order member of this family; empirically the routing quality is maximized near $\beta\approx 2$.
+second-order Taylor truncation of $g_c^{(\beta)}$ about $\beta=0$, used at the measured optimum
+$\beta\approx 2$; its truncation error is the Lagrange remainder $(\beta^2/6)\,K_c'''(\xi)$ for some
+$\xi\in(0,\beta)$, with $K_c$ the cumulant generating function of the in-block logits — a third-cumulant
+(skew) term that vanishes for light-tailed blocks and is *positive* for a positively-skewed (spiked) block,
+so the second-order score under-estimates exactly the outlier blocks it most needs to see at moderate
+$\beta$. That residual gap is the mechanism behind the isolated-needle failures measured in Section 10, and
+the reason the implementation offers an Edgeworth variant that adds the diagonal third-cumulant term.
 
 ### 5.3 The Samuelson prune test
 
@@ -255,10 +281,24 @@ $$
 \tag{5.5}
 $$
 i.e. when the **margin** of the current best over the block mean exceeds $\sqrt{(b-1)\cdot\text{spread}}$. The
-test needs only $(\mu_c,\Sigma_c)$. It is *sufficient* (it never wrongly prunes) but not necessary, and it
-sharpens the radius bound (5.1) by using the variance rather than the worst-case radius. Equation (5.5) is the
+test needs only $(\mu_c,\Sigma_c)$. It is *sufficient* (it never wrongly prunes) but not necessary. It
+sharpens the radius bound (5.1) when the block's spread along $q$ is small relative to its worst-case radius
+($\sqrt{(b-1)\,q^\top\Sigma_c q}\ll\lVert q\rVert R_c$); neither bound dominates in general —
+$\sqrt{(b-1)\,q^\top\Sigma_c q}$ can exceed $\lVert q\rVert R_c$ by up to a factor $\sqrt{b-1}$ for
+spread-out blocks — so the implementation takes the minimum of the two. Equation (5.5) is the
 operational core of cheap exact selection: it fires — and the block is skipped — precisely when the off-target
 spread $q^\top\Sigma_c q$ is small, which is the benign-geometry condition of Section 7.
+
+**Diagonal-summary caveat.** (5.4)–(5.5) are sound with the *full* quadratic form
+$q^\top\Sigma_c q=\mathrm{Var}_{j\in c}\langle q,k_j\rangle$. With the diagonal summary of (4.1), the proxy
+$\langle q^2,\sigma_c^2\rangle$ *under-estimates* the true logit variance whenever cross-covariances are
+positive, and the gate can then wrongly prune: **run on diagonal summaries, (5.5) is a heuristic, not a
+certificate.** A sound $O(d)$-summary surrogate exists: by the triangle inequality in $L^2$ over the block,
+$\mathrm{Var}_{j\in c}\langle q,k_j\rangle\le\big(\sum_i\lvert q_i\rvert\,\sigma_{c,i}\big)^2$, so
+substituting $(\sum_i\lvert q_i\rvert\,\sigma_{c,i})^2$ for $q^\top\Sigma_c q$ in (5.5) keeps the gate
+admissible at the same summary cost (looser, so it fires less often). The prune-rate measurements reported in
+this paper compute the per-member logit variance directly — the full quadratic form — so they certify the
+full-covariance gate, not the diagonal shortcut.
 
 ---
 
@@ -276,11 +316,17 @@ fundamental limit.
 > weight $\to 1$ on $j_0$, so the correct output is $v_{j_0}$. The selector, never having read $j_0$, returns
 > the same output as on the unmodified input, which is independent of $v_{j_0}$. Hence it is lossy on this
 > input. $\square$
+>
+> The argument covers any *deterministic* selector, adaptive or not: run it, let $\mathcal R$ be the keys its
+> execution actually read, and perturb an unread one — the execution, hence the output, is unchanged. A
+> *randomized* selector reading $o(n)$ keys misses a uniformly-planted spike with probability $1-o(1)$, so
+> the conclusion survives in expectation; we state that extension as a remark, not a formalized claim.
 
 > **Note on formalization.** The proofs given in this paper are the elementary in-text arguments. Their
 > formal counterparts — `subquadratic_forces_skip`, `flat_router_work`, `lossless_selector_reads_every_key`,
 > `hierarchical_prune`, and the rest of the `(proved)` results — are **machine-checked in a separate Lean 4
-> development** (`Substrate.Inference.PhaseTransition.Algebra.*`, Lean 4.30.0 + Mathlib), each confirmed
+> development** (namespace `Substrate.Inference.PhaseTransition`, sources under `Substrate/Inference/Algebra/`
+> and `Substrate/Inference/Shadow/`; Lean 4.30.0 + Mathlib), each confirmed
 > `sorry`-free and axiom-clean (`#print axioms` → only `[propext, Classical.choice, Quot.sound]`). That
 > development is **not bundled in this repository**, so a reader of this artifact alone cannot re-run the
 > checker; and the formal statements are deliberately modest — finite-counting / probe-model lower bounds and
@@ -288,16 +334,24 @@ fundamental limit.
 > sub-`Q·B` work must skip some block, not that any specific system achieves a quality-preserving 1,000×).
 
 The proposition says losslessness for *worst-case* keys forces $\lvert\mathcal{R}\rvert=n$ — no summary suffices, because a
-summary can always hide a spike. A quantitative companion holds under fine-grained complexity assumptions:
-exact attention with unbounded logits requires $n^{2-o(1)}$ time, and only bounded-logit / low-rank regimes
-admit truly subquadratic exact computation. So at most **two** of {cheap, lossless, length-robust} are
-available at once:
+summary can always hide a spike. A quantitative companion holds under fine-grained complexity assumptions
+(SETH): even *approximating* the attention output requires $n^{2-o(1)}$ time once entries reach
+$\omega(\sqrt{\log n})$, and the truly subquadratic algorithm that exists in the bounded-entry regime is
+itself an approximation (a low-rank polynomial method), not exact computation (Alman–Song). What is *proved*
+here is the two-way impossibility — cheap $\wedge$ lossless, worst case. The three-way reading below is an
+organizing **taxonomy** whose third axis is measured in Sections 7–10, not a proved trichotomy: at most
+**two** of {cheap, lossless, length-robust} are available at once:
 
 | keep | give up | what it is |
 |---|---|---|
 | lossless + length-robust | cheap | dense attention — reads every key |
 | cheap + length-robust | lossless | approximate selection — fast, flat, but can miss a worst-case spike |
 | cheap + lossless | length-robust | branch-and-bound on **benign** keys — bounds tight, cost stays low (this section's escape) |
+
+Note the third row concedes length-robustness of **cost**, not of accuracy: admissible branch-and-bound never
+returns a wrong answer — off benign geometry it degrades by *reading more* (toward everything), whereas row 2
+trades accuracy. "Length-robust" in the first two rows is the accuracy sense of Section 3; keeping the two
+currencies straight is part of the taxonomy's honesty.
 
 The escape from the trilemma is the third row: cheapness *and* losslessness are jointly available **when the
 bounds (5.1)/(5.2)/(5.5) are tight**, which is a property of the key geometry, not of the algorithm. SSA is

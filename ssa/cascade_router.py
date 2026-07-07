@@ -153,7 +153,9 @@ class CausalCascade:
         with exactly these centroids (never faiss-trained), faiss's IVF-IP coarse quantizer assigns the same
         way (same centroids, same max-IP rule, same lowest-index tie-break) — so radii cover exactly the
         members faiss searches, and the certificate's probed set matches faiss's. This equality is the
-        soundness pin (test_certificate_soundness)."""
+        soundness pin (test_certificate_soundness). Caveat: it assumes exact fp tie-parity between torch's
+        and faiss's GEMM reductions — duplicated / near-tie keys can land a vector's radius in a different
+        cell than the list faiss searches; set cert_margin > 0 to absorb near-ties on adversarial data."""
         return (X @ self.centroids.T).argmax(1)
 
     def _kmeans(self, X, iters=6):

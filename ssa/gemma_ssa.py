@@ -183,7 +183,9 @@ def _flex_forward(query, k, v, cfg, scaling, dense=False, proj=None, bm_pad=None
 def ssa_attention_forward(module, query, key, value, attention_mask=None,
                           scaling=None, dropout=0.0, **kwargs):
     """transformers attention-interface fn. query (b,hq,n,d); key/value (b,hkv,n,d).
-    Returns (attn_output (b,n,hq,d), attn_weights=None)."""
+    Returns (attn_output (b,n,hq,d), attn_weights=None).
+    `attention_mask` is IGNORED (causality is applied from positions): correct for the batch-1
+    unpadded evals this rig runs; not a general drop-in for padded batches."""
     cfg = CFG
     is_sliding = bool(getattr(module, "is_sliding", False))
     if (cfg.route_full_only and is_sliding) and _FALLBACK is not None:

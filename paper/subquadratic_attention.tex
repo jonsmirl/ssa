@@ -40,8 +40,10 @@ Dense self-attention costs $O(n^2)$ in the sequence length $n$, which is the bin
 long-context language models. This paper presents \emph{Subquadratic Sparse Attention} (SSA), an attention mechanism
 that, for each query, (i)~routes to a small content-dependent set of key blocks using only per-block summary
 statistics, (ii)~adds a local window, and (iii)~performs \emph{exact} softmax attention over the selected
-keys. The per-query work is $O(\kappa)$ in a fixed budget $\kappa\ll n$ plus a sublinear routing cost, so the
-layer runs in $O(n\sqrt{n})$ flat or near-linear with a hierarchical router. A supporting theory establishes
+keys. The per-query work is $O(\kappa)$ in a fixed budget $\kappa\ll n$ plus a sublinear routing cost: a flat
+router runs the layer in $O(n\sqrt{n})$ (at block size $b=\sqrt n$, where the budget grows as $\sqrt n$), and
+a hierarchical router runs it near-linearly at fixed $b$ and fixed $\kappa$---the configuration in which
+retrieval is also flat in $n$ (Section~\ref{sec:complexity} keeps the two regimes apart). A supporting theory establishes
 when this is sound. A retrieval-margin analysis shows that softmax attention recovers a target key with weight
 $\sigma(\beta\Delta-\log\mu)$, where $\Delta$ is the score margin and $\mu$ the number of competing
 distractors; selection works because it cuts $\mu$ from $n$ to $\kappa$, making recovery \emph{flat in $n$}.
@@ -144,7 +146,9 @@ once, the summary statistics
 \Sigma_c=\frac1b\sum_{j\in c}(k_j-\mu_c)(k_j-\mu_c)^\top \quad(\text{covariance}),
 \end{equation}
 and a radius $R_c=\max_{j\in c}\lVert k_j-\mu_c\rVert$. In practice $\Sigma_c$ is kept diagonal,
-$\sigma_c^2=\operatorname{diag}\Sigma_c$, so a block's summary is $O(d)$ numbers.
+$\sigma_c^2=\operatorname{diag}\Sigma_c$, so a block's summary is $O(d)$ numbers. (The diagonal form is fine
+for the \emph{heuristic} routing score, but it voids the Samuelson prune \emph{certificate} unless the
+surrogate bound is used---see the diagonal-summary caveat in Section~\ref{sec:prune}.)
 
 \subsection{Routing score}
 
@@ -193,18 +197,34 @@ Return O
 \vspace{-0.6em}\noindent\rule{\textwidth}{0.6pt}
 \bigskip
 
-\subsection{Complexity}
+\subsection{Complexity---two regimes, and which claim lives where}\label{sec:complexity}
 
-Routing is $O(n\,B\,d)$ if every query scores every block, and attention is $O(n\,\kappa\,d)$.
+Routing is $O(n\,B\,d)$ if every query scores every block, and attention is $O(n\,\kappa\,d)$. Two parameter
+regimes must be kept apart, because the cost claim and the retrieval-flatness claim of
+Section~\ref{sec:margin} do not live in the same one:
 \begin{itemize}
-\item \textbf{Flat router}, $B=\sqrt n$, $b=\sqrt n$, fixed $k,w$: routing $O(n^{1.5}d)$, attention
-  $O(n\,\kappa\,d)=O(n^{1.5}d)$. Total $O(n^{1.5}d)$---already a large saving over $n^2$.
-\item \textbf{Hierarchical router.} Organize blocks into a tree of summaries and descend it per query with
-  branch-and-bound pruning (Section~\ref{sec:bnb}), so each query inspects $O(k\log B)$ nodes rather than all
-  $B$. Routing drops toward $O(n\log n\,d)$ and the layer is near-linear in $n$ up to the attention budget
-  $O(n\,\kappa\,d)$.
+\item \textbf{Cost-optimal flat router}, $B=\sqrt n$, $b=\sqrt n$, fixed block-counts $k,w$: routing
+  $O(n^{1.5}d)$, attention $O(n\,\kappa\,d)=O(n^{1.5}d)$; total $O(n^{1.5}d)$---already a large saving over
+  $n^2$. But here the key budget $\kappa=(k+w)\sqrt n$ \emph{grows with $n$}: the detectability threshold
+  $\log\kappa$ of Section~\ref{sec:margin} rises as $\tfrac12\log n$ (the $\log n$ erosion returns at half
+  rate), and the $1/b$ mean attenuation of Section~\ref{sec:secondorder} worsens as $1/\sqrt n$.
+  Subquadratic, but \emph{not} retrieval-flat.
+\item \textbf{Retrieval-flat flat router}, $b$ fixed (the measured setting, $b=128$), fixed $k,w$: $\kappa$
+  is fixed, so recovery is flat in $n$ (Section~\ref{sec:margin})---but scan-all-blocks routing is
+  $O(n\,B\,d)=O(n^2d/b)$, quadratic up to a constant (the measured $n^{1.76}$ router and $n^{2.12}$
+  maskbuild walls of Section~\ref{sec:floor}).
+\item \textbf{Hierarchical router at fixed $b$ and fixed $\kappa$}---the configuration that delivers both.
+  Organize blocks into a tree of summaries and descend it per query with branch-and-bound pruning
+  (Section~\ref{sec:bnb}), so each query inspects $O(k\log B)$ nodes rather than all $B$---a benign-geometry
+  cost, not a worst-case guarantee. Routing drops toward $O(n\log n\,d)$ while $\kappa$ stays fixed. The
+  practical instance is the \emph{approximate} IVF router of Section~\ref{sec:floor} (0.93--0.97 block
+  agreement), which is how the measured 12M-token forward reaches ${\sim}2.9\times$ the $n\,\kappa$
+  floor---in the cheap+length-robust-but-approximate corner of Section~\ref{sec:trilemma}, not the
+  certified one.
 \end{itemize}
-Either way the dominant $n^2$ term is gone. In a block-sparse kernel implementation the practical speedup over
+So ``$O(n\sqrt n)$ per layer'' and ``recovery flat in $n$'' are claims about \emph{different} configurations,
+and the hierarchical (or IVF) router at fixed $b,\kappa$ is what reconciles them. Either way the dominant
+$n^2$ term is gone. In a block-sparse kernel implementation the practical speedup over
 a dense exact kernel was $20.6\times$ at $n=262{,}144$ on a single accelerator (Section~\ref{sec:experiments}).
 
 \section{Routing theory: when a summary is enough}\label{sec:routing}
@@ -260,18 +280,29 @@ $\inner{q}{k_\star}=a_\star$ and $b-1$ keys with logit $\approx 0$, then $\inner
 $q^\top\Sigma_c q\approx a_\star^2/b$, so the second-order score $r_c\approx a_\star/b+(\beta/2)a_\star^2/b$
 carries the quadratic outlier signal the mean discards.
 
-\paragraph{The tempered family and its bias.} Routing by the tempered score
-$r_c^{(\beta)}=\beta^{-1}\log\sum_{j\in c}e^{\beta\inner{q}{k_j}}$ interpolates between the mean ($\beta\to0$)
-and the max ($\beta\to\infty$), and is sandwiched by
+\paragraph{The tempered family and its bias.} It is the \emph{normalized} tempered mean
+$g_c^{(\beta)}=\beta^{-1}\log\frac1b\sum_{j\in c}e^{\beta\inner{q}{k_j}}$---the object expanded
+in~\eqref{eq:route}/Appendix~A.2---that interpolates between the mean logit ($\beta\to0$) and the block max
+($\beta\to\infty$). The unnormalized log-sum-exp
+$r_c^{(\beta)}=\beta^{-1}\log\sum_{j\in c}e^{\beta\inner{q}{k_j}}=g_c^{(\beta)}+(\log b)/\beta$ differs from
+it only by a block-size constant (irrelevant when ranking equal-size blocks, where the two orderings
+coincide) and is sandwiched by
 \begin{equation}\label{eq:lse}
 \max_{j\in c}\inner{q}{k_j} \;\le\; r_c^{(\beta)} \;\le\; \max_{j\in c}\inner{q}{k_j} + \frac{\log b}{\beta}.
 \end{equation}
-So $r_c^{(\beta)}$ estimates the block's \emph{best} logit---exactly what selection wants---with bias at most
+So the tempered score estimates the block's \emph{best} logit---exactly what selection wants---with bias at most
 $(\log b)/\beta$. Small $\beta$ smooths over outliers (the centroid failure); large $\beta$ removes the bias
 but amplifies noise and loses the averaging that makes summaries stable. The cumulant form~\eqref{eq:route} is
-the second-order member of this family; empirically the routing quality is maximized near $\beta\approx 2$.
+the second-order Taylor truncation of $g_c^{(\beta)}$ about $\beta=0$, used at the measured optimum
+$\beta\approx 2$; its truncation error is the Lagrange remainder $(\beta^2/6)\,K_c'''(\xi)$ for some
+$\xi\in(0,\beta)$, with $K_c$ the cumulant generating function of the in-block logits---a third-cumulant
+(skew) term that vanishes for light-tailed blocks and is \emph{positive} for a positively-skewed (spiked)
+block, so the second-order score under-estimates exactly the outlier blocks it most needs to see at moderate
+$\beta$. That residual gap is the mechanism behind the isolated-needle failures measured in
+Section~\ref{sec:experiments}, and the reason the implementation offers an Edgeworth variant that adds the
+diagonal third-cumulant term.
 
-\subsection{The Samuelson prune test}
+\subsection{The Samuelson prune test}\label{sec:prune}
 
 A closed-form, summary-only test for \emph{discarding} a block uses \emph{Samuelson's inequality}: for any
 reals $s_1,\dots,s_m$ with mean $\bar s$ and population variance $\Var=\frac1m\sum_j(s_j-\bar s)^2$, every
@@ -287,11 +318,26 @@ q}$, giving the \emph{prune gate}: block $c$ can be safely discarded against a t
 \boxed{\;(s^\star-\inner{q}{\mu_c})^2 \;>\; (b-1)\,q^\top\Sigma_c q\quad\text{and}\quad \inner{q}{\mu_c}<s^\star\;}
 \end{equation}
 i.e.\ when the \emph{margin} of the current best over the block mean exceeds $\sqrt{(b-1)\cdot\text{spread}}$.
-The test needs only $(\mu_c,\Sigma_c)$. It is \emph{sufficient} (it never wrongly prunes) but not necessary,
-and it sharpens the radius bound~\eqref{eq:admissible} by using the variance rather than the worst-case radius.
+The test needs only $(\mu_c,\Sigma_c)$. It is \emph{sufficient} (it never wrongly prunes) but not necessary.
+It sharpens the radius bound~\eqref{eq:admissible} when the block's spread along $q$ is small relative to its
+worst-case radius ($\sqrt{(b-1)\,q^\top\Sigma_c q}\ll\lVert q\rVert R_c$); neither bound dominates in
+general---$\sqrt{(b-1)\,q^\top\Sigma_c q}$ can exceed $\lVert q\rVert R_c$ by up to a factor $\sqrt{b-1}$ for
+spread-out blocks---so the implementation takes the minimum of the two.
 Equation~\eqref{eq:prune} is the operational core of cheap exact selection: it fires---and the block is
 skipped---precisely when the off-target spread $q^\top\Sigma_c q$ is small, which is the benign-geometry
 condition of Section~\ref{sec:routability}.
+
+\paragraph{Diagonal-summary caveat.} \eqref{eq:samuelson}--\eqref{eq:prune} are sound with the \emph{full}
+quadratic form $q^\top\Sigma_c q=\Var_{j\in c}\inner{q}{k_j}$. With the diagonal summary
+of~\eqref{eq:summary}, the proxy $\inner{q^2}{\sigma_c^2}$ \emph{under-estimates} the true logit variance
+whenever cross-covariances are positive, and the gate can then wrongly prune: \textbf{run on diagonal
+summaries, \eqref{eq:prune} is a heuristic, not a certificate.} A sound $O(d)$-summary surrogate exists: by
+the triangle inequality in $L^2$ over the block,
+$\Var_{j\in c}\inner{q}{k_j}\le\big(\sum_i\lvert q_i\rvert\,\sigma_{c,i}\big)^2$, so substituting
+$(\sum_i\lvert q_i\rvert\,\sigma_{c,i})^2$ for $q^\top\Sigma_c q$ in~\eqref{eq:prune} keeps the gate
+admissible at the same summary cost (looser, so it fires less often). The prune-rate measurements reported in
+this paper compute the per-member logit variance directly---the full quadratic form---so they certify the
+full-covariance gate, not the diagonal shortcut.
 
 \section{The trilemma and the impossibility}\label{sec:trilemma}
 
@@ -310,11 +356,20 @@ having read $j_0$, returns the same output as on the unmodified input, which is 
 it is lossy on this input.
 \end{proof}
 
+The argument covers any \emph{deterministic} selector, adaptive or not: run it, let $\mathcal R$ be the keys
+its execution actually read, and perturb an unread one---the execution, hence the output, is unchanged. A
+\emph{randomized} selector reading $o(n)$ keys misses a uniformly-planted spike with probability $1-o(1)$, so
+the conclusion survives in expectation; we state that extension as a remark, not a formalized claim.
+
 Proposition~\ref{prop:impossible} says losslessness for \emph{worst-case} keys forces
 $\lvert\mathcal{R}\rvert=n$---no summary suffices, because a summary can always hide a spike. A quantitative
-companion holds under fine-grained complexity assumptions: exact attention with unbounded logits requires
-$n^{2-o(1)}$ time, and only bounded-logit / low-rank regimes admit truly subquadratic exact computation. So at
-most \emph{two} of \{cheap, lossless, length-robust\} are available at once:
+companion holds under fine-grained complexity assumptions (SETH): even \emph{approximating} the attention
+output requires $n^{2-o(1)}$ time once entries reach $\omega(\sqrt{\log n})$, and the truly subquadratic
+algorithm that exists in the bounded-entry regime is itself an approximation (a low-rank polynomial method),
+not exact computation~\cite{alman2023}. What is \emph{proved} here is the two-way impossibility---cheap
+$\wedge$ lossless, worst case. The three-way reading below is an organizing \emph{taxonomy} whose third axis
+is measured in Sections~\ref{sec:routability}--\ref{sec:floor}, not a proved trichotomy: at most \emph{two}
+of \{cheap, lossless, length-robust\} are available at once:
 
 \begin{center}
 \begin{tabular}{@{}lll@{}}
@@ -327,6 +382,11 @@ cheap $+$ lossless & length-robust & branch-and-bound on \emph{benign} keys---bo
 \bottomrule
 \end{tabular}
 \end{center}
+
+Note the third row concedes length-robustness of \emph{cost}, not of accuracy: admissible branch-and-bound
+never returns a wrong answer---off benign geometry it degrades by \emph{reading more} (toward everything),
+whereas row 2 trades accuracy. ``Length-robust'' in the first two rows is the accuracy sense of
+Section~\ref{sec:margin}; keeping the two currencies straight is part of the taxonomy's honesty.
 
 The escape from the trilemma is the third row: cheapness \emph{and} losslessness are jointly available
 \emph{when the bounds \eqref{eq:admissible}/\eqref{eq:aniso}/\eqref{eq:prune} are tight}, which is a property of
@@ -737,7 +797,7 @@ $\max_j s_j$, and~\eqref{eq:prune} is its contrapositive against the threshold $
 \bibitem{alman2023} J.~Alman, Z.~Song. \emph{Fast Attention Requires Bounded Entries.} NeurIPS, 2023.
 \bibitem{hopfield} H.~Ramsauer et al. \emph{Hopfield Networks Is All You Need.} ICLR, 2021.
 \bibitem{zoology} S.~Arora et al. \emph{Zoology: Measuring and Improving Recall in Efficient Language Models.} 2023.
-\bibitem{lean} J.~Smirl. \emph{Substrate Abstract Algebra} (Lean~4 development), module \texttt{Substrate.Inference.PhaseTransition.Algebra} (\texttt{RetrievalMargin}, \texttt{SearchTradeoff}, \texttt{AnisotropicBound}, \texttt{SamuelsonBound}, \texttt{TemperedRouting}, \texttt{HierarchicalRouting}, \texttt{LosslessSelectionLimit}, \texttt{ValueAwareSelection}). Machine-checked, axiom-pure. In-depth technical details are available to qualified parties subject to approval.
+\bibitem{lean} J.~Smirl. \emph{Substrate Abstract Algebra} (Lean~4 development), namespace \texttt{Substrate.Inference.PhaseTransition}, sources under \texttt{Substrate/Inference/Algebra/} (\texttt{RetrievalMargin}, \texttt{SearchTradeoff}, \texttt{AnisotropicBound}, \texttt{SamuelsonBound}, \texttt{TemperedRouting}, \texttt{HierarchicalRouting}, \texttt{LosslessSelectionLimit}, \texttt{ValueAwareSelection}) and \texttt{Substrate/Inference/Shadow/}. Machine-checked, axiom-pure. In-depth technical details are available to qualified parties subject to approval.
 \end{thebibliography}
 
 \end{document}
