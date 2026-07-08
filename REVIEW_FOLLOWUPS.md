@@ -7,6 +7,27 @@ caveat + sound surrogate, tempered-score normalization, Alman–Song wording, tr
 Lean-namespace cites, SUBQ symmetry note, packaging pins). What follows is the remaining batch — every
 item needs GPU hours, a model download, or the separate Lean repo. Ordered by value.
 
+### Note — position-resolved reporting on the real-key arms (He et al. 2024, arXiv:2311.09198)
+
+He et al., *Never Lost in the Middle: Mastering Long-Context QA with Position-Agnostic Decompositional
+Training*, adds to Liu et al.'s "lost in the middle" the finding that the decay hits the **tail** too (a
+distinct failure), and that it is a position-*resolved* effect invisible to position-averaged recall.
+This is a property of **real models** (RoPE + attention-sink position bias), not of our synthetic
+isotropic-key NIAH or uniform-block cumulant router — which are position-agnostic by construction and
+correctly stay position-averaged. So the actionable content is narrow: on the **real-key / real-model**
+arms (items 1 and 5, and any long-context quality run through the routed kernel), report recall bucketed
+by needle depth **including the last 1–2%**, so our synthetic selection story connects to the published
+lost-in-the-middle/tail literature and surfaces any tail effect in the routed kernel.
+
+Two corroboration cites, no code (add where the trained-selection claim is made — `SUBQ_ASSESSMENT.md`
+and the paper's theory section, currently uncited): He et al. show (i) selection over long context is a
+**trainable** competence and **prompting cannot elicit it** (in-context CoT without fine-tuning *degrades*
+recall) — independent support for the P9 trained-selection thesis; (ii) their de-biasing lever is
+**position-shuffled supervision**, which `p9_tasks.MQARSalient` already embodies (salient marker shuffled
+among distractors, so the write-gate must key on the marker, not position). Minor parallel: their index
+step helps at 43% precision / 71% recall — low-precision selection still works, echoing the budget-routing
+"get the needle into the attended set" claim.
+
 ## 1. Close the speed/quality seam at 12M (the review's top remaining threat)
 
 **Why.** The 12M result is speed-only (single-head, synthetic, fitted dense denominator past 4M); all
@@ -22,6 +43,11 @@ seam. No selection-quality number has ever been measured *through the actual rou
 - One point that is speed+quality simultaneously on real geometry: multi-head, real-Qwen-keys
   (`qwen_keybank.py` / `longctx_keys.py` extractions) through the IVF kernel at 1–4M with NIAH probes.
   H=8 at 12M needs ≥40 GB (K alone 12.3 GB) — rent if the full endpoint is wanted; 1–4M fits locally.
+  On this **real-key** arm (not the synthetic isotropic one), report recall **resolved by needle
+  position, including the last 1–2%** — not position-averaged. Rationale in the header note below; the
+  synthetic isotropic arm has no position bias by construction, so a depth sweep there is flat and can
+  stay averaged. `audit/refiant/protea_probe.py`'s poles layout (head/center/tail buckets +
+  tail-adjacent 2-hop) is a ready template for the depth-resolved reporting.
 
 **Accept when:** RESULTS gains a table "recall through `ssa_flex_ivf` vs n × geometry", and the
 assessment's "achievable … pinned" paragraph can cite a single run that is subquadratic × long-context ×
@@ -82,7 +108,9 @@ critique is reproduced only on home-grown analogues.
 
 **Do.** Run RULER (or a public MRCR-style multi-needle task) on the swapped Qwen2.5-0.5B at 32–128K,
 dense vs `impl="flex"` at matched budget, same harness both arms. Even a small subset converts the
-composition-law claim from analogue to standard measurement. ~2–4 h GPU.
+composition-law claim from analogue to standard measurement. Bucket the needle results **by insertion
+depth including the tail** (see header note) so this arm reads directly against the published
+lost-in-the-middle literature. ~2–4 h GPU.
 
 ## 6. Route-share estimator cleanup (code-review finding 7 — re-measure to apply)
 
