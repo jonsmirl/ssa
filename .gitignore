@@ -26,3 +26,6 @@ venv/
 # OS
 .DS_Store
 .env
+
+# Local audit artifacts — named third-party evaluations kept local; force-add to publish
+audit/
