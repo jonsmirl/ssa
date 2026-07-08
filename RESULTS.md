@@ -544,7 +544,9 @@ materializes a `B×B` matrix — `Θ(n²)` *time and memory* for fixed `b` (the 
 constant or `√n` block size makes the flat (scan-all-blocks) router subquadratic-with-growing-speedup; a router
 whose speedup grows unboundedly with `n` must examine `o(B)` blocks per query — i.e. a hierarchical
 (sublinear-per-query) index.** This is a counting bound, now **formalized** (axiom-pure) as `flat_router_work` /
-`subquadratic_forces_skip` in the Substrate Lean, a companion to `SearchTradeoff` / `capacity_search_tension`.
+`subquadratic_forces_skip` in the Substrate Lean, a companion to `SearchTradeoff` / `capacity_search_tension`
+(the tension since strengthened to an actual collision statement, `capacity_pigeonhole_tension`: `B < n`
+cells force two ε-coherent keys into one cell — pigeonhole chained through `cluster_radius_floor`).
 Its force for the SubQ assessment: a *quality-preserving* "1,000× at 12M" **provably forces** a working
 hierarchical indexer — exactly the part (a)+(b) show is only *approximate* and not yet *engineered*.
 
@@ -568,6 +570,11 @@ The argument:
 - `lossless_selector_reads_every_key` — capstone: any selector whose output depends only on `S` and that
   is lossless (always returns an argmax) must have `S = univ`. It cannot skip a single key. In the probe
   model (cost = keys examined) lossless selection is therefore `Θ(n)` per query, `Θ(n²)` total.
+- `lossless_adaptive_reads_every_key` — the same conclusion for ADAPTIVE selectors, over an explicit
+  decision-tree probe model (probe an index, branch on its value; the read set becomes the per-input
+  queried path). The adversary `unexamined_argmax_invisible` transfers unchanged. The paper's
+  "deterministic, adaptive or not" in-text claim is now machine-checked; only the randomized/Yao
+  extension remains a remark.
 
 So: **lossless cheap selection is provably impossible in the worst case** — unconditionally in the probe
 model (proved here), and conditionally for general runtime under SETH (Alman–Song). It is
@@ -1250,7 +1257,9 @@ sorry-free): **five have a machine-checked anchor** (P1, P2, P4, P5, P6); P3 —
 selection/compression split — is a purely empirical prediction with no theorem. Recall is the standard
 associative decode (argmax over stored value embeddings). These are mechanism measurements, not a trained LM.
 
-**P1 — the READ rule sets the capacity class** (`softmax_capacity`, RetrievalMarginRecognition.lean). Over
+**P1 — the READ rule sets the capacity class** (`softmax_capacity`, RetrievalMarginRecognition.lean; the
+linear side is now proved too — `read_capacity_le_dim` / `rank_d_read_wall` + a tightness witness,
+LinearReadCeiling.lean — so the contrast is machine-checked on both sides, not softmax-only). Over
 the SAME stored pairs, the zero-attention linear read `o = S q` is rank-d capped; a softmax read over the
 same keys holds far past m=d (measured to m=512; `softmax_capacity` gives the exponential capacity):
 

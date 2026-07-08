@@ -318,12 +318,15 @@ fundamental limit.
 > input. $\square$
 >
 > The argument covers any *deterministic* selector, adaptive or not: run it, let $\mathcal R$ be the keys its
-> execution actually read, and perturb an unread one — the execution, hence the output, is unchanged. A
+> execution actually read, and perturb an unread one — the execution, hence the output, is unchanged. The
+> adaptive case is now itself machine-checked (`lossless_adaptive_reads_every_key`, over an explicit
+> decision-tree probe model in which the read set is the per-input queried path). A
 > *randomized* selector reading $o(n)$ keys misses a uniformly-planted spike with probability $1-o(1)$, so
 > the conclusion survives in expectation; we state that extension as a remark, not a formalized claim.
 
 > **Note on formalization.** The proofs given in this paper are the elementary in-text arguments. Their
 > formal counterparts — `subquadratic_forces_skip`, `flat_router_work`, `lossless_selector_reads_every_key`,
+> `lossless_adaptive_reads_every_key`, `capacity_pigeonhole_tension`, `read_capacity_le_dim`,
 > `hierarchical_prune`, and the rest of the `(proved)` results — are **machine-checked in a separate Lean 4
 > development** (namespace `Substrate.Inference.PhaseTransition`, sources under `Substrate/Inference/Algebra/`
 > and `Substrate/Inference/Shadow/`; Lean 4.30.0 + Mathlib), each confirmed
@@ -587,9 +590,10 @@ $\Leftrightarrow$ shared from a mid layer, preserving single-needle recall while
 **The compression corner, measured.** The trilemma has a second corner — a fixed- or growing-state memory
 written at inference time (the "zero attention" / DeltaNet/Titans family). Small exact reference memories,
 measured against Lean predictions, place it. The READ rule sets the capacity class: a contracted linear read
-$o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$) while a softmax read over the same pairs holds
+$o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$; `read_capacity_le_dim` / `rank_d_read_wall`
+prove the $\le d$ ceiling) while a softmax read over the same pairs holds
 far past $m=d$ (measured to $m=512$; `softmax_capacity` gives the exponential form) — capacity is a
-property of the read, not the substrate. The load-bearing measurement (empirical, no theorem) is that
+property of the read, not the substrate, now proved on both sides of the contrast. The load-bearing measurement (empirical, no theorem) is that
 **compression $\neq$ selection**: a needle salient only at read time is lost by a surprise-gated fixed memory
 (recall $0.10$) where selection recovers it ($1.00$) — write-time compression cannot keep what the future
 query has not yet made relevant. A distribution shift is a fold a fixed memory cannot track

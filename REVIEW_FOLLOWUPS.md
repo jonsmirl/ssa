@@ -121,17 +121,30 @@ clean it: time route with the same median-of-reps discipline outside warmup, dro
 (or sync both arms), then re-run the share table (59%→6% is the headline it feeds). Do together with
 item 2's Qwen runs.
 
-## 7. Lean additions (in `~/substrate`, not this repo)
+## 7. Lean additions (in `~/substrate`, not this repo) — 3 of 4 LANDED 2026-07-08
 
-- Randomized-selector impossibility: the averaging/Yao step over a uniformly-planted spike (the paper now
-  states it as an unformalized remark — close that).
-- Adaptive (decision-tree) selector model for `lossless_selector_reads_every_key` (current statement is
-  non-adaptive; the paper's in-text argument already covers adaptive).
-- The pigeonhole step in `SearchTradeoff.capacity_search_tension` (B < n cells force two ε-coherent keys
-  into one cell), turning a pair of monotonicities into an actual tension statement.
-- The rank-d linear-read wall (easy linear algebra), so the P8/P9 "capacity is a property of the read"
-  contrast is proved on both sides rather than softmax-side-only.
-- After any of these land: update the paper's formalization note and RESULTS' anchor table.
+- ⏸ Randomized-selector impossibility: the averaging/Yao step over a uniformly-planted spike. **Still
+  open.** The builder deferred it on a false premise ("no such remark in the paper" — they searched
+  substrate's `retrieval_margin_paper.tex`/`inference_engine_technical.tex`); the remark is in THIS
+  repo's paper: `paper/subquadratic_attention.tex:361` / `.md:322` ("we state that extension as a
+  remark, not a formalized claim"). Genuinely wanted; shape: average the deterministic planted-spike
+  adversary over a uniform spike location (Yao). No probability scaffold exists in Inference yet —
+  from-scratch via bare `Finset.sum/card`.
+- ✅ Adaptive (decision-tree) selector: `lossless_adaptive_reads_every_key` + `DTree`/`eval`/`queried`/
+  `eval_congr` in `LosslessSelectionLimit.lean` (substrate `c4dfcc31`). The adversary
+  `unexamined_argmax_invisible` transfers unchanged; read-set bookkeeping becomes the per-input queried
+  path.
+- ✅ Pigeonhole tension: `keys_collide_when_over_budget` + `capacity_pigeonhole_tension` in
+  `SearchTradeoff.lean` (substrate `8822f40a`); old `capacity_search_tension` untouched, ε-coherence an
+  honest hypothesis.
+- ✅ Rank-d linear-read wall: `read_capacity_le_dim` + `rank_d_read_wall` + tightness witness, new
+  `LinearReadCeiling.lean` (substrate `93cadc9c`). The P8/P9 "capacity is a property of the read"
+  contrast is now proved on both sides.
+- ✅ Paper formalization note + RESULTS anchors updated for the three (this commit): paper remark
+  paragraph + compression-corner paragraph + Lean file list (tex/md), RESULTS flat-router companion,
+  lossless-selector argument, and P1 anchor. All verified sorry-free in the tree before citing.
+  Note for the Yao build: `Workspace*.lean`/`Capacity.lean` (transformer workspace files, Jul 6–7) now
+  import `SearchTradeoff` downstream — keep them compiling if `capacity_*` statements are touched again.
 
 ## 8. Small code follow-ups (no re-measurement needed, batch with any of the above)
 

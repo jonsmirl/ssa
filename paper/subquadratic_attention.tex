@@ -357,7 +357,9 @@ it is lossy on this input.
 \end{proof}
 
 The argument covers any \emph{deterministic} selector, adaptive or not: run it, let $\mathcal R$ be the keys
-its execution actually read, and perturb an unread one---the execution, hence the output, is unchanged. A
+its execution actually read, and perturb an unread one---the execution, hence the output, is unchanged. The
+adaptive case is now itself machine-checked (\texttt{lossless\_adaptive\_reads\_every\_key}, over an explicit
+decision-tree probe model in which the read set is the per-input queried path). A
 \emph{randomized} selector reading $o(n)$ keys misses a uniformly-planted spike with probability $1-o(1)$, so
 the conclusion survives in expectation; we state that extension as a remark, not a formalized claim.
 
@@ -638,9 +640,10 @@ from layer~0 fails). A trained $d_r{=}16$ projection rebuts the ``low-rank is a 
 \paragraph{The compression corner, measured.} The trilemma has a second corner---a fixed- or growing-state
 memory written at inference time (the ``zero attention'' / DeltaNet/Titans family). Small exact reference
 memories, measured against Lean predictions, place it. The READ rule sets the capacity class: a linear read
-$o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$) while a softmax read over the same pairs holds
+$o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$; \texttt{read\_capacity\_le\_dim} /
+\texttt{rank\_d\_read\_wall} prove the $\le d$ ceiling) while a softmax read over the same pairs holds
 far past $m=d$ (measured to $m=512$; \texttt{softmax\_capacity} gives the exponential form)---capacity is a
-property of the read, not the substrate. The load-bearing measurement (empirical, no theorem) is that
+property of the read, not the substrate, now proved on both sides of the contrast. The load-bearing measurement (empirical, no theorem) is that
 \textbf{compression $\neq$ selection}: a needle salient only at read time is lost by a surprise-gated fixed
 memory (recall $0.10$) where selection recovers it ($1.00$)---write-time compression cannot keep what the future
 query has not yet made relevant. A distribution shift is a fold a fixed memory cannot track
@@ -797,7 +800,7 @@ $\max_j s_j$, and~\eqref{eq:prune} is its contrapositive against the threshold $
 \bibitem{alman2023} J.~Alman, Z.~Song. \emph{Fast Attention Requires Bounded Entries.} NeurIPS, 2023.
 \bibitem{hopfield} H.~Ramsauer et al. \emph{Hopfield Networks Is All You Need.} ICLR, 2021.
 \bibitem{zoology} S.~Arora et al. \emph{Zoology: Measuring and Improving Recall in Efficient Language Models.} 2023.
-\bibitem{lean} J.~Smirl. \emph{Substrate Abstract Algebra} (Lean~4 development), namespace \texttt{Substrate.Inference.PhaseTransition}, sources under \texttt{Substrate/Inference/Algebra/} (\texttt{RetrievalMargin}, \texttt{SearchTradeoff}, \texttt{AnisotropicBound}, \texttt{SamuelsonBound}, \texttt{TemperedRouting}, \texttt{HierarchicalRouting}, \texttt{LosslessSelectionLimit}, \texttt{ValueAwareSelection}) and \texttt{Substrate/Inference/Shadow/}. Machine-checked, axiom-pure. In-depth technical details are available to qualified parties subject to approval.
+\bibitem{lean} J.~Smirl. \emph{Substrate Abstract Algebra} (Lean~4 development), namespace \texttt{Substrate.Inference.PhaseTransition}, sources under \texttt{Substrate/Inference/Algebra/} (\texttt{RetrievalMargin}, \texttt{SearchTradeoff}, \texttt{AnisotropicBound}, \texttt{SamuelsonBound}, \texttt{TemperedRouting}, \texttt{HierarchicalRouting}, \texttt{LosslessSelectionLimit}, \texttt{LinearReadCeiling}, \texttt{ValueAwareSelection}) and \texttt{Substrate/Inference/Shadow/}. Machine-checked, axiom-pure. In-depth technical details are available to qualified parties subject to approval.
 \end{thebibliography}
 
 \end{document}
