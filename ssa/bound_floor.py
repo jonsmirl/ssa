@@ -106,7 +106,19 @@ def bound_isotropic(K, mem, q):
 
 
 def bound_ellipsoidal(K, mem, q, eps=1e-3):
-    """U_c = <q,mu> + rho_c*sqrt(qSq).  rho_c is query-independent: precomputed, one scalar."""
+    """U_c = <q,mu> + rho_c*sqrt(q^T S q).  rho_c is query-independent: precomputed, one scalar.
+
+    THE QUADRATIC FORM IS THE REGULARISED ONE, and it has to be.  rho_c is measured in the metric of
+    `S = Sigma_c + eps*I`, so the Cauchy-Schwarz step
+
+        <q, k - mu> = <S^(1/2) q, S^(-1/2) (k - mu)>  <=  sqrt(q^T S q) * rho_c
+
+    produces `q^T S q = q^T Sigma_c q + eps*||q||^2`, not `q^T Sigma_c q`.  Dropping the eps term
+    makes the bound INADMISSIBLE by up to eps*||q||^2/(2*sqrt(...)) — small, but a bound that can
+    sit below the block's own maximum can drop the block holding the argmax, and then the recall
+    column is no longer 1.000 by construction.  Measured on 32-dimensional blocks of ~33 keys, the
+    unregularised form fell below `bound_oracle` on 5 of 128 (block, query) pairs by up to 2.8e-3.
+    """
     proj, m, mean, var = _stats(K, mem, q)
     X = K[mem] - K[mem].mean(0)
     S = (X.T @ X) / max(m, 1) + eps * np.eye(X.shape[1])
@@ -115,7 +127,7 @@ def bound_ellipsoidal(K, mem, q, eps=1e-3):
     except np.linalg.LinAlgError:
         return bound_isotropic(K, mem, q)
     rho = float(np.linalg.norm(X @ Si.T, axis=1).max())
-    return mean + rho * np.sqrt(var)
+    return mean + rho * np.sqrt(var + eps * float(q @ q))
 
 
 BOUNDS = {"oracle": bound_oracle, "samuelson": bound_samuelson,

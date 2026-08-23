@@ -52,18 +52,63 @@ def test_witness_has_a_single_high_point():
 
 # ---------------------------------------------------------------------------- admissibility
 @pytest.mark.parametrize("bname", ["oracle", "samuelson", "isotropic", "ellipsoidal"])
-def test_bound_is_admissible(bname):
+@pytest.mark.parametrize("n,d,B,spread", [(512, 32, 16, 0.15), (1024, 32, 32, 0.05),
+                                          (2048, 64, 64, 0.05), (4096, 64, 64, 0.20)])
+@pytest.mark.parametrize("aligned", [False, True])
+def test_bound_is_admissible(bname, n, d, B, spread, aligned):
     """No key in a block may exceed its bound. An inadmissible bound makes B&B lossy and every
-    cost number meaningless."""
-    K = _keys()
-    members = kmeans_blocks(K, 16, seed=0)
+    cost number meaningless.
+
+    SWEPT OVER GEOMETRIES, AND OVER QUERY PLACEMENT, because one of each is not enough. The
+    `ellipsoidal` bound multiplies its whitened radius by `sqrt(q^T S q)` with `S = Sigma_c + eps*I`;
+    an implementation that drops the `eps` term falls below the block maximum by a small amount that
+    appears only where the query ALIGNS with a block's principal direction. A single geometry with
+    random queries misses it entirely -- in `d = 32` a random query is nearly orthogonal to every
+    block's leading direction, so the deficit never shows. `aligned=True` draws the query at a
+    cluster centre, which is also the realistic case: a router's queries are not orthogonal to the
+    keys they are routing to.
+    """
+    K = _keys(n=n, d=d, B=B, spread=spread)
+    members = kmeans_blocks(K, B, seed=0)
     rng = np.random.default_rng(3)
     for _ in range(12):
-        q = rng.standard_normal(K.shape[1])
+        if aligned:
+            mem = members[rng.integers(len(members))]
+            q = K[mem].mean(0) + 0.02 * rng.standard_normal(d)
+        else:
+            q = rng.standard_normal(d)
         q /= np.linalg.norm(q)
         for mem in members:
             ub = BOUNDS[bname](K, mem, q)
-            assert (K[mem] @ q).max() <= ub + 1e-8, f"{bname} is not admissible"
+            assert (K[mem] @ q).max() <= ub + 1e-9, f"{bname} is not admissible"
+
+
+def test_the_ellipsoidal_bound_uses_the_REGULARISED_quadratic_form():
+    """NEGATIVE, pinning the exact term. `rho_c` lives in the metric of `S = Sigma_c + eps*I`, so the
+    Cauchy-Schwarz step yields `sqrt(q^T Sigma_c q + eps*||q||^2)`. Reinstating the unregularised
+    `sqrt(q^T Sigma_c q)` must fall below some block's own maximum -- if it does not, this test has
+    stopped guarding anything and the geometry below needs strengthening, not the assertion."""
+    def unregularised(K, mem, q, eps=1e-3):
+        _, m, mean, var = BOUNDS["samuelson"].__globals__["_stats"](K, mem, q)
+        X = K[mem] - K[mem].mean(0)
+        S = (X.T @ X) / max(m, 1) + eps * np.eye(X.shape[1])
+        Si = np.linalg.inv(np.linalg.cholesky(S))
+        rho = float(np.linalg.norm(X @ Si.T, axis=1).max())
+        return mean + rho * np.sqrt(var)
+
+    K = _keys(n=1024, d=32, B=32, spread=0.05)
+    members = kmeans_blocks(K, 32, seed=0)
+    rng = np.random.default_rng(3)
+    bad = 0
+    for _ in range(12):
+        mem0 = members[rng.integers(len(members))]
+        q = K[mem0].mean(0) + 0.02 * rng.standard_normal(32)
+        q /= np.linalg.norm(q)
+        for mem in members:
+            if (K[mem] @ q).max() > unregularised(K, mem, q) + 1e-9:
+                bad += 1
+            assert (K[mem] @ q).max() <= bound_ellipsoidal(K, mem, q) + 1e-9
+    assert bad > 0, "the unregularised form must be violated somewhere, or this test is blind"
 
 
 def test_centroid_alone_is_NOT_admissible():
