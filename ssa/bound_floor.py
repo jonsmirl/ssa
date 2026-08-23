@@ -14,8 +14,12 @@ THE DECOMPOSITION.  For a fixed query and a fixed block partition, three costs b
                                               it is the floor the PARTITION imposes.
     SAMUELSON   U_c = <q,mu_c> + sqrt((m-1) qSq)   the tightest bound computable from (mu, Sigma, m)
                                               ALONE.  Tight in the strong sense: attained (below).
-    MEASURED    the isotropic / ellipsoidal bounds the repo already ships, which read the block to
-                                              get R_c or rho_c and so sit between the two.
+    ELLIPSOIDAL the bound the repo already ships, from (mu, Sigma, rho_c).  rho_c is
+                                              QUERY-INDEPENDENT, so it is precomputed at index-build
+                                              time and stored as ONE extra scalar per block -- this
+                                              bound is summary-only at query time too.  The summary
+                                              hierarchy is therefore about summary SIZE, not about
+                                              summaries versus keys.
 
     cost(SAMUELSON) - cost(ORACLE)  =  the irreducible price of routing from summaries.
     cost(ORACLE)    - (one block)   =  the price of the partition itself.
@@ -94,7 +98,7 @@ def bound_samuelson(K, mem, q):
 
 
 def bound_isotropic(K, mem, q):
-    """U_c = <q,mu> + ||q||*R_c.  Reads the block for R_c, so it is not summary-only."""
+    """U_c = <q,mu> + ||q||*R_c.  R_c is query-independent: precomputed, one scalar per block."""
     proj, m, mean, _ = _stats(K, mem, q)
     mu = K[mem].mean(0)
     R = float(np.linalg.norm(K[mem] - mu, axis=1).max())
@@ -102,7 +106,7 @@ def bound_isotropic(K, mem, q):
 
 
 def bound_ellipsoidal(K, mem, q, eps=1e-3):
-    """U_c = <q,mu> + rho_c*sqrt(qSq).  Reads the block for rho_c."""
+    """U_c = <q,mu> + rho_c*sqrt(qSq).  rho_c is query-independent: precomputed, one scalar."""
     proj, m, mean, var = _stats(K, mem, q)
     X = K[mem] - K[mem].mean(0)
     S = (X.T @ X) / max(m, 1) + eps * np.eye(X.shape[1])
@@ -197,8 +201,9 @@ def run(n=4096, d=64, B=64, trials=200, noise=0.15, seed=1, log=print):
             r = res[bname]
             log(f"  {bname:<12} {r['mean_keys']:>10.1f} {r['frac_of_n']:>10.4f} "
                 f"{r['recall']:>8.3f}")
-        log(f"  -> partition price {orc:.1f} keys; summary price {sam - orc:.1f} keys "
-            f"({res['_decomposition']['summary_price_multiple']:.2f}x the floor)")
+        ell = res["ellipsoidal"]["mean_keys"]
+        log(f"  -> floor {orc:.1f} keys; (mu,Sigma,b) is {sam / orc:.1f}x the floor; "
+            f"(mu,Sigma,rho) is {ell / orc:.1f}x -- one extra stored scalar buys {sam / ell:.1f}x")
     return out
 
 

@@ -70,12 +70,24 @@ turns the qualitative "cost is governed by bound tightness" into a measurable de
 *(keys read per query; `n=4096`, `d=64`, `B=64` k-means blocks; all bounds admissible so recall is 1.000
 throughout — cost is the discriminator, not accuracy. `python3 -m ssa.bound_floor`.)*
 
-So: the routability programme has a **ceiling** — benign geometry moves the summary price 63× → 8×,
-monotonically and never to 1×; **reading keys is worth ~4×** at benign geometry, which is the first
-absolute justification for the anisotropic bound; and the partition price is nearly flat (89 → 64) while
-the summary price moves sixfold, so **the geometry is a fact about summaries, not partitions.** Scope and
-the necessary-side proposition: `RESULTS.md` § "The summary-only floor" and paper
-§"The summary-only floor". None of this is free in the worst case: **cheap and lossless** selection cannot hold for arbitrary
+So: the routability programme has a **ceiling** — benign geometry moves the `(μ,Σ,b)` price 63× → 8×,
+monotonically and never to 1×; **one extra precomputed scalar (`ρ_c`, query-independent) buys 3.4×** at
+benign geometry, taking the shipped ellipsoidal bound to **2.5× the floor — 5.33% of keys against a floor
+of 2.10%**; and the partition price is nearly flat (89 → 64) while the summary price moves sixfold, so
+**the geometry is a fact about summaries, not partitions.**
+
+**There is little room left in the bound.** Two ways to tighten it further were tested against the floor
+and both were refuted: seeding the incumbent with precomputed block representatives saves **exactly 0%**
+(the first block opened already sets `s★` to the true maximum, so cost is bound-driven, not
+incumbent-driven), and an axis-aligned box bound in a shared basis is **worse than the ellipsoid**
+(`min` of the two buys 8% at benign geometry only). The remaining lever is the **partition**.
+
+The abstract skeleton is machine-checked in the substrate development
+(`Universal/Potential/AdmissibleBound.lean`): a tighter bound provably drops a superset of the parts,
+the family maximum is the least admissible bound, an attained bound admits nothing smaller, and taking
+the minimum of two admissible bounds is admissible — which is what licenses the implementation's
+`min(isotropic, ellipsoidal)`. Scope and the necessary-side proposition: `RESULTS.md`
+§ "The summary-only floor" and paper §"The summary-only floor". None of this is free in the worst case: **cheap and lossless** selection cannot hold for arbitrary
 keys (proved); length-robustness is the third axis — the *trilemma* (at most two of the three) — see the
 paper's impossibility argument.
 

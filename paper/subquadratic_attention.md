@@ -348,12 +348,33 @@ adaptive/IVF regime, not the contiguous-position blocking of the flat kernel; th
 not an achievable router; and the floor is about *lossless* selection, so a budget-κ lossy router may sit
 below it and SSA's does. The proposition itself is geometry-free and carries none of these caveats.
 
+**Correction, and where the room actually is.** `ρ_c` and `R_c` are *query-independent*, hence precomputed
+and stored as one scalar per block: the ellipsoidal bound is summary-only at query time too, and the
+hierarchy is about summary *size* rather than summaries versus keys. That strengthens the reading — at spread
+0.02 one extra stored scalar takes the bound from 8.7× to 2.5× the floor, i.e. the shipped bound reads 5.33%
+of keys against a floor of 2.10%. Two attempts to tighten it further were measured against the floor and both
+failed: seeding the incumbent with precomputed block representatives saves *exactly* zero (B&B opens blocks in
+decreasing `U_c`, so the first block opened already sets `s★` to the true maximum — cost is bound-driven, not
+incumbent-driven), and an axis-aligned box bound in a shared basis is *worse* than the ellipsoid, with `min` of
+the two buying 8% at the most benign geometry alone. The remaining lever is the **partition**.
+
 **Relation to the formalized ceiling.** The proposition instantiates an abstract result in the substrate
 development: a single score standing for a whole fibre of completions carries an error floor set by the spread
 of the objective across that fibre (`Universal/Potential/PartialScore.lean`,
 `score_error_ge_of_reach_split` and `not_exactOnReach_of_reach_split`). Partial object = the summary,
 completions = blocks carrying it, objective = the block's true maximum logit. The instantiation is stated in
 prose and is **not** machine-checked; see `docs/substrate_math_imports.md`.
+
+The abstract skeleton is machine-checked, axiom-pure, in `Universal/Potential/AdmissibleBound.lean`: a
+pointwise tighter bound provably drops a superset of the parts (`a_higher_bound_drops_a_subset`,
+`dropped_card_mono`) — §4.1's qualitative claim as a theorem; the family maximum is the least admissible
+bound (`familyMax_le_of_isAdmissible`); an attained bound admits nothing smaller
+(`no_bound_below_an_attained_one`), the proposition above in abstract form; and the minimum of two admissible
+bounds is admissible (`min_isAdmissible`), which licenses the implementation's `min` of the isotropic and
+ellipsoidal bounds — previously an unwarranted convenience. Finally
+`at_the_floor_a_maximal_threshold_drops_every_part` predicts the null above: at the floor a maximal threshold
+drops every part, so a search still reading parts is paying for bounds above the floor and a better incumbent
+cannot help it.
 
 ## 6. The trilemma and the impossibility
 

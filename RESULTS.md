@@ -1495,3 +1495,45 @@ Instantiates `Universal/Potential/PartialScore.lean` · `score_error_ge_of_reach
 error floor set by the objective's spread across that fibre. Partial object = the summary,
 completions = blocks carrying it, objective = the block's true max logit. **The instantiation is
 prose, not machine-checked**; see `docs/substrate_math_imports.md`.
+
+### Correction and extension (same day)
+
+**Correction — `ρ_c` is query-independent, so the ellipsoidal bound is summary-only too.** The first
+write-up called it "reading keys", which is wrong: `ρ_c = max_j‖Σ_c^{-1/2}(k_j−μ_c)‖` does not
+depend on `q`, so it is precomputed at index-build time and stored as **one extra scalar per block**.
+The hierarchy is therefore about **summary size**, not summaries versus keys — which makes the
+finding stronger, not weaker: at spread 0.02, one extra stored scalar takes the bound from **8.7× to
+2.5×** the floor. The `ρ_c` premium shrinks with spread (3.4× at 0.02, 1.0× at 0.40): the anisotropic
+refinement pays exactly where the geometry is already benign.
+
+**Two algorithms tested against the floor. Both refuted; both informative.**
+
+1. **Champion-seeded incumbent** — store `t` query-independent representatives per block (the points
+   farthest from `μ_c`, the paper's own "centroid routing is blind to outliers" turned into storage)
+   and seed `s★` with `max_c⟨q, champ_c⟩` before opening anything. **Exactly 0% saved at every
+   geometry and every `t`.** Reason: B&B opens blocks in decreasing `U_c`, so the first block opened
+   is usually the target and sets `s★` to the true maximum immediately. **Cost here is
+   bound-driven, not incumbent-driven** — which is what the floor decomposition already said, since
+   the oracle differs from Samuelson only in the bound.
+2. **Axis-aligned box in a shared PCA basis** (`2d` scalars/block, `O(d)` query, exact support
+   function). **Worse than the ellipsoid nearly everywhere** — 797.8 vs 218.4 keys at spread 0.02,
+   and no pruning at all (4096) at spread ≥ 0.20. `min(ellipsoid, box)` buys **8%** at the most
+   benign geometry and nothing elsewhere. Blocks are tight clusters whose principal directions differ
+   from the global ones, so a shared frame is a loose body.
+
+**The reading that survives, and it improves the paper's claim.** At benign geometry the shipped
+ellipsoidal bound reads **5.33% of keys against a floor of 2.10%** — within **2.5×** of the
+partition's own limit. There is not much room left *in the bound*; the remaining lever is the
+**partition**. Both refuted ideas were attempts to tighten the bound further, and the floor says why
+they had little to find.
+
+**Formalized (`~/substrate`, `54a207fd7`).** `Universal/Potential/AdmissibleBound.lean` proves the
+abstract skeleton, axiom-pure: `a_dropped_part_holds_no_member_above` (the drop loses nothing),
+`a_higher_bound_drops_a_subset` + `dropped_card_mono` (**a tighter bound drops a superset of the
+parts** — the paper's qualitative "cost is governed by tightness", proved),
+`familyMax_le_of_isAdmissible` (the maximum is the least admissible bound — the floor),
+`no_bound_below_an_attained_one` (an attained bound admits nothing smaller — the abstract form of the
+Samuelson proposition), and `min_isAdmissible` (**licensing the implementation's "take the minimum of
+the two"**, which had no warrant before). `at_the_floor_a_maximal_threshold_drops_every_part`
+predicts result 1 above: at the floor, a maximal threshold drops everything, so a search still
+reading parts is paying for bounds above the floor and improving the incumbent cannot help it.

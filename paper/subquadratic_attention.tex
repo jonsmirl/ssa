@@ -406,6 +406,17 @@ is a reference and not an achievable router; and the floor is a statement about 
 a budget-$\kappa$ lossy router may sit below it and SSA's does. Proposition~\ref{prop:tight} itself is
 geometry-free and carries none of these caveats.
 
+\paragraph{Correction, and where the room actually is.} $\rho_c$ and $R_c$ are
+\emph{query-independent}, hence precomputed and stored as one scalar per block: the ellipsoidal bound is
+summary-only at query time too, and the hierarchy is about summary \emph{size} rather than summaries versus
+keys. That strengthens the reading---at spread $0.02$ one extra stored scalar takes the bound from $8.7\times$
+to $2.5\times$ the floor, i.e.\ the shipped bound reads $5.33\%$ of keys against a floor of $2.10\%$. Two
+attempts to tighten it further were measured against the floor and both failed: seeding the incumbent with
+precomputed block representatives saves \emph{exactly} zero (branch-and-bound opens blocks in decreasing
+$U_c$, so the first block opened already sets $s^\star$ to the true maximum---cost is bound-driven, not
+incumbent-driven), and an axis-aligned box bound in a shared basis is \emph{worse} than the ellipsoid, with
+$\min$ of the two buying $8\%$ at the most benign geometry alone. The remaining lever is the \emph{partition}.
+
 \paragraph{Relation to the formalized ceiling.} Proposition~\ref{prop:tight} instantiates an abstract result
 in the substrate development: a single score standing for a whole fibre of completions carries an error floor
 set by the spread of the objective across that fibre
@@ -414,6 +425,18 @@ set by the spread of the objective across that fibre
 blocks carrying it, and the objective is the block's true maximum logit. The instantiation is stated in prose
 and is \emph{not} machine-checked; see \texttt{docs/substrate\_math\_imports.md} for the mapping and its
 limits.
+
+The abstract skeleton is machine-checked, axiom-pure, in
+\texttt{Universal/Potential/Admissible\-Bound.lean}: a pointwise tighter bound provably drops a superset of
+the parts (\texttt{a\_higher\_bound\_drops\_a\_subset}, \texttt{dropped\_card\_mono})---the qualitative claim
+of Section~\ref{sec:bnb} as a theorem; the family maximum is the least admissible bound
+(\texttt{familyMax\_le\_of\_isAdmissible}); an attained bound admits nothing smaller
+(\texttt{no\_bound\_below\_an\_attained\_one}), which is Proposition~\ref{prop:tight} in abstract form; and
+the minimum of two admissible bounds is admissible (\texttt{min\_isAdmissible}), which is what licenses the
+implementation's $\min$ of the isotropic and ellipsoidal bounds---previously an unwarranted convenience.
+Finally \texttt{at\_the\_floor\_a\_maximal\_threshold\_drops\_every\_part} predicts the null above: at the
+floor a maximal threshold drops every part, so a search still reading parts is paying for bounds above the
+floor and a better incumbent cannot help it.
 
 \section{The trilemma and the impossibility}\label{sec:trilemma}
 
