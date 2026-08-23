@@ -270,6 +270,21 @@ the keys are anisotropic (the usual trained case), $\sqrt{q^\top\Sigma_c q}$ can
 $\lVert q\rVert R_c$ for queries pointing along thin directions---a tighter, query-specific bound, and exactly
 the quantity the cumulant score~\eqref{eq:route} already trades on.
 
+\paragraph{The regularised form is not the same bound.} Equation~\eqref{eq:aniso} is admissible in exact
+arithmetic, but $\Sigma_c$ is singular whenever a block holds fewer keys than the head dimension---the
+usual case---so every implementation forms $S_c=\Sigma_c+\varepsilon I$ and takes
+$\rho_c=\max_j\lVert S_c^{-1/2}(k_j-\mu_c)\rVert$. \emph{The quadratic form must then be $S_c$'s as well}:
+Cauchy--Schwarz reads $\inner{q}{k-\mu_c}=\inner{S_c^{1/2}q}{S_c^{-1/2}(k-\mu_c)}\le\sqrt{q^\top S_c q}\cdot\rho_c$,
+and $q^\top S_c q = q^\top\Sigma_c q+\varepsilon\lVert q\rVert^2$. Pairing a radius measured in the
+$S_c$ metric with the \emph{unregularised} $\sqrt{q^\top\Sigma_c q}$ yields a quantity that can fall below the
+block's own maximum, and a bound that does so can discard the block holding the argmax---at which point
+losslessness is no longer a property of the construction. The deficit is small and direction-dependent: on
+$32$-dimensional blocks of $\approx 33$ keys it appeared on $5$ of $128$ block--query pairs, by at most
+$2.8\times10^{-3}$, and \emph{only} for queries aligned with a block's leading direction. That last clause is
+the practical warning, because it is the realistic case---a router's queries are not orthogonal to the keys
+they route to---and it is why a random-query admissibility test at a single geometry does not detect the
+error.
+
 \subsection{Why second order: centroid routing is blind to outliers}\label{sec:secondorder}
 
 Centroid routing uses only $r_c=\inner{q}{\mu_c}$. A single key $k_\star$ in a block of size $b$ contributes
@@ -416,6 +431,70 @@ precomputed block representatives saves \emph{exactly} zero (branch-and-bound op
 $U_c$, so the first block opened already sets $s^\star$ to the true maximum---cost is bound-driven, not
 incumbent-driven), and an axis-aligned box bound in a shared basis is \emph{worse} than the ellipsoid, with
 $\min$ of the two buying $8\%$ at the most benign geometry alone. The remaining lever is the \emph{partition}.
+
+\subsection{Sharing one selection across a group of queries}\label{sec:group}
+
+Everything above prunes for \emph{one} query. A long context does not have one query: the number of query
+positions grows with the context exactly as the number of keys does, and kernels therefore select blocks once
+for a group---a decode chunk, the query heads of a GQA group, a tile of positions---and read the selected
+blocks for every member. That is a different object, and it is not automatically lossless:
+\emph{a bound admissible for one query says nothing about another query's argmax.}
+
+Write $Q$ for the group, $\lvert Q\rvert=m_Q$. The correctness condition is exact and is not a matter of
+degree. A shared bound $U$ is safe for every member iff it dominates the group's \emph{top claim}
+$\max_{q\in Q}U_c(q)$ blockwise, and the top claim is the \emph{least} such bound; a chain of prunes that is
+individually admissible for each stage's own objective can still destroy a later stage's answer, and the part
+is then gone rather than approximated. These are machine-checked, in
+\texttt{Universal/Potential/ChainedPrune.lean}
+(\texttt{safe\_for\_every\_stage\_iff\_safe\_over\_the\_top\_claim},
+\texttt{no\_safe\_bound\_holds\_below\_the\_top\_claim},
+\texttt{a\_prune\_can\_drop\_the\_greatest\_part\_of\_a\_second\_objective}). Two consequences carry directly
+into the implementation. The shared \emph{threshold} must be the group's weakest incumbent, not its
+strongest: a block whose bound has fallen under the best member's incumbent may still hold a weaker member's
+argmax. And group size costs retention monotonically---each member admitted raises the top claim, and a
+raised bound prunes strictly less---so in the limit where every block is above threshold for \emph{some}
+member, the safe prune drops nothing at all.
+
+\paragraph{What it buys, and what it does not.} Table~\ref{tab:group} counts total work as keys scored plus
+bound evaluations, since the arms differ in how many bounds they evaluate and counting keys alone credits a
+saving paid for elsewhere. Sharing the block \emph{choice} at the top claim is worth about $2\times$, and---the
+useful part---\emph{flat in group size} up to $m_Q=512$, because the blocks a tight group wants are the same
+blocks. As the group spreads, it stops paying and then costs: the quantitative face of the
+drop-nothing limit above.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{rrrrrr}
+\toprule
+$q$-spread & $m_Q$ & per-query & top claim & rank-$8$ & isotropic\\
+\midrule
+$0.02$ & $8$   & $9\,014$   & $1.99\times$ & $2.31\times$ & $1.13\times$\\
+$0.02$ & $32$  & $36\,293$  & $2.01\times$ & $1.09\times$ & $0.63\times$\\
+$0.02$ & $128$ & $142\,663$ & $1.97\times$ & $0.55\times$ & $0.43\times$\\
+$0.02$ & $512$ & $572\,668$ & $1.98\times$ & $0.18\times$ & $0.17\times$\\
+$0.10$ & $32$  & $42\,729$  & $0.51\times$ & $0.16\times$ & $0.16\times$\\
+$0.30$ & $32$  & $112\,660$ & $0.43\times$ & $0.43\times$ & $0.43\times$\\
+\bottomrule
+\end{tabular}
+\caption{Shared selection against per-query selection at the same partition and key bound; speedup on total
+work. $n=8192$, $d=64$, $B=128$, key spread $0.05$. Every arm returns the true argmax for every member.}
+\label{tab:group}
+\end{table}
+
+\paragraph{A negative result: summarising the query side does not pay.} The obvious way to make the top claim
+cheap is to apply this paper's own hierarchy to the queries---the top claim costs $O(m_Q)$ per block, whereas
+$\max_{q\in Q}\inner{q}{\mu_c}\le\inner{\mu_Q}{\mu_c}+\sqrt{(m_Q-1)\,\mu_c^\top\Sigma_Q\,\mu_c}$ costs
+$O(d)$ once the group's summary is formed. The resulting bounds are admissible and exact, and they are
+\emph{worse at every group size measured}, degrading from $1.13\times$ to $0.17\times$ as $m_Q$ grows.
+
+The mechanism is structural and is the point worth keeping. Proposition~\ref{prop:tight} establishes
+Samuelson's bound as tightest \emph{because it is attained}---by one member at
+$\bar{x}+s\sqrt{m-1}$ with the rest at $\bar{x}$. That is a worst-case tightness, and a worst case is a
+statement about the adversarial configuration, not the typical one. On the key side the adversarial block is
+exactly what a bound must survive. A \emph{tight query group} is the opposite shape: its members cluster near
+their mean, which is where the $\sqrt{m_Q-1}$ factor is furthest from the truth. The same inequality that is
+tight where it was proved is loose where it is reused, and the $O(1)$-per-block evaluation it saves is smaller
+than the pruning it gives up. The room in shared selection is in the block choice, not in the query summary.
 
 \paragraph{Relation to the formalized ceiling.} Proposition~\ref{prop:tight} instantiates an abstract result
 in the substrate development: a single score standing for a whole fibre of completions carries an error floor

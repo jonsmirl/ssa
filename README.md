@@ -82,6 +82,35 @@ and both were refuted: seeding the incumbent with precomputed block representati
 incumbent-driven), and an axis-aligned box bound in a shared basis is **worse than the ellipsoid**
 (`min` of the two buys 8% at benign geometry only). The remaining lever is the **partition**.
 
+**One selection, many queries — and where the room actually is.** A long context has as many *queries* as
+keys, so kernels select blocks once per group (a decode chunk, a GQA group) rather than per query. That is
+not automatically lossless: **a bound admissible for one query says nothing about another query's argmax**.
+A shared bound is safe for the whole group iff it dominates the group's **top claim**, which is also the
+*least* safe bound — machine-checked in `Universal/Potential/ChainedPrune.lean`, together with the negative
+that a prune beyond reproach for its own objective can remove a second objective's best part outright. Two
+things fall out that the implementation has to respect: the shared threshold is the group's **weakest**
+incumbent, not its strongest, and **group size costs retention monotonically** — admit enough members and
+the safe prune drops nothing at all.
+
+Measured (`ssa/group_bound.py`, `sweep_group()`): sharing the block **choice** is worth ~**2×**, and *flat in
+group size* to `m_Q = 512`, when the group is tight; it stops paying (0.4–1.0×) as the group spreads.
+
+**Refuted — summarising the query side.** Applying this repo's own summary hierarchy to the *queries* gives
+admissible, exact bounds costing `O(d)` per block instead of `O(m_Q·d)`, and they are **worse at every group
+size measured** (1.13× → 0.17× as `m_Q` grows). The reason is structural: Samuelson is tightest *because it is
+attained* — one member extreme, the rest at the mean — which is a **worst-case** tightness. On the key side
+the adversarial block is what a bound must survive. A tight query group is the opposite shape, so the same
+inequality that is tight where it was proved is loose where it is reused. **The room in shared selection is in
+the block choice, not the query summary.**
+
+**Correction to the ellipsoidal bound.** `ρ_c` is a radius in the metric of `S_c = Σ_c + εI`, so the bound is
+`⟨q,μ_c⟩ + ρ_c·√(qᵀΣ_c q + ε‖q‖²)`; the shipped code dropped the `ε` term and was therefore **inadmissible** —
+below the block's own maximum on 5 of 128 block–query pairs by up to 2.8e-3. It moved no recall column, but a
+bound that can sit below the block max can discard the block holding the argmax, and "lossless by
+construction" then does not hold. The admissibility test existed and was blind: it drew *random* queries at
+one geometry, and the deficit only appears for queries **aligned** with a block's leading direction — which is
+the realistic case, since a router's queries are not orthogonal to the keys they route to.
+
 The abstract skeleton is machine-checked in the substrate development
 (`Universal/Potential/AdmissibleBound.lean`): a tighter bound provably drops a superset of the parts,
 the family maximum is the least admissible bound, an attained bound admits nothing smaller, and taking
