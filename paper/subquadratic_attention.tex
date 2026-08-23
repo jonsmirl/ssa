@@ -397,11 +397,11 @@ four bounds admissible so recall is $1.000$ throughout):
 \toprule
 spread & oracle & ellipsoidal & Samuelson & summary $\div$ floor\\
 \midrule
-$0.02$ & $89.0$ & $187.6$ & $720.3$ & $8.1\times$\\
-$0.05$ & $81.0$ & $453.6$ & $975.4$ & $12.0\times$\\
-$0.10$ & $74.6$ & $1340.2$ & $2165.0$ & $29.0\times$\\
-$0.20$ & $70.2$ & $3343.4$ & $3685.8$ & $52.5\times$\\
-$0.40$ & $64.1$ & $3946.1$ & $4045.3$ & $63.1\times$\\
+$0.02$ & $89.0$ & $203.2$ & $720.3$ & $8.1\times$\\
+$0.05$ & $81.0$ & $543.6$ & $975.4$ & $12.0\times$\\
+$0.10$ & $74.6$ & $1765.9$ & $2165.0$ & $29.0\times$\\
+$0.20$ & $70.2$ & $3564.3$ & $3685.8$ & $52.5\times$\\
+$0.40$ & $64.1$ & $4022.8$ & $4045.3$ & $63.1\times$\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -409,11 +409,20 @@ $0.40$ & $64.1$ & $3946.1$ & $4045.3$ & $63.1\times$\\
 Three readings, in decreasing order of how much they change the picture. First, the routability
 program~\eqref{eq:reg} has a \emph{measurable ceiling}: driving the geometry benign moves the summary price
 from $63\times$ the floor to $8\times$, monotonically---but not to $1\times$, and
-Proposition~\ref{prop:tight} says why it cannot. Second, \emph{reading keys is worth roughly $4\times$ at
-benign geometry} ($187.6$ against $720.3$ at spread $0.02$), which is the first absolute justification for the
+Proposition~\ref{prop:tight} says why it cannot. Second, \emph{reading keys is worth roughly $3.5\times$ at
+benign geometry} ($203.2$ against $720.3$ at spread $0.02$), which is the first absolute justification for the
 anisotropic refinement~\eqref{eq:aniso}; $\rho_c$ is not a minor sharpening but most of the distance to the
-floor. Third, the partition price is nearly flat in the spread ($89.0\to 64.1$) while the summary price moves
+floor---\emph{at these shapes}, a qualification the next paragraph makes precise. Third, the partition price is nearly flat in the spread ($89.0\to 64.1$) while the summary price moves
 by a factor of six: \emph{the geometry is a fact about summaries, not about partitions.}
+
+\paragraph{$\rho_c$ inverts when a block holds far fewer keys than dimensions.} The table is $d=64$ with
+blocks of $\approx 64$ keys. On real Gemma-2 layer-6 keys ($d=2304$, blocks of $64$--$256$) the same stored
+scalar \emph{costs} rather than buys---$0.7\times$, $0.9\times$, $1.0\times$ at $n=4096,16384,65536$---because
+$\Sigma_c$ is then deeply rank-deficient, $S_c=\Sigma_c+\varepsilon I$ is dominated by $\varepsilon$, and the
+honest $\sqrt{q^\top\Sigma_c q+\varepsilon\lVert q\rVert^2}$ is loose exactly where the whitened radius is
+large. The anisotropic refinement is therefore a recommendation \emph{scoped to $b\gtrsim d$}. The
+unregularised bound concealed this, reporting $\rho_c$ buying $1.1\times$ on the identical run: the correction
+does not shift a number, it reverses which of the two bounds is better on real keys.
 
 \paragraph{Scope.} These are $k$-means blocks on synthetic clustered keys at one $(n,d,B)$ and one query-noise
 level, which is the adaptive/IVF regime, not the contiguous-position blocking of the flat kernel; the oracle

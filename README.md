@@ -63,18 +63,26 @@ turns the qualitative "cost is governed by bound tightness" into a measurable de
 
 | spread | oracle (partition price) | ellipsoidal | Samuelson (summary-only) | summary ÷ floor |
 |---:|---:|---:|---:|---:|
-| 0.02 (benign) | 89.0 | 187.6 | 720.3 | **8.1×** |
-| 0.10 | 74.6 | 1340.2 | 2165.0 | 29.0× |
-| 0.40 (loose) | 64.1 | 3946.1 | 4045.3 | **63.1×** |
+| 0.02 (benign) | 89.0 | 203.2 | 720.3 | **8.1×** |
+| 0.10 | 74.6 | 1765.9 | 2165.0 | 29.0× |
+| 0.40 (loose) | 64.1 | 4022.8 | 4045.3 | **63.1×** |
 
 *(keys read per query; `n=4096`, `d=64`, `B=64` k-means blocks; all bounds admissible so recall is 1.000
 throughout — cost is the discriminator, not accuracy. `python3 -m ssa.bound_floor`.)*
 
 So: the routability programme has a **ceiling** — benign geometry moves the `(μ,Σ,b)` price 63× → 8×,
-monotonically and never to 1×; **one extra precomputed scalar (`ρ_c`, query-independent) buys 3.4×** at
-benign geometry, taking the shipped ellipsoidal bound to **2.5× the floor — 5.33% of keys against a floor
-of 2.10%**; and the partition price is nearly flat (89 → 64) while the summary price moves sixfold, so
+monotonically and never to 1×; **one extra precomputed scalar (`ρ_c`, query-independent) buys 3.5×** at
+benign geometry, taking the shipped ellipsoidal bound to **2.28× the floor — 4.96% of keys against a floor
+of 2.17%**; and the partition price is nearly flat (89 → 64) while the summary price moves sixfold, so
 **the geometry is a fact about summaries, not partitions.**
+
+**`ρ_c` inverts when a block holds far fewer keys than dimensions.** Everything above is `d = 64` with
+blocks of ~64 keys. On real Gemma-2 keys (`d = 2304`, blocks of 64–256) the same scalar **costs** rather
+than buys — `0.7×`, `0.9×`, `1.0×` at `n = 4096/16384/65536` — because `Σ_c` is then deeply
+rank-deficient, `S_c = Σ_c + εI` is dominated by `ε`, and the honest `√(qᵀΣ_c q + ε‖q‖²)` is loose
+exactly where the whitened radius is large. So the ellipsoidal refinement is a recommendation **scoped to
+`b ≳ d`**, and the unregularised bound hid that: it reported `ρ` buying 1.1× on the identical run. The
+correction did not shift a number, it reversed which of the two bounds is better on real keys.
 
 **There is little room left in the bound.** Two ways to tighten it further were tested against the floor
 and both were refuted: seeding the incumbent with precomputed block representatives saves **exactly 0%**

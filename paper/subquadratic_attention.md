@@ -344,18 +344,26 @@ bounds admissible, so recall is 1.000 throughout):
 
 | spread | oracle | ellipsoidal | Samuelson | summary ÷ floor |
 |---:|---:|---:|---:|---:|
-| 0.02 | 89.0 | 187.6 | 720.3 | 8.1× |
-| 0.05 | 81.0 | 453.6 | 975.4 | 12.0× |
-| 0.10 | 74.6 | 1340.2 | 2165.0 | 29.0× |
-| 0.20 | 70.2 | 3343.4 | 3685.8 | 52.5× |
-| 0.40 | 64.1 | 3946.1 | 4045.3 | 63.1× |
+| 0.02 | 89.0 | 203.2 | 720.3 | 8.1× |
+| 0.05 | 81.0 | 543.6 | 975.4 | 12.0× |
+| 0.10 | 74.6 | 1765.9 | 2165.0 | 29.0× |
+| 0.20 | 70.2 | 3564.3 | 3685.8 | 52.5× |
+| 0.40 | 64.1 | 4022.8 | 4045.3 | 63.1× |
 
 Three readings. First, the routability programme has a **measurable ceiling**: driving the geometry benign
 moves the summary price from 63× the floor to 8×, monotonically — but not to 1×, and the proposition says why
-it cannot. Second, **reading keys is worth roughly 4×** at benign geometry (187.6 against 720.3 at spread
+it cannot. Second, **reading keys is worth roughly 3.5×** at benign geometry (203.2 against 720.3 at spread
 0.02), the first absolute justification for the anisotropic refinement; `ρ_c` is not a minor sharpening but
-most of the distance to the floor. Third, the partition price is nearly flat in the spread (89.0 → 64.1) while
+most of the distance to the floor — *at these shapes*, a qualification the next paragraph makes precise. Third, the partition price is nearly flat in the spread (89.0 → 64.1) while
 the summary price moves by a factor of six: **the geometry is a fact about summaries, not about partitions.**
+
+**`ρ_c` inverts when a block holds far fewer keys than dimensions.** The table is `d = 64` with blocks of
+~64 keys. On real Gemma-2 layer-6 keys (`d = 2304`, blocks of 64–256) the same stored scalar **costs**
+rather than buys — 0.7×, 0.9×, 1.0× at `n = 4096/16384/65536` — because `Σ_c` is then deeply rank-deficient,
+`S_c = Σ_c + εI` is dominated by `ε`, and the honest `√(qᵀΣ_c q + ε‖q‖²)` is loose exactly where the whitened
+radius is large. The anisotropic refinement is therefore a recommendation **scoped to `b ≳ d`**. The
+unregularised bound concealed this, reporting `ρ_c` buying 1.1× on the identical run: the correction does not
+shift a number, it reverses which of the two bounds is better on real keys.
 
 **Scope.** k-means blocks on synthetic clustered keys at one `(n,d,B)` and one query-noise level — the
 adaptive/IVF regime, not the contiguous-position blocking of the flat kernel; the oracle is a reference and
