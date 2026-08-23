@@ -1421,3 +1421,77 @@ measured verdict sharpens rather than closes the split: the learned write gate +
 training-dependent half of the zero-attention recipe — help exactly where a write-time signal already exists
 (and there training alone suffices) and cannot manufacture one where relevance is read-time-only. Selection's
 advantage on read-time relevance survives training.
+
+---
+
+## The summary-only floor — what the partition costs vs what the summary costs (2026-08-22)
+
+**Module:** `ssa/bound_floor.py` · **Tests:** `ssa/tests/test_bound_floor.py` (19, each section
+carrying a negative) · **No GPU, no model, ~2 min on CPU.**
+
+### The proposition: Samuelson is the tightest summary-only bound
+
+Samuelson's inequality is not merely valid but **attained**, by one point at
+`μ + s√(m−1)` and `m−1` points at `μ − s/√(m−1)`. Verified numerically at `m ∈ {2,4,8,16,64,256}`:
+mean error `≤ 7e-18`, sd error `≤ 2.2e-16`, max deviation equal to the bound to `<1e-9` in every case.
+
+So any bound strictly below `⟨q,μ_c⟩ + √((b−1)·qᵀΣ_c q)` is violated by a block whose summary the
+router cannot distinguish from the one it read. **No admissible bound computable from `(μ_c, Σ_c, b)`
+alone prunes more.** The prune gate's non-necessity is therefore a property of summary-only routing,
+not slack in that particular gate — every further improvement must come from a better *partition* or
+from *reading keys*.
+
+### The decomposition it makes measurable
+
+The tightest admissible bound that exists at all is the oracle `U_c = max_{k∈c}⟨q,k⟩` — not a router
+(computing it reads the block), but the floor the **partition** imposes on any correct
+branch-and-bound. Clustered synthetic keys, `n=4096`, `d=64`, `B=64` k-means blocks, 120 queries per
+row, query noise 0.15. **All four bounds are admissible, so recall is 1.000 in every cell** — cost is
+the discriminator, not accuracy.
+
+| spread | oracle | ellipsoidal | Samuelson | summary ÷ floor |
+|---:|---:|---:|---:|---:|
+| 0.02 | 89.0 | 187.6 | 720.3 | **8.1×** |
+| 0.05 | 81.0 | 453.6 | 975.4 | 12.0× |
+| 0.10 | 74.6 | 1340.2 | 2165.0 | 29.0× |
+| 0.20 | 70.2 | 3343.4 | 3685.8 | 52.5× |
+| 0.40 | 64.1 | 3946.1 | 4045.3 | **63.1×** |
+
+At the two headline geometries (200 queries, isotropic row included):
+
+| geometry | oracle | ellipsoidal | isotropic | Samuelson |
+|---|---:|---:|---:|---:|
+| benign (clustered, spread 0.15) | 71.4 | 2678.0 | 4061.8 | 3261.0 |
+| isotropic (random unit) | 65.3 | 3923.7 | 4096.0 (100%) | 4034.2 |
+
+### Three readings
+
+1. **The routability programme has a measurable ceiling.** Driving geometry benign moves the summary
+   price from **63× to 8×** the partition floor, monotonically — and not to 1×, which the tightness
+   proposition says it cannot. The regularizer's measured 26.5% → 4.2% is real and it is bounded.
+2. **Reading keys is worth ~4× at benign geometry** (187.6 vs 720.3 at spread 0.02). `ρ_c` is not a
+   minor sharpening of the bound; it is most of the distance to the floor. First absolute
+   justification for the anisotropic refinement — `anisotropic_bound.py` compares the two bounds to
+   each other and never to what is achievable.
+3. **The geometry is a fact about summaries, not partitions.** The partition price is nearly flat in
+   the spread (89.0 → 64.1) while the summary price moves by a factor of six.
+
+### Scope — stated because the result is easy to over-read
+
+k-means blocks on synthetic clustered keys at one `(n,d,B)` and one query-noise level: the
+adaptive/IVF regime, **not** the contiguous-position blocking of the flat kernel. The oracle is a
+reference, not an achievable router. The floor is about **lossless** selection, so a budget-κ lossy
+router may sit below it and SSA's does. The proposition itself is geometry-free and carries none of
+these caveats.
+
+Not measured here: real key banks (the Qwen/Gemma caches), the effect of `B`, and whether the
+plateau near 8× is a property of the geometry family or of k-means. Each is a one-line change to
+`bound_floor.sweep`.
+
+### Provenance
+
+Instantiates `Universal/Potential/PartialScore.lean` · `score_error_ge_of_reach_split` and
+`not_exactOnReach_of_reach_split` — a single score standing for a fibre of completions carries an
+error floor set by the objective's spread across that fibre. Partial object = the summary,
+completions = blocks carrying it, objective = the block's true max logit. **The instantiation is
+prose, not machine-checked**; see `docs/substrate_math_imports.md`.

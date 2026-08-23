@@ -318,7 +318,7 @@ q}$, giving the \emph{prune gate}: block $c$ can be safely discarded against a t
 \boxed{\;(s^\star-\inner{q}{\mu_c})^2 \;>\; (b-1)\,q^\top\Sigma_c q\quad\text{and}\quad \inner{q}{\mu_c}<s^\star\;}
 \end{equation}
 i.e.\ when the \emph{margin} of the current best over the block mean exceeds $\sqrt{(b-1)\cdot\text{spread}}$.
-The test needs only $(\mu_c,\Sigma_c)$. It is \emph{sufficient} (it never wrongly prunes) but not necessary.
+The test needs only $(\mu_c,\Sigma_c)$. It is \emph{sufficient} (it never wrongly prunes) but not necessary---though by Proposition~\ref{prop:tight} it is the \emph{tightest} test computable from those statistics, so its non-necessity is a property of summary-only routing and not a slack in this particular gate.
 It sharpens the radius bound~\eqref{eq:admissible} when the block's spread along $q$ is small relative to its
 worst-case radius ($\sqrt{(b-1)\,q^\top\Sigma_c q}\ll\lVert q\rVert R_c$); neither bound dominates in
 general---$\sqrt{(b-1)\,q^\top\Sigma_c q}$ can exceed $\lVert q\rVert R_c$ by up to a factor $\sqrt{b-1}$ for
@@ -338,6 +338,82 @@ $(\sum_i\lvert q_i\rvert\,\sigma_{c,i})^2$ for $q^\top\Sigma_c q$ in~\eqref{eq:p
 admissible at the same summary cost (looser, so it fires less often). The prune-rate measurements reported in
 this paper compute the per-member logit variance directly---the full quadratic form---so they certify the
 full-covariance gate, not the diagonal shortcut.
+
+\subsection{The summary-only floor: Samuelson is the tightest, and how far it is from the
+partition's own limit}\label{sec:floor-summary}
+
+Equation~\eqref{eq:prune} is labelled \emph{sufficient}. That labelling is right, and it leaves an obvious
+question unanswered: could a \emph{cleverer} function of the same summary prune more? It could not, and the
+reason is that Samuelson's inequality is not merely valid but \emph{attained}.
+
+\begin{proposition}[Samuelson is the tightest summary-only bound]\label{prop:tight}
+Fix $m\ge 2$, a mean $\bar s$ and a population variance $\Var>0$. The configuration
+\begin{equation}\label{eq:witness}
+s_1=\bar s+\sqrt{(m-1)\Var},\qquad s_2=\dots=s_m=\bar s-\sqrt{\Var/(m-1)}
+\end{equation}
+has exactly mean $\bar s$ and variance $\Var$, and its maximum equals $\bar s+\sqrt{(m-1)\Var}$. Consequently
+any bound $U<\bar s+\sqrt{(m-1)\Var}$ is violated by a block whose summary $(\mu_c,\Sigma_c,b)$ the router
+cannot distinguish from the one it read. No admissible bound computable from $(\mu_c,\Sigma_c,b)$ alone is
+tighter than~\eqref{eq:samuelson}.
+\end{proposition}
+
+\noindent The arithmetic is immediate from~\eqref{eq:witness} and is verified numerically at
+$m\in\{2,4,8,16,64,256\}$ in \texttt{ssa/bound\_floor.py}. The content is the quantifier: the bound is not
+conservative \emph{given the summary}, so every improvement in pruning must come from a better \emph{partition}
+or from \emph{reading keys}---never from a better formula on the same statistics. This is the necessary-side
+companion to the benign-geometry condition~\eqref{eq:benign}, which is sufficient only.
+
+\paragraph{What the partition costs, and what the summary costs.} Proposition~\ref{prop:tight} makes a
+decomposition measurable. For a fixed query and partition, the tightest admissible bound that exists at all is
+the \emph{oracle} $U_c=\max_{k\in c}\inner{q}{k}$; it is not a router (computing it reads the block), but it
+is the floor the partition imposes on \emph{any} correct branch-and-bound. Then
+\[
+\underbrace{\text{cost}(\text{oracle})}_{\text{price of the partition}}
+\;\le\;
+\underbrace{\text{cost}(\text{ellipsoidal})}_{\text{reads }\rho_c}
+\;\le\;
+\underbrace{\text{cost}(\text{Samuelson})}_{\text{summary-only}} .
+\]
+Measured on clustered synthetic keys ($n=4096$, $d=64$, $B=64$ $k$-means blocks, $120$ queries per row, all
+four bounds admissible so recall is $1.000$ throughout):
+
+\begin{center}
+\begin{tabular}{rrrrr}
+\toprule
+spread & oracle & ellipsoidal & Samuelson & summary $\div$ floor\\
+\midrule
+$0.02$ & $89.0$ & $187.6$ & $720.3$ & $8.1\times$\\
+$0.05$ & $81.0$ & $453.6$ & $975.4$ & $12.0\times$\\
+$0.10$ & $74.6$ & $1340.2$ & $2165.0$ & $29.0\times$\\
+$0.20$ & $70.2$ & $3343.4$ & $3685.8$ & $52.5\times$\\
+$0.40$ & $64.1$ & $3946.1$ & $4045.3$ & $63.1\times$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Three readings, in decreasing order of how much they change the picture. First, the routability
+program~\eqref{eq:reg} has a \emph{measurable ceiling}: driving the geometry benign moves the summary price
+from $63\times$ the floor to $8\times$, monotonically---but not to $1\times$, and
+Proposition~\ref{prop:tight} says why it cannot. Second, \emph{reading keys is worth roughly $4\times$ at
+benign geometry} ($187.6$ against $720.3$ at spread $0.02$), which is the first absolute justification for the
+anisotropic refinement~\eqref{eq:aniso}; $\rho_c$ is not a minor sharpening but most of the distance to the
+floor. Third, the partition price is nearly flat in the spread ($89.0\to 64.1$) while the summary price moves
+by a factor of six: \emph{the geometry is a fact about summaries, not about partitions.}
+
+\paragraph{Scope.} These are $k$-means blocks on synthetic clustered keys at one $(n,d,B)$ and one query-noise
+level, which is the adaptive/IVF regime, not the contiguous-position blocking of the flat kernel; the oracle
+is a reference and not an achievable router; and the floor is a statement about \emph{lossless} selection, so
+a budget-$\kappa$ lossy router may sit below it and SSA's does. Proposition~\ref{prop:tight} itself is
+geometry-free and carries none of these caveats.
+
+\paragraph{Relation to the formalized ceiling.} Proposition~\ref{prop:tight} instantiates an abstract result
+in the substrate development: a single score standing for a whole fibre of completions carries an error floor
+set by the spread of the objective across that fibre
+(\texttt{Universal/Potential/PartialScore.lean}, \texttt{score\_error\_ge\_of\_reach\_split} and
+\texttt{not\_exactOnReach\_of\_reach\_split}). Here the partial object is the summary, its completions are the
+blocks carrying it, and the objective is the block's true maximum logit. The instantiation is stated in prose
+and is \emph{not} machine-checked; see \texttt{docs/substrate\_math\_imports.md} for the mapping and its
+limits.
 
 \section{The trilemma and the impossibility}\label{sec:trilemma}
 
@@ -409,7 +485,9 @@ block it does. Geometry is \emph{benign} for a query $q$ when, for every non-tar
 i.e.\ the prune gate~\eqref{eq:prune} fires everywhere except the target's block. Then exactly one block (plus
 the local window) is opened, branch-and-bound reads $O(b)$ keys, and selection is cheap \emph{and} lossless.
 Isotropic keys violate~\eqref{eq:benign}---every block's bound is large and uninformative, so nothing prunes
-and cost reverts to dense.
+and cost reverts to dense. Condition~\eqref{eq:benign} is \emph{sufficient}; the matching necessary-side
+statement is Proposition~\ref{prop:tight} and the floor measured beneath it in
+Section~\ref{sec:floor-summary}, which bounds how much benign geometry can ever buy.
 
 \subsection{The routability regularizer}
 
@@ -423,7 +501,9 @@ the square root in the prune gate~\eqref{eq:prune}, so as training proceeds the 
 blocks and the certified bound~\eqref{eq:admissible}/\eqref{eq:aniso} tightens. Measured: co-training
 with~\eqref{eq:reg} drove the \emph{lossless} branch-and-bound cost from $26.5\%$ of keys to $4.2\%$---a
 $6\times$ reduction---at \emph{no} loss of retrieval accuracy. Training is what manufactures the geometry that
-the impossibility result (Proposition~\ref{prop:impossible}) says cheap exactness requires.
+the impossibility result (Proposition~\ref{prop:impossible}) says cheap exactness requires. It does so
+against a floor: Section~\ref{sec:floor-summary} measures the summary price falling from $63\times$ to
+$8\times$ the partition's own limit as spread tightens, monotonically and without reaching it.
 
 \subsection{The entry-magnitude split: selection vs.\ linear attention}
 

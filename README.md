@@ -53,7 +53,29 @@ r_c(q) = ⟨q, μ_c⟩ + (β/2) · qᵀ Σ_c q
 an in-block outlier that the mean alone washes out. Summary-only routing is provably lossless **when** the
 key **geometry is benign** (off-target blocks have small spread `qᵀΣ_c q`) — a *sufficient* condition (the
 prune gate fires), not a necessary one — and training, or simply a finer block size, can manufacture that
-geometry. None of this is free in the worst case: **cheap and lossless** selection cannot hold for arbitrary
+geometry.
+
+**But not without limit, and now we can say how much.** Samuelson's inequality is not merely valid but
+**attained** (one point at `μ+s√(m−1)`, the rest at `μ−s/√(m−1)`), so the prune gate is the *tightest*
+bound computable from `(μ_c, Σ_c, b)` — **no summary-only router prunes more without reading keys**. That
+turns the qualitative "cost is governed by bound tightness" into a measurable decomposition against the
+*oracle* bound `max_{k∈c}⟨q,k⟩`, the floor the **partition** imposes on any correct branch-and-bound:
+
+| spread | oracle (partition price) | ellipsoidal | Samuelson (summary-only) | summary ÷ floor |
+|---:|---:|---:|---:|---:|
+| 0.02 (benign) | 89.0 | 187.6 | 720.3 | **8.1×** |
+| 0.10 | 74.6 | 1340.2 | 2165.0 | 29.0× |
+| 0.40 (loose) | 64.1 | 3946.1 | 4045.3 | **63.1×** |
+
+*(keys read per query; `n=4096`, `d=64`, `B=64` k-means blocks; all bounds admissible so recall is 1.000
+throughout — cost is the discriminator, not accuracy. `python3 -m ssa.bound_floor`.)*
+
+So: the routability programme has a **ceiling** — benign geometry moves the summary price 63× → 8×,
+monotonically and never to 1×; **reading keys is worth ~4×** at benign geometry, which is the first
+absolute justification for the anisotropic bound; and the partition price is nearly flat (89 → 64) while
+the summary price moves sixfold, so **the geometry is a fact about summaries, not partitions.** Scope and
+the necessary-side proposition: `RESULTS.md` § "The summary-only floor" and paper
+§"The summary-only floor". None of this is free in the worst case: **cheap and lossless** selection cannot hold for arbitrary
 keys (proved); length-robustness is the third axis — the *trilemma* (at most two of the three) — see the
 paper's impossibility argument.
 

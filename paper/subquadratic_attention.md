@@ -302,6 +302,59 @@ full-covariance gate, not the diagonal shortcut.
 
 ---
 
+### 5.4 The summary-only floor: Samuelson is the tightest, and how far it is from the partition's own limit
+
+Equation (prune) is labelled *sufficient*. That labelling is right, and it leaves an obvious question
+unanswered: could a *cleverer* function of the same summary prune more? It could not, and the reason is that
+Samuelson's inequality is not merely valid but **attained**.
+
+> **Proposition (Samuelson is the tightest summary-only bound).** Fix `m ≥ 2`, a mean `s̄` and a population
+> variance `Var > 0`. The configuration `s₁ = s̄ + √((m−1)Var)`, `s₂ = … = s_m = s̄ − √(Var/(m−1))` has exactly
+> mean `s̄` and variance `Var`, and its maximum equals `s̄ + √((m−1)Var)`. Consequently any bound
+> `U < s̄ + √((m−1)Var)` is violated by a block whose summary `(μ_c, Σ_c, b)` the router cannot distinguish
+> from the one it read. **No admissible bound computable from `(μ_c, Σ_c, b)` alone is tighter.**
+
+The arithmetic is immediate and is verified numerically at `m ∈ {2,4,8,16,64,256}` in `ssa/bound_floor.py`.
+The content is the quantifier: the bound is not conservative *given the summary*, so every improvement in
+pruning must come from a better **partition** or from **reading keys** — never from a better formula on the
+same statistics. This is the necessary-side companion to the benign-geometry condition, which is sufficient
+only.
+
+**What the partition costs, and what the summary costs.** The tightest admissible bound that exists at all is
+the *oracle* `U_c = max_{k∈c}⟨q,k⟩`; it is not a router (computing it reads the block), but it is the floor
+the partition imposes on *any* correct branch-and-bound, so
+`cost(oracle) ≤ cost(ellipsoidal) ≤ cost(Samuelson)`.
+
+Measured on clustered synthetic keys (`n=4096`, `d=64`, `B=64` k-means blocks, 120 queries per row; all four
+bounds admissible, so recall is 1.000 throughout):
+
+| spread | oracle | ellipsoidal | Samuelson | summary ÷ floor |
+|---:|---:|---:|---:|---:|
+| 0.02 | 89.0 | 187.6 | 720.3 | 8.1× |
+| 0.05 | 81.0 | 453.6 | 975.4 | 12.0× |
+| 0.10 | 74.6 | 1340.2 | 2165.0 | 29.0× |
+| 0.20 | 70.2 | 3343.4 | 3685.8 | 52.5× |
+| 0.40 | 64.1 | 3946.1 | 4045.3 | 63.1× |
+
+Three readings. First, the routability programme has a **measurable ceiling**: driving the geometry benign
+moves the summary price from 63× the floor to 8×, monotonically — but not to 1×, and the proposition says why
+it cannot. Second, **reading keys is worth roughly 4×** at benign geometry (187.6 against 720.3 at spread
+0.02), the first absolute justification for the anisotropic refinement; `ρ_c` is not a minor sharpening but
+most of the distance to the floor. Third, the partition price is nearly flat in the spread (89.0 → 64.1) while
+the summary price moves by a factor of six: **the geometry is a fact about summaries, not about partitions.**
+
+**Scope.** k-means blocks on synthetic clustered keys at one `(n,d,B)` and one query-noise level — the
+adaptive/IVF regime, not the contiguous-position blocking of the flat kernel; the oracle is a reference and
+not an achievable router; and the floor is about *lossless* selection, so a budget-κ lossy router may sit
+below it and SSA's does. The proposition itself is geometry-free and carries none of these caveats.
+
+**Relation to the formalized ceiling.** The proposition instantiates an abstract result in the substrate
+development: a single score standing for a whole fibre of completions carries an error floor set by the spread
+of the objective across that fibre (`Universal/Potential/PartialScore.lean`,
+`score_error_ge_of_reach_split` and `not_exactOnReach_of_reach_split`). Partial object = the summary,
+completions = blocks carrying it, objective = the block's true maximum logit. The instantiation is stated in
+prose and is **not** machine-checked; see `docs/substrate_math_imports.md`.
+
 ## 6. The trilemma and the impossibility
 
 Call a selector **cheap** if it reads $o(n)$ keys, **lossless** if it attends every key dense attention would
