@@ -441,6 +441,57 @@ $U_c$, so the first block opened already sets $s^\star$ to the true maximum---co
 incumbent-driven), and an axis-aligned box bound in a shared basis is \emph{worse} than the ellipsoid, with
 $\min$ of the two buying $8\%$ at the most benign geometry alone. The remaining lever is the \emph{partition}.
 
+\subsection{The cost of asking: what a summary bound charges on real keys}\label{sec:askcost}
+
+Everything above counts \emph{keys read}. That is the right metric for Section~\ref{sec:floor-summary}, where
+only the bound varies, and it is the wrong one as soon as the \emph{block size} varies, because
+evaluating the bound is neither free nor cheap.
+
+\paragraph{An exact summary bound cannot beat a full scan, at any block size.} Samuelson's bound needs
+$q^\top\Sigma_c q$. Held as a dense $d\times d$ matrix that is $O(d^2)$ per block; held as the rank-$b$
+centred factor $X_c$ it is $\lVert X_c q\rVert^2/b$, i.e.\ $O(bd)$---\emph{exactly the cost of scoring
+the block.} Over $B=n/b$ blocks the total is
+\begin{equation}\label{eq:askcost}
+B\,(1+b)\;=\;\tfrac{n}{b}(1+b)\;=\;n+\tfrac{n}{b}\;>\;n\qquad\text{for every }b .
+\end{equation}
+This is arithmetic and carries no hypothesis about the keys. A search that evaluates the exact summary
+bound on every block \emph{has already paid for a full pass over the data before it skips anything}.
+Measured against a scan on real Gemma-2 layer-6 keys at $n=65536$: $1.062\times$ at $b=16$ falling to
+$1.004\times$ at $b=256$---never below one, and by~\eqref{eq:askcost} it cannot be.
+
+\paragraph{The routing is excellent; the price of asking is the problem.} The same measurement, counting
+keys alone, has contiguous blocks at $b=16$ under the exact bound reading \textbf{204 of 65536 keys}, a
+$321\times$ reduction, with $k$-means at $1519$. Real transformer keys \emph{route extremely well}. Every
+difficulty here is on the cost side of the ledger, not the geometry side.
+
+\paragraph{The escape, and its absence.} A rank-$r$ sketch of $\Sigma_c$, made admissible by the
+discarded-eigenvalue tail
+\[
+q^\top\Sigma_c q \;\le\; \sum_{i\le r}\lambda_i\langle v_i,q\rangle^2 \;+\; \lambda_{r+1}\lVert q\rVert^2 ,
+\]
+costs $B(1+r)=\frac{n}{b}(1+r)$, which falls below a scan exactly when $r<b$. So the whole question is
+one number: how small can $r$ be and still prune? On real keys the answer is that it cannot be smaller
+than $b$ at all. At $b=16$ with contiguous blocks, ranks $2,4,6,8,10,12$ each read $100.0\%$ of the keys
+and rank $16$ reads $0.3\%$: a step function, not a gradient.
+
+\paragraph{Why: the block spectrum does not decay.} The tail term is exactly zero at $r=b$ and positive
+below it, so the step is a statement about the spectrum of $\Sigma_c$, and it was measured directly.
+Across $b\in\{16,32,64,128\}$ and both partitions, $\lambda_2/\lambda_1$ lies in $[0.70,0.84]$---the
+\emph{first} eigenvalue drop is already small, where a genuinely low-rank block would sit near $0.01$---
+and the participation ratio $(\sum\lambda)^2/\sum\lambda^2$ never falls below a quarter of the block
+size, reaching $0.72b$ for contiguous blocks at $b=16$. Between a quarter and three quarters of all
+available directions carry real variance. There is no small tail to discard, so no truncation is both
+cheap and tight.
+
+\paragraph{What this does and does not settle.} Together: on real transformer keys, \emph{lossless
+selection driven by a $(\mu_c,\Sigma_c,b)$ summary costs more than reading every key}, and no rank
+truncation of that summary escapes it. What it does \emph{not} say is that summarising a block is
+hopeless---it bounds this family of bounds. Nor does it touch budget-$\kappa$ \emph{lossy} routing,
+which is a different object with a different accounting and is what SSA actually ships; the floor of
+Section~\ref{sec:floor-summary} was always a statement about lossless selection and this is its cost-side
+companion. The measurements are one model at one layer, and the arithmetic of~\eqref{eq:askcost} is the
+only part that is geometry-free.
+
 \subsection{Sharing one selection across a group of queries}\label{sec:group}
 
 Everything above prunes for \emph{one} query. A long context does not have one query: the number of query

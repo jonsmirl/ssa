@@ -398,7 +398,63 @@ ellipsoidal bounds — previously an unwarranted convenience. Finally
 drops every part, so a search still reading parts is paying for bounds above the floor and a better incumbent
 cannot help it.
 
-### 5.5 Sharing one selection across a group of queries
+### 5.5 The cost of asking: what a summary bound charges on real keys
+
+Everything above counts *keys read*. That is the right metric for §5.4, where only the bound varies, and
+it is the wrong one as soon as the **block size** varies, because evaluating the bound is neither free
+nor cheap.
+
+**An exact summary bound cannot beat a full scan, at any block size.** Samuelson's bound needs
+$q^\top\Sigma_c q$. Dense that is $O(d^2)$ per block; from the rank-$b$ centred factor $X_c$ it is
+$\lVert X_c q\rVert^2/b$, i.e. $O(bd)$ — *exactly the cost of scoring the block*. Over $B=n/b$ blocks:
+
+$$
+B(1+b) \;=\; \tfrac{n}{b}(1+b) \;=\; n + \tfrac{n}{b} \;>\; n \qquad \text{for every } b .
+\tag{5.5}
+$$
+
+Arithmetic, with no hypothesis about the keys. A search that evaluates the exact summary bound on every
+block **has already paid for a full pass over the data before it skips anything.** Measured against a
+scan on real Gemma-2 layer-6 keys at $n=65536$: 1.062× at $b=16$ falling to 1.004× at $b=256$ — never
+below one, and by (5.5) it cannot be.
+
+**The routing is excellent; the price of asking is the problem.** The same measurement, counting keys
+alone, has contiguous blocks at $b=16$ under the exact bound reading **204 of 65536 keys** — a 321×
+reduction — with k-means at 1519. Real transformer keys *route extremely well*. Every difficulty is on
+the cost side of the ledger, not the geometry side.
+
+**The escape, and its absence.** A rank-$r$ sketch of $\Sigma_c$, made admissible by the
+discarded-eigenvalue tail
+$q^\top\Sigma_c q \le \sum_{i\le r}\lambda_i\langle v_i,q\rangle^2 + \lambda_{r+1}\lVert q\rVert^2$,
+costs $B(1+r) = \frac{n}{b}(1+r)$, below a scan exactly when $r<b$. So the whole question is one number:
+how small can $r$ be and still prune? On real keys it cannot be smaller than $b$ at all. At $b=16$ with
+contiguous blocks:
+
+| rank $r$ | 2 | 4 | 6 | 8 | 10 | 12 | **16** |
+|---|---|---|---|---|---|---|---|
+| % of keys read | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | **0.3** |
+
+A step function, not a gradient.
+
+**Why: the block spectrum does not decay.** The tail term is exactly zero at $r=b$ and positive below it,
+so the step is a statement about the spectrum of $\Sigma_c$ — and it was measured directly. Across
+$b\in\{16,32,64,128\}$ and both partitions, $\lambda_2/\lambda_1$ lies in **[0.70, 0.84]** — the *first*
+eigenvalue drop is already small, where a genuinely low-rank block would sit near 0.01 — and the
+participation ratio $(\sum\lambda)^2/\sum\lambda^2$ never falls below a quarter of the block size,
+reaching $0.72b$ for contiguous blocks at $b=16$. Between a quarter and three quarters of all available
+directions carry real variance. **There is no small tail to discard**, so no truncation is both cheap and
+tight.
+
+**What this does and does not settle.** Together: on real transformer keys, *lossless selection driven by
+a $(\mu_c,\Sigma_c,b)$ summary costs more than reading every key*, and no rank truncation of that
+summary escapes it. It does **not** say summarising a block is hopeless — it bounds this family of
+bounds. Nor does it touch budget-$\kappa$ **lossy** routing, a different object with a different
+accounting and what SSA actually ships; §5.4's floor was always about lossless selection and this is its
+cost-side companion. The measurements are one model at one layer; the arithmetic of (5.5) is the only
+part that is geometry-free.
+
+
+### 5.6 Sharing one selection across a group of queries
 
 Everything above prunes for *one* query. A long context does not have one query: the number of query positions
 grows with the context exactly as the number of keys does, and kernels therefore select blocks once for a

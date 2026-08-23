@@ -90,6 +90,28 @@ and both were refuted: seeding the incumbent with precomputed block representati
 incumbent-driven), and an axis-aligned box bound in a shared basis is **worse than the ellipsoid**
 (`min` of the two buys 8% at benign geometry only). The remaining lever is the **partition**.
 
+**THE COST OF ASKING — and this is the sharpest limit we have found.** Everything above counts *keys
+read*. Evaluating the bound is neither free nor cheap: `qᵀΣ_c q` from the rank-`b` factor costs `O(b·d)`
+per block — **exactly what scoring the block costs** — so over `B = n/b` blocks the total is
+`B(1+b) = n + n/b > n` **for every block size**. Arithmetic, no hypothesis about the keys. *An exact
+summary bound has already paid for a full pass before it skips anything* (measured on real Gemma-2
+layer-6 keys: 1.062× a scan at `b=16`, 1.004× at `b=256` — never below one).
+
+**The routing is excellent; the price of asking is the problem.** Counting keys alone, contiguous blocks
+at `b=16` under the exact bound read **204 of 65536** — a 321× reduction. Real transformer keys route
+extremely well.
+
+**And there is no cheap version of the bound.** A rank-`r` sketch costs `(n/b)(1+r)`, below a scan
+exactly when `r < b`. On real keys, ranks 2–12 at `b=16` each read **100.0%** of keys and rank 16 reads
+**0.3%** — a step function. Measured directly: `λ₂/λ₁ ∈ [0.70, 0.84]` across every block size and both
+partitions (a low-rank block would sit near 0.01), and the participation ratio never falls below a
+quarter of the block size. **There is no small tail to discard.**
+
+So: **lossless selection driven by a `(μ_c, Σ_c, b)` summary costs more than reading every key on real
+transformer keys, and no truncation escapes it.** Scope, because it is narrow: this bounds *this family
+of bounds*, not summarising in general, and it does not touch budget-κ **lossy** routing — a different
+object with a different accounting, and what SSA actually ships.
+
 **One selection, many queries — and where the room actually is.** A long context has as many *queries* as
 keys, so kernels select blocks once per group (a decode chunk, a GQA group) rather than per query. That is
 not automatically lossless: **a bound admissible for one query says nothing about another query's argmax**.
