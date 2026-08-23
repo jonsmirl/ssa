@@ -123,6 +123,15 @@ item 2's Qwen runs.
 
 ## 7. Lean additions (in `~/substrate`, not this repo) — 3 of 4 LANDED 2026-07-08
 
+> **See also [`docs/substrate_math_imports.md`](docs/substrate_math_imports.md)** — the substrate
+> tree gained ~877 files under `Universal/` since this section was written, and four of them apply
+> here. The sharpest: `Potential/PartialScore.lean` gives a **per-query, per-block error floor for
+> every summary-only router** (half the in-block logit spread), which is the necessary-side
+> complement to the paper's sufficient benign-geometry condition; and
+> `Accumulation/RouteChargeCrossover.lean` shows a speed/quality verdict is **underdetermined until
+> the exchange rate between dropped mass and compute is stated** — the cheapest open item in this
+> repo. The deferral reason for the Yao item below may also have expired.
+
 - ⏸ Randomized-selector impossibility: the averaging/Yao step over a uniformly-planted spike. **Still
   open.** The builder deferred it on a false premise ("no such remark in the paper" — they searched
   substrate's `retrieval_margin_paper.tex`/`inference_engine_technical.tex`); the remark is in THIS
