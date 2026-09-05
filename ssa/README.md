@@ -90,6 +90,16 @@ Runs in ~1 minute. Paper §10.
 
 ## 6. Routing theory and selection
 
+**`certified_attention.py`** — adaptive attention with explicit upper bounds on omitted softmax mass,
+`KL(subset || dense)`, and Euclidean output error (paper §5.7). `CertifiedBlockAttention(K,V,block_size)`
+precomputes key/value balls. `read(q,beta,mass_tol=...,error_tol=...,prefix=...)` opens blocks until all
+requested tolerances pass. `initial_blocks` seeds another router's selection; `max_blocks` imposes a cap
+and returns `certified=False` when the tolerance remains unmet. An error-only request can drop blocks
+whose values already match the output even when their mass is large. Key scores, key-bound evaluations,
+value-bound evaluations, and certificate checks are counted separately. CPU reference, float64;
+synthetic validation against NumPy and CUDA SDPA on an RTX 4080, no GPU routing or real-model speed
+claim. Run `python -m ssa.certified_attention`.
+
 **`adaptive.py`** — exact selection via branch-and-bound on the admissible bound `U_c(q) = ⟨q,μ_c⟩ + ‖q‖·R_c`
 (paper Eq. 5.1). `kmeans` builds the blocks; `probe_bandb` measures the adaptive cost. The result is identical
 to scanning every key, but only blocks whose bound clears the running best are read.

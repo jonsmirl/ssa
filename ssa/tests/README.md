@@ -13,9 +13,20 @@ pytest ssa/tests -k samuelson    # by keyword
 pytest ssa/tests -q              # quiet
 ```
 
-Expected: **103 collected** (with CUDA + faiss; GPU-gated kernel/cascade/training tests self-skip on CPU).
+Use `pytest ssa/tests --collect-only -q` for the current test count. GPU-gated kernel/cascade/training
+tests self-skip on CPU.
 
 ## What each file checks
+
+**`test_certified_attention.py`** — dense-oracle validation of mass, KL and value-aware output bounds.
+Exercises random geometries, temperatures, block sizes, causal prefixes and work caps; equal-logit
+support restriction, redundant values, tiny weights with large values, log-space extremes, zero
+tolerances, input snapshot isolation, and future-token independence. CPU, no model downloads.
+
+**`test_certified_attention_gpu.py`** — six CUDA SDPA oracle checks for the CPU certificate, across
+concentrated logits, flat logits, equal values, and full/partial causal blocks. Uses float64 math SDPA
+on the same inputs to isolate truncation error; it does not certify fp16 rounding error or measure
+GPU routing speed. Validated on an RTX 4080; skips without CUDA.
 
 **`test_core.py`** — the theory predictions and the baseline selector (paper §3).
 - `test_recovery_weight_is_exact_target_mass`, `test_recovery_threshold_at_half` — the recovery-weight law
@@ -132,4 +143,4 @@ load).
 - Tests import from the installed package path (`from ssa.core import …`), so run them from the repository
   root (or with the repo on `PYTHONPATH`).
 - Randomized tests fix seeds for determinism.
-- CPU-only by default; the kernel test is the single exception and skips gracefully without a GPU.
+- CPU-only by default; GPU-gated kernel, cascade, sharing and training tests skip without a GPU.

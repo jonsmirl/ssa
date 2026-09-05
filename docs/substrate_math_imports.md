@@ -1,27 +1,85 @@
 # Substrate math that applies to SSA — an import list
 
-`~/substrate` gained ~877 new files under `Universal/` since this repo last synced its Lean anchors
-(2026-07-08, `REVIEW_FOLLOWUPS.md` §7). Four of them bear directly on SSA's theory, and one supplies
-a bound SSA's paper currently states only in the sufficient direction.
+This assessment maps inspected Substrate results to SSA's selection, attention error, and cost models.
+The actionable extension is an adaptive output certificate in `ssa/certified_attention.py` (paper §5.7).
+It combines existing log-sum-exp and barycenter bounds with the support-restriction interpretation made
+explicit by Substrate's `UniformSupport.lean` and finite-vector `TotalVariation.lean` results.
+This is an application of established inequalities, not a claim of a new mathematical inequality.
 
-**Register warning, binding on this file.** Every declaration below was opened and read; the name,
-path and line are verified. **The MAPPING from SSA's objects to the substrate's is asserted by hand
-and is not machine-checked.** Nothing here is a formalisation of an SSA claim — it is a statement
-that SSA's object is an instance of a proved abstract one, and the instance arrow is prose. Cite it
-as such, exactly the way the existing anchors in `README.md` §"(proved)" are cited.
+The focused source review covers `PartialScore`, `AdmissibleBound`, `LogSumExpBound`, `SelectionGeometry`,
+`ValueAwareSelection`, `UniformSupport`, `TotalVariation`, and `ApproximateSelection`, alongside SSA's
+current implementations and imported results. It is not an exhaustive review of the Substrate tree.
+`Carrier/Simplex/ApproximateSelection.lean` concerns continuous selections of correspondences and does
+not provide a sparse-attention selector or a runtime improvement here.
+
+**Formalization scope.** Source theorems are machine-checked in Substrate. **The mapping to SSA and the
+composition of these theorems are not machine-checked.** Paper §5.7 supplies an ordinary mathematical
+proof; Python tests compare the implementation to a dense oracle. Float64 evaluation with an outward
+score cushion is not interval arithmetic. Declaration names are the stable lookup keys; line references
+in the exploratory entries below are not a guarantee about a concurrently changing Substrate checkout.
 
 Paths are relative to `~/substrate/lean/Substrate/Universal/`.
 
 ---
 
-## 1. The block-summary error floor — the necessary direction SSA is missing
+## Implemented: adaptive mass, KL and value-aware output certificates
+
+| source | inspected declaration | SSA use and scope |
+|---|---|---|
+| `Potential/Entropy/UniformSupport.lean` | `klDiv_uniformSupport`, `klDiv_uniformSupport_lt_of_strict_subset` | At equal logits, `KL(subset || dense) = log(n / kept_count)`; shrinking the kept set increases this divergence. General nonuniform softmax restriction is derived in the paper. |
+| `Potential/Entropy/TotalVariation.lean` | `totalVariation_le_sqrt_klDiv` | Allows zero weights in the first distribution, but requires a strictly positive second one. Applies to subset-to-dense KL. The exact TV identity for restriction is stronger, so Pinsker is not used to set the stop threshold. |
+| `Potential/Entropy/LogSumExpBound.lean` | `logSumExp_max_sandwich`, `softMax_sandwich` | An admissible maximum-logit bound `U_c` gives unopened block partition mass at most `b_c exp(beta U_c)`; actual block counts matter. |
+| `Generator/Dissipative/SelectionGeometry.lean` | `barycenter_truncation_bound` | Value-dependent output control. The computable form centered at the kept output is derived separately in the paper, rather than substituting an estimate for the unknown dense output in this theorem. |
+
+For kept partition sum `Z_S` and omitted partition sum `Z_D`, restriction gives exactly
+
+```
+delta = Z_D / (Z_S + Z_D)
+TV(subset, dense) = delta
+KL(subset || dense) = -log(1 - delta)
+```
+
+If the unopened summaries give `L_c <= Z_c <= A_c`, define `L=sum L_c`, `A=sum A_c`, and
+`d_c=norm(value_mean_c - kept_output) + value_radius_c`. Then
+
+```
+delta <= A / (Z_S + A)
+KL(subset || dense) <= log(1 + A/Z_S)
+norm(dense_output - kept_output)
+    <= min(max(d_c) * A/(Z_S+A), sum(A_c*d_c)/(Z_S+L))
+```
+
+The lower block bound is Jensen's `b_c exp(beta dot(q,key_mean_c))`; the upper uses a key ball.
+The reverse divergence `KL(dense || subset)` is infinite for any proper restriction of finite-logit
+softmax. Lean's finite real-valued `klDiv`, whose `log 0` is totalized, must not be read as encoding this
+infinity. Both support theorems and the implementation retain the correct direction.
+
+The implementation opens blocks in descending upper partition mass, accepts seed blocks from another
+router, checks all requested tolerances, and doubles the opened count on failure. It returns
+`certified=False` if a block cap is reached without meeting them. The partial causal block is opened
+using only visible keys, so future keys do not influence its bounds or decision.
+
+The deterministic fixture (`python -m ssa.certified_attention`, seed 0, `n=4096`, `d=32`, `d_v=8`, `b=64`,
+`beta=4`) reads 64 keys for concentrated logits at mass tolerance 0.001, with measured output error
+`1.79e-6 <= 4.62e-5`. Flat logits require a full scan at that tolerance. Identical values permit an
+output-only certificate after 64 keys even with omitted mass 0.984375. The first and last cases each
+evaluate 64 key bounds and 63 value bounds; the full-scan case uses seven checks and 321 value bounds.
+
+Construction reads the full cache once. Per query, the reference pays `O(Bd)` for key bounds,
+`O(B log B)` for ordering, up to `O(B d_v log B)` for output certification, and the cost of opened
+keys/values. At fixed block size this is not a sublinear router. It improves the error contract and
+adaptive selection on the demonstrated geometries, not the existing GPU kernel's measured speed.
+Six checks in `ssa/tests/test_certified_attention_gpu.py` compare the certificates against float64
+CUDA SDPA on an RTX 4080, covering concentrated and flat logits, equal values, and both full and
+partial causal blocks. These validate numerical agreement with an independent attention implementation;
+the selector still runs on CPU. GPU routing speed and real-model quality remain unmeasured.
+
+## 1. What the partial-score floor does and does not establish
 
 `Potential/PartialScore.lean`
 
-SSA routes block `c` from summaries `(μ_c, Σ_c)` and argues that summary-only routing is **lossless
-when the geometry is benign** — off-target blocks have small spread `qᵀΣ_c q`. The paper is explicit
-that this is *sufficient*, "not a necessary one". `PartialScore` supplies a necessary-side bound of a
-different shape, and it holds for **every** summary, not just the second-cumulant one.
+`PartialScore` bounds the error of one scalar used to approximate an objective over all completions of
+a partial object. It does not by itself bound a router's selection error or computational cost.
 
 **The mapping.** A partial object `p` is a **block**; its completions `E p c` are the **keys in that
 block**; the objective `V c` is the **true attention logit** `⟨q, k_c⟩` for a fixed query; the partial
@@ -31,31 +89,28 @@ score `s p` is the **router's block score** `r_c(q)`.
 |---|---|
 | `reach_spread_le_two_mul_score_error` (`:117`) | if a router is uniformly `ε`-accurate on a block, the true logit spread across that block is at most `2ε` |
 | **`score_error_ge_of_reach_split`** (`:130`) | **half the true logit spread across a block is a LOWER BOUND on the uniform error of EVERY block score.** A property of the partition and the query; no choice of summary moves it |
-| `score_error_pos_of_reach_split` (`:138`) | two keys in one block with different logits force strictly positive router error |
-| `not_exactOnReach_of_reach_split` (`:146`) | **no exact summary score exists on a block whose keys disagree** — the `ε = 0` corner |
-| `exists_exactOnReach_iff_contentRead` (`:160`) | welds the ceiling to `Accumulation/StoreContentRead.lean` · `contentRead_iff_separatesContent` (`:102`): an exact block score exists exactly when the objective never differs across two keys sharing a block |
+| `score_error_pos_of_reach_split` (`:138`) | two keys in one block with different logits force strictly positive uniform individual-logit approximation error |
+| `not_exactOnReach_of_reach_split` (`:146`) | **no scalar equals every individual logit in a block whose logits disagree** — the `ε = 0` corner |
+| `exists_exactOnReach_iff_contentRead` (`:160`) | welds the ceiling to `Accumulation/StoreContentRead.lean` · `contentRead_iff_separatesContent` (`:102`): one scalar reproduces every individual logit exactly when logits never differ within a block |
 
-**Why this is worth importing.** SSA's `qᵀΣ_c q` term is an *estimate of the in-block logit spread*,
-and this says the spread is an **error floor for any router that reads only summaries**. So the
-second-cumulant score is not a heuristic that happens to work — it estimates precisely the quantity
-that lower-bounds every summary router. That is a stronger statement about the design than the paper
-currently makes, and it is a **per-query, per-block** bound, so it composes with the existing prune
-gate rather than replacing it.
+**Limit of this mapping.** A scalar cannot equal two distinct individual logits. It can still equal
+their maximum, or upper-bound every logit, and a router can still retain the correct block. Thus
+within-block spread does not prove failure of lossless selection. The cumulant score remains a
+heuristic; the theorem does not prove its optimality.
 
-**It also generalises the impossibility.** The paper's "cheap and lossless selection cannot hold for
-arbitrary keys" is proved against a planted-spike adversary. `not_exactOnReach_of_reach_split` gets
-the lossless half from the partition alone: **any** block containing two keys of different logit
-admits no exact summary score, adversary or not. The adversarial construction is then about making
-the *spread large*, which is the quantitative statement, not the existence one.
+**The mapping relevant to summary ambiguity.** Take the partial object to be a summary tuple, its
+completions to be all blocks sharing that tuple, and the objective to be each completion's true maximum
+logit. A pair of indistinguishable blocks with different maxima then gives a maximum-score error floor.
+An attained upper-bound construction establishes a different claim: no universally admissible upper
+bound on that summary can fall below the attained maximum. Paper §5.4 uses this second argument with
+Samuelson's witness and `AdmissibleBound`, rather than deducing it from within-block spread.
 
-**Honest limit.** These bound the error of the block **score**. SSA's operational question is whether
-the target lands in the top-κ *selected set*, which is a rank question, not a score-accuracy one. A
-score error of `ε` implies a selection error only when `ε` exceeds the score gap to the κ-th block —
-that step is not in the substrate and would have to be supplied.
+Uniform score error `epsilon` is sufficient to preserve a strict top-k set when the true gap at its
+boundary exceeds `2*epsilon`. Failure of that sufficient condition does not imply misselection.
 
 ---
 
-## 2. Top-κ is not softmax at any temperature — the dropped mass is irreducible
+## 2. Proper restriction leaves positive omitted mass at finite temperature
 
 `Accumulation/SelectionWeights.lean`
 
@@ -69,12 +124,11 @@ error versus full attention)". This file makes the "versus" precise.
 | `selection_is_flat_at_zero_scale` (`:186`) | at `β = 0` the ranking is gone entirely — the selection is carried wholly by the scale |
 | `softmaxAt_tendsto_top` (`:225`) | concentration on a **strict** top only in the sharp limit; on a tied face the limit is uniform on the face, not a point |
 
-**What it buys.** Hard top-κ selection is **not** softmax at any temperature — not a sharp one, not a
-tuned one. So the dropped mass is not an approximation error that a better `β` shrinks; it is the
-weight softmax would have assigned to the excluded keys, and it is structurally unavailable to the
-selected-subset operator. That is a cleaner statement of SSA's error term than "bounded" and it says
-where the bound must come from: the *tail* of the score distribution outside the budget, never the
-temperature.
+**What it buys.** A proper hard top-κ restriction differs from full softmax at every finite
+temperature because omitted weights remain positive. Increasing `β` can shrink that mass when all
+maximizers are retained with a strict gap, but does not make it exactly zero at finite `β`. If a tied
+maximizer is omitted, even the sharp limit can retain nonzero omitted mass. Identical values can give
+zero output error despite positive dropped mass; an output guarantee and a weight guarantee differ.
 
 The tie caveat is worth carrying into `test_ccc_certificates.py`'s documented tie-parity assumption:
 `softmaxAt_tendsto_top` needs a **strict** top, and on a tied face the sharp limit is uniform. The
@@ -104,7 +158,7 @@ a statement about which keys are *reached*, on a *held* set that does not change
 
 ## 4. The dense-vs-routed crossover, as an exact object
 
-`Accumulation/RouteChargeCrossover.lean` (built 2026-08-22, the newest of these)
+`Accumulation/RouteChargeCrossover.lean`
 
 The README's headline figure is a crossover plot: dense `O(n²)` against the routed kernel, with the
 speedup capped by the argsort BlockMask build until the IVF router drops it onto the `n·κ` floor.
@@ -125,12 +179,12 @@ establishes a level and never a direction of travel. Applied here: the argsort-c
 regime and the IVF regime are *different charge functions*, and the README already treats them
 separately; this says that is not a presentational choice but the thing the comparison turns on.
 
-**A third quantity is required and SSA does not currently name it.** Comparing dropped-mass quality
-against compute needs an **exchange rate** between them (`RoutePrice.lossPrice`), and
-`at_a_zero_price_for_loss_the_charge_settles_it` proves it load-bearing: at a zero rate the quality
-term leaves the comparison entirely. Any speed/quality verdict — including
-`SUBQ_ASSESSMENT.md`'s composed one — is **underdetermined until that rate is stated.** This is the
-cheapest actionable item in this document.
+**A scalar price comparison needs an exchange rate.** Combining a quality penalty and compute cost
+into a single weighted objective requires a coefficient such as `RoutePrice.lossPrice`. At zero loss
+price the comparison ignores quality. A constrained comparison is another valid choice: minimize
+work subject to a stated error tolerance, as in the adaptive certificate above. Pareto dominance also
+needs no exchange rate. Thus the theorem does not make every speed/quality comparison underdetermined;
+it identifies an assumption needed for its particular scalar objective.
 
 ---
 

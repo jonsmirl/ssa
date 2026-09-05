@@ -28,6 +28,10 @@ accompanied by measurements at controlled scale.
 
 ---
 
+A separate adaptive reference bounds omitted softmax mass, the subset-to-dense KL divergence, and
+attention-output error from key and value summaries, with a full-scan fallback when the requested
+tolerance cannot be certified sparsely (see §5.7).
+
 ## 1. Introduction
 
 A transformer layer computes, for queries $Q\in\mathbb{R}^{n\times d}$, keys $K\in\mathbb{R}^{n\times d}$,
@@ -380,12 +384,14 @@ decreasing `U_c`, so the first block opened already sets `s★` to the true maxi
 incumbent-driven), and an axis-aligned box bound in a shared basis is *worse* than the ellipsoid, with `min` of
 the two buying 8% at the most benign geometry alone. The remaining lever is the **partition**.
 
-**Relation to the formalized ceiling.** The proposition instantiates an abstract result in the substrate
+**Relation to the formalized ceiling.** Maximum-score estimation has a related obstruction in the substrate
 development: a single score standing for a whole fibre of completions carries an error floor set by the spread
 of the objective across that fibre (`Universal/Potential/PartialScore.lean`,
 `score_error_ge_of_reach_split` and `not_exactOnReach_of_reach_split`). Partial object = the summary,
 completions = blocks carrying it, objective = the block's true maximum logit. The instantiation is stated in
-prose and is **not** machine-checked; see `docs/substrate_math_imports.md`.
+prose and is **not** machine-checked; see `docs/substrate_math_imports.md`. This score-approximation floor
+is distinct from the attained-upper-bound argument above; variation among individual logits in a fixed
+block does not by itself preclude exact identification of that block's maximum or correct block selection.
 
 The abstract skeleton is machine-checked, axiom-pure, in `Universal/Potential/AdmissibleBound.lean`: a
 pointwise tighter bound provably drops a superset of the parts (`a_higher_bound_drops_a_subset`,
@@ -507,6 +513,146 @@ the truth. The same inequality that is tight where it was proved is loose where 
 $O(1)$-per-block evaluation it saves is smaller than the pruning it gives up. **The room in shared selection is
 in the block choice, not in the query summary.**
 
+### 5.7 Certifying omitted mass and attention-output error
+
+An exact argmax or routing-metric top-$\kappa$ certificate does not
+control the total softmax weight of omitted keys. In particular, many
+individually small logits can carry most of the partition sum. For a
+nonempty kept set $S$, let $D=S^c$ within the visible causal prefix, and
+define
+
+$$
+Z_S=\sum_{i\in S}e^{\beta a_i},\qquad
+ Z_D=\sum_{i\in D}e^{\beta a_i},\qquad
+ \widehat o=Z_S^{-1}\sum_{i\in S}e^{\beta a_i}v_i .
+$$
+
+ Suppose $D$ is
+partitioned into unopened blocks. Each block has size $b_c$, key mean
+$\mu_c$, key radius $R_c$, value mean $\nu_c$, and value radius $r_c^V$.
+For $\beta\ge0$ set
+
+$$
+L_c=b_c e^{\beta\langle q, \mu_c\rangle},\qquad
+ A_c=b_c e^{\beta(\langle q, \mu_c\rangle+\lVert q\rVert R_c)},\qquad
+ L=\sum_{c\subseteq D}L_c,\quad A=\sum_{c\subseteq D}A_c .
+$$
+
+ Jensen’s
+inequality and the admissible radius bound give $L_c\le Z_c\le A_c$
+without scoring the unopened keys. Other admissible maximum-logit bounds
+can replace the radius term, with their evaluation cost charged
+separately.
+
+**Proposition** (Subset-attention certificate). Let $p$ be the dense
+softmax distribution and $\widehat p$ its renormalized restriction to
+$S$, extended by zero outside $S$. With $\delta=Z_D/(Z_S+Z_D)$,
+
+
+$$
+\begin{aligned}
+ \operatorname{TV}(\widehat p,p)&=\delta\le\overline\delta:=\frac{A}{Z_S+A},\\
+ \operatorname{KL}(\widehat p\Vert p)&=-\log(1-\delta)
+       \le\log(1+A/Z_S).
+\end{aligned}
+$$
+
+ For $d_c=\lVert\nu_c-\widehat o\rVert+r_c^V$ and
+nonempty $D$, the output obeys
+
+$$
+\lVert o-\widehat o\rVert\le
+ \min\left\{\overline\delta\max_{c\subseteq D}d_c,\quad
+       \frac{\sum_{c\subseteq D}A_c d_c}{Z_S+L}\right\}.
+$$
+
+ All three
+bounds are zero when $D$ is empty.
+
+*Proof.* On $S$, $\widehat p_i=p_i/(1-\delta)$, so the absolute weight
+difference sums to $\delta$ on each of $S$ and $D$. The likelihood ratio
+on $S$ is constant, giving the KL identity. Both expressions increase
+with $Z_D$, which is at most $A$. For the value bound, subtract
+$\widehat o$ from the full weighted average:
+
+
+$$
+o-\widehat o=\frac{\sum_{i\in D}e^{\beta a_i}(v_i-\widehat o)}{Z_S+Z_D}.
+$$
+
+
+Each omitted value in $c$ lies within $d_c$ of $\widehat o$. Bounding
+all distances by their maximum gives the first term; bounding each block
+numerator above by $A_c d_c$ and the denominator below by $Z_S+L$ gives
+the second. ◻
+
+The direction of KL is essential: for finite logits and a proper
+restriction, $\operatorname{KL}(p\Vert\widehat p)=+\infty$. At equal
+logits, $\delta=1-|S|/n$ and
+$\operatorname{KL}(\widehat p\Vert p)=\log(n/|S|)$, the
+nested-uniform-support identity formalized by `klDiv_uniformSupport` in
+`Universal/Potential/Entropy/UniformSupport.lean`. The finite-vector
+Pinsker theorem `totalVariation_le_sqrt_klDiv` in the same directory’s
+`TotalVariation.lean` allows zeros in its first distribution and a
+strictly positive second distribution; it applies in this direction.
+The mass identity above directly computes the
+TV quantity for a restriction, so using Pinsker would give a weaker
+bound. The partition bound consumes the reasoning of
+`logSumExp_max_sandwich`; the value bound uses the barycenter-truncation
+reasoning of `Universal/Generator/Dissipative/SelectionGeometry.lean`.
+These source theorems are machine-checked in Substrate. Their
+composition into
+the proposition above is proved here in ordinary
+mathematics; the SSA instantiation and Python implementation are not
+Lean proofs.
+
+#### Adaptive implementation and cost.
+
+`ssa/certified_attention.py` builds immutable contiguous-block key/value
+summaries and opens blocks in decreasing $\log A_c$, optionally starting
+with blocks selected by another router. It evaluates attention exactly
+on opened keys, checks every requested mass or output tolerance, and
+doubles the number of opened blocks after a failed check. A block cap
+returns an explicitly uncertified result if the tolerance remains unmet.
+A partially visible causal block is opened using only its visible keys;
+its full-block summary is excluded from the decision. Log-space
+partition sums and suffix reductions avoid exponential overflow and
+subtraction of nearly equal masses. Bounds are evaluated in float64 with
+a small outward score cushion; this is not an interval-arithmetic
+guarantee.
+
+Construction costs $O(n(d+d_v))$. For $B$ blocks, each query pays
+$O(Bd)$ for key bounds, $O(B\log B)$ for ordering, $O(Bd_v\log B)$ for
+value-certificate checks in the worst case, and $O(|S|(d+d_v))$ for
+opened keys and values. The reference reports key scores, key-bound
+evaluations, certificate checks, and value-bound evaluations separately.
+It can scan all keys on diffuse geometry and does not establish a
+sublinear per-query cost at fixed block size or a GPU speedup. The exact
+covariance factor whose cost is analyzed in
+§5.5 is not evaluated by this
+radius-based reference.
+
+| geometry                  | keys scored |   $\overline\delta$ |        output bound |       measured error |
+|:--------------------------|------------:|--------------------:|--------------------:|---------------------:|
+| concentrated              |        $64$ | $9.54\times10^{-6}$ | $4.62\times10^{-5}$ |  $1.79\times10^{-6}$ |
+| flat logits               |      $4096$ |                 $0$ |                 $0$ | $8.58\times10^{-17}$ |
+| equal values, flat logits |        $64$ |          $0.984375$ |                 $0$ |                  $0$ |
+
+The deterministic CPU fixture uses $n=4096$, $d=32$, $d_v=8$, $b=64$,
+$\beta=4$, seed zero. The first two rows request omitted mass at most
+$10^{-3}$; the last requests only output error at most $10^{-12}$. Every
+row evaluates $64$ key bounds. Certificate checks number $1,7,1$, and
+value-bound evaluations number $63,321,63$, respectively. The full-scan
+residual is floating-point roundoff. Equal values permit exact output
+even when almost all attention mass is omitted; conversely, a small
+omitted weight can matter when its value is sufficiently distinct. These
+are controlled mechanism measurements, reproducible with
+`python -m ssa.certified_attention`. Six additional checks compare the certificates against
+float64 CUDA SDPA on an RTX 4080, using concentrated logits, flat logits, and equal values at
+$n=1024$, $d=32$, $d_v=8$, $b=32$, with visible prefixes of $1024$ and $997$ keys.
+These validate numerical agreement with an independent attention implementation, including partial
+causal blocks. The selector runs on CPU; GPU routing speed and real-model quality remain unmeasured.
+
 ## 6. The trilemma and the impossibility
 
 Call a selector **cheap** if it reads $o(n)$ keys, **lossless** if it attends every key dense attention would
@@ -533,8 +679,8 @@ fundamental limit.
 > formal counterparts — `subquadratic_forces_skip`, `flat_router_work`, `lossless_selector_reads_every_key`,
 > `lossless_adaptive_reads_every_key`, `capacity_pigeonhole_tension`, `read_capacity_le_dim`,
 > `hierarchical_prune`, and the rest of the `(proved)` results — are **machine-checked in a separate Lean 4
-> development** (namespace `Substrate.Inference.PhaseTransition`, sources under `Substrate/Inference/Algebra/`
-> and `Substrate/Inference/Shadow/`; Lean 4.30.0 + Mathlib), each confirmed
+> development** (namespace `Substrate.Inference.Algebra.PhaseTransition`, sources under `Substrate/Inference/Substrate/`
+> and inference recognition modules, with supporting results in `Substrate.Universal`; Lean + Mathlib), each confirmed
 > `sorry`-free and axiom-clean (`#print axioms` → only `[propext, Classical.choice, Quot.sound]`). That
 > development is **not bundled in this repository**, so a reader of this artifact alone cannot re-run the
 > checker; and the formal statements are deliberately modest — finite-counting / probe-model lower bounds and
@@ -781,7 +927,9 @@ first result simultaneously real-model, long-context, subquadratic-kernel, and q
 space, sub-block max-pool summaries, a chunked-causal streaming index, an exact outlier side-channel, and
 per-query admissible certificates with escalation — into one streaming selector, and measuring which pay off.
 The certificate is sound (certified $\Rightarrow$ the selected top-$\kappa$ blocks equal the exact top-$\kappa$
-under the routing metric; zero violations on clustered and random geometry; fire-rate $0.89$ / $0.50$). The
+under the routing metric; zero violations on clustered and random geometry; fire-rate $0.89$ / $0.50$).
+This certifies the routing metric, not the omitted softmax mass or attention-output error; the latter
+have a separate reference certificate in §5.7. The
 component table is the trilemma made concrete: sub-block granularity and the outlier channel rescue high-norm
 spikes, but **isolated unit-norm needles stay unretrievable for every cheap selector** (recall $0.05$) — the
 impossibility of Section 6 in miniature. On the selector's cost: per-layer routing is $\sim\!59\%$ of a

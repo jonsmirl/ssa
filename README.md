@@ -27,6 +27,37 @@ The full writeup — algorithm, all the supporting math, and the measured result
 [LaTeX source](paper/subquadratic_attention.tex) and a [Markdown copy](paper/subquadratic_attention.md)
 alongside it. This README is the short version plus how to run everything.
 
+**Adaptive output certificates.** [`ssa/certified_attention.py`](ssa/certified_attention.py) provides a
+NumPy reference that opens blocks until it can bound omitted softmax mass and/or the error versus dense
+attention. It also bounds `KL(subset || dense)`. Precomputed key balls bound each unopened block's
+partition sum; value balls tighten the output bound when omitted values resemble the current output.
+This applies Substrate's log-sum-exp and barycenter bounds together with its support-restriction results;
+the derivation and formalization scope are in paper §5.7 and
+[`docs/substrate_math_imports.md`](docs/substrate_math_imports.md).
+
+On the deterministic CPU fixture (`n=4096`, `d=32`, block size 64), a concentrated query reads **64 keys**
+with output error **1.79e-6**, bounded by **4.62e-5**. Flat logits require all 4096 keys at a 0.001 mass
+tolerance. With identical values, an output-only tolerance succeeds after 64 keys despite omitting 98.4%
+of the mass. These are synthetic mechanism results. Each query also evaluates 64 key bounds and the
+reported value bounds; key savings are not a wall-clock speedup. Six additional checks compare its
+certificates against float64 CUDA SDPA on an RTX 4080, including partial causal blocks. The reference
+selector runs on CPU; its GPU routing speed and real-model quality remain unmeasured.
+
+```python
+from ssa.certified_attention import CertifiedBlockAttention
+
+index = CertifiedBlockAttention(K, V, block_size=64)  # reusable snapshot; K,V are (n,d), (n,d_v)
+result = index.read(q, beta=1 / K.shape[1]**0.5,
+                    mass_tol=1e-3, error_tol=1e-2, prefix=len(K))
+# result.output is attention over result.indices; result.certified checks both tolerances.
+# max_blocks caps work and can return certified=False; initial_blocks seeds another router's choice.
+```
+
+Run `python -m ssa.certified_attention` for the comparison. The reference supports causal prefixes,
+uses log-space float64 arithmetic, and falls back to a full scan if necessary. Its mathematical bounds
+are proved in the paper; the floating-point implementation is tested against dense attention, not
+formally verified with interval arithmetic.
+
 ## The idea in one screen
 
 A long-context attention layer is, operationally, an **associative recall**: a query must place most of its
@@ -205,6 +236,7 @@ pretrained models on first run.
 | `hierarchical_routing.py` | tree routing with a recursive radius (FMM / Barnes–Hut style) | §4.4 |
 | `anisotropic_bound.py` | the ellipsoidal (covariance) search bound on real keys | §5.1 |
 | `core.py` | the closed-form theory (recovery weight, detectability, truncation) + NumPy primitives | §3 |
+| `certified_attention.py` | adaptive subset attention with omitted-mass, subset-to-dense KL, and value-aware output bounds; causal CPU reference | §5.7 |
 | `train.py` | trains the retrieval encoder — manufacturing routable geometry | §7 |
 | `adaptive.py` | branch-and-bound exact selection with the admissible bound; k-means | §5.1 |
 | `co_train.py` | co-trained selector experiments | §7 |
@@ -299,10 +331,11 @@ read the headlines with that seam in mind.
 - **Multi-hop is the honest failure mode:** the composition law (`multihop_analysis.py`) and the real-model
   two-hop task (`longctx_swap.py`, `gemma_ssa_eval.py`) both show the chain sagging where single needles hold —
   the benign-geometry condition is load-bearing, not incidental.
-- The **"(proved)"** results are machine-checked in a *separate* Lean development (namespace
-  `Substrate.Inference.PhaseTransition`, sources under `Substrate/Inference/Algebra/` and
-  `Substrate/Inference/Shadow/`) that is **not shipped in this repo**; the prose maps to
-  *lower bounds / sufficient conditions*, not equalities (see the paper's bibliography).
+- The **"(proved)"** anchors are machine-checked in a *separate* Lean development (core namespace
+  `Substrate.Inference.Algebra.PhaseTransition`, files under `Substrate/Inference/Substrate/`, plus
+  `Substrate.Universal` and inference recognition modules) that is **not shipped in this repo**.
+  The mappings to SSA are stated in prose, not checked Lean instantiations; see
+  [`docs/substrate_math_imports.md`](docs/substrate_math_imports.md) for the exact scope.
 - The **zero-attention (P8)** results are `d ≤ 128` reference implementations on synthetic keys — mechanism
   measurements against the Lean predictions, **not a trained language model** and with no wall-clock claims.
   Five of six predictions carry a machine-checked anchor (P3, the load-bearing selection/compression split,
