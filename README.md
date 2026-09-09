@@ -26,8 +26,9 @@ Detailed experiment records live in [RESULTS.md](RESULTS.md).
 | Dense equivalence | **Validated at small scale** | 4K dense-equivalence gate and dense/streamed 128K NIAH gates passed |
 | Kernel scaling | **Measured to 12M** | Single-head synthetic IVF kernel: 139.5 ms, 6.55 GB, 2.9× the `n·κ` floor |
 | Output-error certification | **Reference implementation** | CPU adaptive selectors bound omitted mass, KL, and attention-output error; no production GPU kernel claim |
-| Lean-checked supporting invariants | **Verified abstractly** | Recursive ball containment and monotone pruning, causal prefix-cut selection, conditional 9-vote retention, fixed-carrier capacity, and two-pass structural reach with explicit expressivity fences |
-| Worst-case cheap losslessness | **Ruled out** | The probe argument and tests show arbitrary isolated targets can defeat summary-only routing |
+| Lean-checked supporting invariants | **Verified abstractly** | Recursive balls, exact restricted-read/output identities, strict or index-tie-broken top selection, grounded read-budget limits, and the composed causal reservoir plan |
+| Float32 tree bounds | **Guarded and stress-tested** | RTX 4080 comparison with float64 descendant oracles: zero guarded misses in 90,105 balls and 1,081,260 score caps; empirical, not an IEEE-arithmetic proof |
+| Worst-case cheap losslessness | **Ruled out in the grounded-probe model** | A budget-`b` adaptive read returning only probed positions has uniform-spike recall at most `b/n`; arbitrary preprocessing is outside this theorem |
 | Broad model quality | **Open** | No dense 10M baseline, long-context training, perplexity suite, or frontier-model evaluation |
 
 ## Complete 10M transformer result
@@ -112,8 +113,8 @@ The `ε||q||²` term is required because `ρ_c` is measured in the metric of `S_
 the tightest upper bound available from `(μ_c, Σ_c, b)` alone. On real transformer keys the exact covariance
 bound can cost at least a full key scan, which is why the scalable implementation uses budgeted lossy routing.
 
-Related algebraic results are machine-checked in the separate Substrate Lean development; the status below
-was audited through Substrate commit `21e49cbf3`. The broader mapping between Substrate results and this code is
+Related algebraic results are machine-checked in the separate Substrate Lean development; the relevant audit
+is through Substrate commit `130cae3e9`. The broader mapping between Substrate results and this code is
 documented in [`docs/substrate_math_imports.md`](docs/substrate_math_imports.md). The checked results now
 include recursive real-valued ball containment and its pairing cap, monotone expansion of the certified drop
 set as a tree bound tightens, causal selection by cutting every routed set at the query's original position,
@@ -124,6 +125,17 @@ attained when an extremal centre is aligned with the query and the corresponding
 realizable; these are sufficient hypotheses, not a necessary characterization. The per-centre cap is never
 larger than the reach cap, and the plane witness exhibits a strict gap as large as the whole cap. No converse
 states that nonalignment forces strictness or that equality forces alignment.
+
+The same audit now covers the complete abstract restricted-read certificate: total variation equals omitted
+share, selected-to-dense KL equals minus the log kept share, the reverse smoothed divergence is unbounded as
+the omitted support vanishes, and both value-output certificate arms follow from an exact residual identity.
+It also proves that admissible bounds plus strict skip/truncation conditions return the strict top set; without
+a margin, a deterministic index order is required to name one top set. SSA now uses larger parent indices to
+break exact routing-score ties. A separate adaptive-read theorem gives the `b/n` recall ceiling only for
+selectors that return positions they actually probed, and extends it to finite randomized mixtures. Finally,
+the reservoir retention, `roundWidth + 128` cap, past bound, and causal cut are checked together as one
+composed plan. Retention remains conditional on nine pre-reservoir votes, and none of these facts proves
+attention-output quality or runtime.
 
 The audit also sharpens two boundaries used by this project. A routed set reused wholesale at every query is
 generally non-causal; SSA is causal because the final attention relation masks by original token position,
@@ -138,10 +150,16 @@ The public paper does not require access to that separate repository: Appendix B
 counterexamples, and scope for these routing invariants. The private Lean commit is corroborating audit
 provenance, not the only available mathematical argument.
 
-These theorems verify the abstract exact-arithmetic components, not the complete Python/CUDA execution. In
-particular, they do not prove outward safety of float32 tree radii, fixed-beam retrieval quality, or that the
-measured 10M target received nine pre-consensus base-route votes. The implementation remains tested rather
-than formally verified end to end.
+These theorems verify the abstract exact-arithmetic components, not the complete Python/CUDA execution.
+The production `CausalTree` now conservatively inflates every recursive radius and query/node score cap and
+rounds the result toward `+∞`. On an RTX 4080,
+[`ssa/float_tree_verification.py`](ssa/float_tree_verification.py) compared fanouts 2, 4, and 16 over ordinary,
+scale-separated, large-offset, cancellation-heavy, and axis-aligned float32 geometries against float64
+descendant oracles. The former formulas underestimated 8,701 of 90,105 radii and 367,480 of 1,081,260 caps;
+the guarded production formulas had zero observed underestimates. A 65,536-leaf, 64-dimensional fanout-16
+build took 0.433 ms guarded versus 0.223 ms raw. These are adversarial numerical measurements, not an
+IEEE/CUDA proof, and they do not make fixed-beam routing an exact selector. Fixed-beam retrieval quality and
+the premise that the measured 10M target received nine pre-consensus base-route votes remain empirical.
 
 ## Other measured evidence
 
@@ -183,6 +201,7 @@ pip install -r requirements.txt
 python -m ssa.ssa_demo
 python -m ssa.niah_analysis
 python -m ssa.staged_extension
+python -m ssa.float_tree_verification
 pytest ssa/tests
 ```
 
@@ -199,6 +218,7 @@ datasets; see [`kaggle_10m/README.md`](kaggle_10m/README.md).
 | [`ssa/longctx_demo.py`](ssa/longctx_demo.py) | Dense/streamed Qwen gates at 32K–128K |
 | [`ssa/ivf_kernel.py`](ssa/ivf_kernel.py) | FAISS-GPU IVF routed FlexAttention benchmark |
 | [`ssa/cascade_router.py`](ssa/cascade_router.py) | Certified Causal Cascade selector |
+| [`ssa/float_tree_verification.py`](ssa/float_tree_verification.py) | CUDA float32 tree-bound stress test against float64 oracles |
 | [`ssa/certified_attention.py`](ssa/certified_attention.py) | Adaptive mass/KL/output certificate |
 | [`ssa/hierarchical_certified_attention.py`](ssa/hierarchical_certified_attention.py) | Hierarchical certificate reference |
 | [`ssa/train.py`](ssa/train.py), [`ssa/co_train.py`](ssa/co_train.py) | Routability training experiments |

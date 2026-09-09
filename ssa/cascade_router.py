@@ -11,8 +11,8 @@ five ingredients a quality-preserving cheap selector needs, each individually ev
   4. an OUTLIER side-channel (Phase B) — high-leverage keys indexed exactly, defeating the k=c·q
      impossibility construction (does NOT rescue unit-norm isolated needles — that's 2+5);
   5. per-query CERTIFICATES + escalation (Phase B) — an admissible bound over unprobed cells; certified
-     ⇒ the selected top-κ parent blocks provably equal the exact top-κ UNDER THE ROUTING METRIC (not
-     attention-output error); uncertified ⇒ escalate that query only.
+     ⇒ the selected top-κ parent blocks equal the parent-index-tie-broken top-κ UNDER THE ROUTING METRIC
+     (not attention-output error); uncertified ⇒ escalate that query only.
 
 Emits the same compressed `(kv_num, kv_idx)` contract as `ivf_kernel._route_head`, consumed by the same
 `_build_mask` (from_kv_blocks, compute_q_blocks=False) and the same compiled `_flex`. `ivf_kernel.py` is
@@ -36,6 +36,29 @@ except ImportError as e:                      # faiss optional — keep ssa_kern
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
 _RES = None
 NEG = float("-inf")
+
+
+def _outward_nonnegative(x, dimension):
+    """Conservatively inflate a nonnegative float tensor, then move one representable value upward.
+
+    The dimension-scaled allowance covers the reduction and square-root roundoff in the Euclidean norms
+    used by the tree.  This is a numerical safety policy whose adequacy is stress-tested against float64
+    oracles; it is not a proof about a particular CUDA reduction implementation.
+    """
+    eps = torch.finfo(x.dtype).eps
+    guarded = x + x.abs() * (8.0 * (dimension + 4) * eps)
+    return torch.nextafter(guarded, torch.full_like(guarded, float("inf")))
+
+
+def _outward_score_cap(q, center, radius):
+    """Float upper cap with an absolute dot/norm error allowance and upward final rounding."""
+    dot = (q[:, None] * center).sum(-1)
+    qnorm = q.norm(dim=1)[:, None]
+    width = qnorm * radius
+    magnitude = (q[:, None].abs() * center.abs()).sum(-1) + width.abs()
+    eps = torch.finfo(q.dtype).eps
+    upper = dot + width + magnitude * (8.0 * (q.shape[-1] + 4) * eps)
+    return torch.nextafter(upper, torch.full_like(upper, float("inf")))
 
 
 def _gpu_res(temp_mb=512):
@@ -349,12 +372,22 @@ class CausalCascade:
                  "cert_rate": float(cert.float().mean()) if certify else None}
         return kv_num, kv_idx, (cert if certify else None), stats
 
+    @staticmethod
+    def _ordered_candidates(scores, pars):
+        """Order by score descending, breaking exact score ties by larger parent index.
+
+        The two stable sorts implement the index-broken order used by the bounded-top-selection
+        theorem.  The policy matters only at exact ties, where an unnamed "the top-k" is not unique.
+        """
+        by_parent = pars.argsort(dim=1, descending=True, stable=True)
+        ps = torch.gather(pars, 1, by_parent)
+        ss = torch.gather(scores, 1, by_parent)
+        by_score = ss.argsort(dim=1, descending=True, stable=True)
+        return torch.gather(ss, 1, by_score), torch.gather(ps, 1, by_score)
+
     def _select_topc(self, scores, pars, nbq, SENT):
-        """Sort candidates by score desc, keep the first top_c DISTINCT parents (= max-pool over sub-blocks
-        of a parent, since the highest-scoring sub-mean appears first). Returns (keep_pars, tau, n_distinct)."""
-        order = scores.argsort(dim=1, descending=True)
-        ps = torch.gather(pars, 1, order)
-        ss = torch.gather(scores, 1, order)
+        """Keep the first top_c distinct parents in the deterministic score/index order."""
+        ss, ps = CausalCascade._ordered_candidates(scores, pars)
         K = ps.shape[1]
         eq = ps[:, :, None] == ps[:, None, :]                      # (nbq,K,K); K=2·search_k is small
         earlier = torch.tril(torch.ones(K, K, device=DEV, dtype=torch.bool), diagonal=-1)
@@ -402,8 +435,8 @@ class CausalCascade:
         return kv_num, kv_idx
 
     def _certify(self, qa, qn, tau, D_last, ndist, qblk, nprobe):
-        """Sound certificate: the selected top-κ parent blocks equal the exact top-κ under the routing
-        metric s(i,B)=max_{sub∈B}⟨q̄_i,μ_sub⟩ over the past. Three conditions (staged region is exhaustive
+        """Sound certificate: selection equals the parent-index-tie-broken top-κ under the routing metric
+        s(i,B)=max_{sub∈B}⟨q̄_i,μ_sub⟩ over the past. Three conditions (staged region is exhaustive
         so it never fails): (1) no UNPROBED cell can hold a sub-mean ≥ τ — admissible bound
         ⟨q̄,c⟩+‖q̄‖·R_c < τ (Cauchy–Schwarz; R_c upper-bounds every member, exact after rebuild);
         (2) the search bottomed out below τ (D_last < τ) so probed cells lost nothing ≥ τ to truncation;
@@ -466,9 +499,11 @@ class CausalTree:
 
     Complete fanout groups are recursively summarized; the at-most ``fanout-1`` remainder nodes per
     level form an exact cover of the committed past.  Query search expands that cover coarse-to-fine,
-    pruning to a fixed beam by ``q·center + ||q|| radius``.  The bound is the Cauchy--Schwarz tree bound
-    used by :mod:`ssa.hierarchical_certified_attention`; a fixed beam makes this a router rather than a
-    full certificate.  It exists primarily for CUDA architectures unsupported by FAISS GPU.
+    pruning to a fixed beam by ``q·center + ||q|| radius``.  Radii and score caps receive conservative
+    float32 outward guards, checked against float64 descendant oracles by
+    :mod:`ssa.float_tree_verification`.  The bound is the Cauchy--Schwarz tree bound used by
+    :mod:`ssa.hierarchical_certified_attention`; a fixed beam makes this a router rather than a full
+    certificate.  It exists primarily for CUDA architectures unsupported by FAISS GPU.
     """
 
     def __init__(self, d, block=BLOCK, sub=32, query_sub=None, top_c=8, local=1,
@@ -532,7 +567,9 @@ class CausalTree:
             center = children.mean(1)
             child_r = self.radii[level][have * self.fanout:complete * self.fanout]
             child_r = child_r.view(complete - have, self.fanout)
-            radius = ((children - center[:, None]).norm(dim=-1) + child_r).amax(1)
+            candidate = (children - center[:, None]).norm(dim=-1) + child_r
+            radius = _outward_nonnegative(candidate, self.d).amax(1)
+            radius = torch.nextafter(radius, torch.full_like(radius, float("inf")))
             self.levels[level + 1][have:complete] = center
             self.radii[level + 1][have:complete] = radius
             self.counts[level + 1] = complete
@@ -589,11 +626,10 @@ class CausalTree:
             return z, z.long()
         level = torch.tensor(roots_l, device=q.device).expand(nq, -1).clone()
         idx = torch.tensor(roots_i, device=q.device).expand(nq, -1).clone()
-        qnorm = q.norm(dim=1)
 
         def prune(level, idx, cap):
             center, radius, valid = self._node_data(level, idx)
-            upper = (q[:, None] * center).sum(-1) + qnorm[:, None] * radius
+            upper = _outward_score_cap(q, center, radius)
             upper = upper.masked_fill(~valid, NEG)
             keep = min(cap, upper.shape[1])
             pick = upper.topk(keep, dim=1).indices
@@ -628,10 +664,9 @@ class CausalTree:
         """
         keep, _, _ = CausalCascade._select_topc(self, scores, parents, rows, SENT)
         valid = keep < SENT
-        # ``keep`` is aligned with scores sorted by descending score inside _select_topc. Recreate that
-        # ordering so the compact values retain the score belonging to each selected parent.
-        order = scores.argsort(dim=1, descending=True)
-        sorted_scores = scores.gather(1, order)
+        # ``keep`` is aligned with the score/index order inside _select_topc. Recreate it so the compact
+        # values retain the score belonging to each selected parent.
+        sorted_scores, _ = CausalCascade._ordered_candidates(scores, parents)
         selected_scores = torch.where(valid, sorted_scores, torch.full_like(sorted_scores, NEG))
         width = min(self.top_c, selected_scores.shape[1])
         values, pick = selected_scores.topk(width, dim=1)
@@ -921,7 +956,8 @@ def main():
                             "note": "single-head; selector_share = (append+route+maskbuild)/total; "
                                     "amortized_share_L24 = selector/(selector+24·attention) is an ARITHMETIC "
                                     "composition on the single-head rig (real multi-layer = Qwen leg); "
-                                    "certificates certify selector==routing-metric top-κ, not attention error"},
+                                    "certificates certify selector==parent-index-tie-broken routing-metric "
+                                    "top-κ, not attention error"},
                    "rows": rows}, open(args.out, "w"), indent=2)
     print(f"  wrote {args.out}")
 

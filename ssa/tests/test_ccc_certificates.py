@@ -1,6 +1,7 @@
 """GPU+faiss-gated SOUNDNESS tests for the CCC certificate/escalation/outlier machinery. The hard gate is
-`test_certificate_soundness`: every CERTIFIED query-block's selection must contain the exact top-κ routing
-blocks — zero violations, on clustered AND random geometry, with a real (non-flat-scan) index."""
+`test_certificate_soundness`: every CERTIFIED query-block's selection must contain the
+parent-index-tie-broken top-κ routing blocks — zero violations, on clustered AND random geometry, with a
+real (non-flat-scan) index."""
 import importlib.util
 import pytest
 import torch
@@ -70,7 +71,12 @@ def _bruteforce_topc(cc, qr, qb_start):
         sj[par >= qblk[j]] = float("-inf")                        # strictly-past
         blk = torch.full((nb,), float("-inf"), device="cuda")
         blk.scatter_reduce_(0, par, sj, reduce="amax", include_self=True)
-        top = blk.topk(min(cc.top_c, int(qblk[j]))).indices if int(qblk[j]) > 0 else torch.tensor([], device="cuda")
+        if int(qblk[j]) > 0:
+            eligible = torch.arange(int(qblk[j]) - 1, -1, -1, device="cuda")
+            by_score = blk[eligible].argsort(descending=True, stable=True)
+            top = eligible[by_score[:min(cc.top_c, int(qblk[j]))]]
+        else:
+            top = torch.tensor([], device="cuda", dtype=torch.long)
         out.append(set(t for t in top.tolist() if blk[t] > float("-inf")))
     return out
 

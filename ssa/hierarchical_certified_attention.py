@@ -25,6 +25,7 @@ from .certified_attention import (
     CertifiedBlockAttention,
     CertifiedRead,
     _integer,
+    _outward_radius,
     _positive_exp,
 )
 
@@ -79,6 +80,9 @@ class CertifiedTreeAttention(CertifiedBlockAttention):
         mean = (left_count / count) * left_mean + (right_count / count) * right_mean
         radius = max(float(np.linalg.norm(left_mean - mean)) + left_radius,
                      float(np.linalg.norm(right_mean - mean)) + right_radius)
+        exact_zero = (left_radius == 0 and right_radius == 0
+                      and np.array_equal(left_mean, right_mean))
+        radius = _outward_radius(radius, mean.shape[0], exact_zero=exact_zero)
         return mean, radius
 
     def _build_tree(self, start, end):

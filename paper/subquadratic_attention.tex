@@ -696,10 +696,11 @@ identity formalized by \texttt{klDiv\_uniformSupport} in
 allows zeros in its first distribution and a strictly positive second distribution; it applies in
 this direction. Equation~\eqref{eq:mass-cert} directly computes the TV quantity for a restriction,
 so using Pinsker would give a weaker bound. The partition bound consumes the reasoning of
-\texttt{logSumExp\_max\_sandwich}; the value bound uses the barycenter-truncation reasoning of
-\texttt{Universal/Generator/Dissipative/SelectionGeometry.lean}. These source theorems are
-machine-checked in Substrate. Their composition into Proposition~\ref{prop:output-cert} is proved
-here in ordinary mathematics; the SSA instantiation and Python implementation are not Lean proofs.
+\texttt{logSumExp\_max\_sandwich}. The complete abstract proposition is now machine-checked by
+\texttt{RestrictedReadBound.lean} and \texttt{RestrictedReadOutputBound.lean}: they include the exact TV and
+KL identities, the exact output residual, both block-certificate arms and their minimum, the equal-value
+fence, and the reverse-direction unbounded limit. The SSA summary construction and Python implementation are
+not Lean proofs.
 
 \paragraph{Adaptive implementation and cost.}
 \texttt{ssa/certified\_attention.py} builds immutable contiguous-block key/value summaries and
@@ -744,38 +745,44 @@ $n=1024$, $d=32$, $d_v=8$, $b=32$, with visible prefixes of $1024$ and $997$ key
 These validate numerical agreement with an independent attention implementation, including partial
 causal blocks. The selector runs on CPU; GPU routing speed and real-model quality remain unmeasured.
 
-\section{The trilemma and the impossibility}\label{sec:trilemma}
+\section{The trilemma and the grounded-probe limit}\label{sec:trilemma}
 
 Call a selector \emph{cheap} if it reads $o(n)$ keys, \emph{lossless} if it attends every key dense attention
-would weight non-negligibly, and \emph{length-robust} if its accuracy is flat in $n$. The bounds above suffice
-to state the fundamental limit.
+would weight non-negligibly, and \emph{length-robust} if its accuracy is flat in $n$. A precise probe-model
+limit is:
 
-\begin{proposition}[No free selection]\label{prop:impossible}
-No selector can be simultaneously cheap and lossless for arbitrary keys.
+\begin{proposition}[Bounded grounded reads miss]\label{prop:impossible}
+Consider an adaptive binary decision tree over $n$ positions, where probing position $i$ reports whether the
+unique spike is there. Suppose every returned position was actually probed on that input. If every
+root-to-return path has length at most $b$, then the selector recalls the spike on at most $b$ of the $n$
+placements, hence has recall at most $b/n$ under a uniform placement. For any finite randomized mixture of
+such selectors, some one fixed placement has seed-averaged recall at most $b/n$.
 \end{proposition}
 \begin{proof}
-Suppose a selector reads a set $\mathcal{R}$ of keys with $\lvert\mathcal{R}\rvert<n$, and let
-$j_0\notin\mathcal{R}$. Construct a probe input identical on $\mathcal{R}$ but with $k_{j_0}=c\,q$ for $c$
-large. Dense attention puts weight $\to1$ on $j_0$, so the correct output is $v_{j_0}$. The selector, never
-having read $j_0$, returns the same output as on the unmodified input, which is independent of $v_{j_0}$. Hence
-it is lossy on this input.
+Follow the all-false reference run and call its probe trace $E$; $|E|\le b$. If a spike is planted at
+$j\notin E$, every answer along that path remains false, so the entire trace and returned set are unchanged.
+Because returned positions must lie in that trace, this run cannot return $j$. Thus every recalled placement
+lies in $E$, proving the deterministic count and uniform rate. For a finite mixture, sum each seed's recall
+indicators over placements, average over seeds, and exchange the two finite sums. The total is at most $b$, so
+at least one placement has seed-averaged recall at most $b/n$.
 \end{proof}
 
-The argument covers any \emph{deterministic} selector, adaptive or not: run it, let $\mathcal R$ be the keys
-its execution actually read, and perturb an unread one---the execution, hence the output, is unchanged. The
-adaptive case is machine-checked (\texttt{lossless\_adaptive\_reads\_every\_key}, over an explicit
-decision-tree probe model in which the read set is the per-input queried path). A
-\emph{randomized} selector reading $o(n)$ keys misses a uniformly-planted spike with probability $1-o(1)$, so
-the conclusion survives in expectation; we state that extension as a remark, not a formalized claim.
+The grounded-output hypothesis is essential: a depth-zero procedure can return the whole carrier and thereby
+``recall'' every spike without probing one. Likewise, this theorem does not cover an arbitrary preprocessed
+index whose stored side information can name unprobed positions; applying a lower bound to such an index
+requires a model and budget for that information. For grounded adaptive probes, however, worst-case
+losslessness forces $b\ge n$. \texttt{BoundedReadMiss.lean} machine-checks the reference-run invariance,
+deterministic count/rate, finite-randomized extension, sharp fixed-position reader, and the zero-depth
+counterexample.
 
-Proposition~\ref{prop:impossible} says losslessness for \emph{worst-case} keys forces
-$\lvert\mathcal{R}\rvert=n$---no summary suffices, because a summary can always hide a spike. A quantitative
-companion holds under fine-grained complexity assumptions (SETH): even \emph{approximating} the attention
+Proposition~\ref{prop:impossible} says worst-case losslessness forces a full read \emph{in its grounded probe
+model}. A quantitative companion for attention holds under fine-grained complexity assumptions (SETH): even
+\emph{approximating} the attention
 output requires $n^{2-o(1)}$ time once entries reach $\omega(\sqrt{\log n})$, and the truly subquadratic
 algorithm that exists in the bounded-entry regime is itself an approximation (a low-rank polynomial method),
-not exact computation~\cite{alman2023}. What is \emph{proved} here is the two-way impossibility---cheap
-$\wedge$ lossless, worst case. The three-way reading below is an organizing \emph{taxonomy} whose third axis
-is measured in Sections~\ref{sec:routability}--\ref{sec:floor}, not a proved trichotomy: at most \emph{two}
+not exact computation~\cite{alman2023}. No unrestricted indexing lower bound is inferred from the probe
+theorem. The three-way reading below is an organizing \emph{taxonomy} whose third axis
+is measured in Sections~\ref{sec:routability}--\ref{sec:floor}, not a proved trichotomy: operationally \emph{two}
 of \{cheap, lossless, length-robust\} are available at once:
 
 \begin{center}
@@ -797,8 +804,8 @@ Section~\ref{sec:margin}; keeping the two currencies straight is part of the tax
 
 The escape from the trilemma is the third row: cheapness \emph{and} losslessness are jointly available
 \emph{when the bounds \eqref{eq:admissible}/\eqref{eq:aniso}/\eqref{eq:prune} are tight}, which is a property of
-the key geometry, not of the algorithm. SSA is therefore not a universal subquadratic exact attention---no such
-thing exists---but a mechanism that is cheap, lossless, \emph{and} length-robust \emph{on benign geometry}, and
+the key geometry, not of the algorithm. SSA is therefore not claimed as universal subquadratic exact attention,
+but as a mechanism that is cheap, lossless, \emph{and} length-robust \emph{on benign geometry}, and
 merely cheap-and-length-robust-but-approximate otherwise. The next section is about making the geometry benign.
 
 \section{Manufacturing routability}\label{sec:routability}
@@ -1055,13 +1062,16 @@ conjunction and one successful quality outcome, not dense-equivalent output or g
 \paragraph{An optimal selector: the Certified Causal Cascade.} Composing five ingredients---a shared low-dim
 routing space, sub-block max-pool summaries, a chunked-causal streaming index, an exact outlier side-channel,
 and per-query admissible certificates with escalation---into one streaming selector. The certificate is sound
-(certified $\Rightarrow$ the selected top-$\kappa$ blocks equal the exact top-$\kappa$ under the routing metric;
-zero violations on clustered and random geometry). This certifies the routing metric, not the omitted
+(certified $\Rightarrow$ the selected blocks equal the parent-index-tie-broken top-$\kappa$ under the routing
+metric; zero violations on clustered and random geometry). In the indexed regime its skip and truncation
+checks are strict at the returned threshold; an exhaustive tie instead follows the explicit index policy.
+This certifies the routing metric, not the omitted
 softmax mass or attention-output error; the latter have a separate reference certificate in
 Section~\ref{sec:output-cert}. The component table is the trilemma made concrete:
 sub-block granularity and the outlier channel rescue high-norm spikes, but \emph{isolated unit-norm needles
-stay unretrievable for every cheap selector} (recall $0.05$)---the impossibility of Section~\ref{sec:floor}'s
-trilemma in miniature. Per-layer routing is ${\sim}59\%$ of a Qwen-0.5B prefill (at DSA's reported $58\%$), and
+stayed unretrievable for every tested cheap selector} (recall $0.05$)---the grounded-probe obstruction of
+Section~\ref{sec:trilemma} in miniature, not an unrestricted indexing lower bound. Per-layer routing is
+${\sim}59\%$ of a Qwen-0.5B prefill (at DSA's reported $58\%$), and
 the lever that makes it cheap is \textbf{cross-layer sharing from a mid donor layer}---measured cutting it to
 ${\sim}6\%$ with single-needle retrieval preserved, consistent with the analytic $\div 5$ estimate; sharing
 from layer~0 fails. A trained $d_r{=}16$ projection reaches $0.65$ block agreement on real keys versus $0.32$
@@ -1187,7 +1197,7 @@ smaller-scale. Broad retrieval, perplexity, multi-hop evaluation, trained long-c
 frontier-model validation remain open. (vi)~The complete implementation is not formally verified end to end.
 Appendix~\ref{app:invariants} gives self-contained statements and proofs of the supporting exact-arithmetic
 invariants; access to the separate formalization is not required to inspect them. As corroborating provenance,
-the audit through private Substrate commit \texttt{21e49cbf3} machine-checks the corresponding results for
+the audit through private Substrate commit \texttt{130cae3e9} machine-checks the corresponding results for
 recursive real-valued ball containment and monotone drop sets, causal prefix-cut selection, conditional
 9-vote retention by a 128-slot highest-count reservoir at the 14-selector/70-item route bounds, and survival
 with a uniform cardinality cap under union with a fixed carrier. It also checks the structural two-pass
@@ -1196,9 +1206,31 @@ winding facts stated below.
 It also proves that the radial pairing cap is attained under alignment plus a realizable boundary member and
 that the per-centre refinement agrees there. Those alignment hypotheses are sufficient, not shown necessary.
 The per-centre cap is universally no larger; a plane witness exhibits a strict gap as large as the whole cap,
-but no converse says nonalignment forces strictness or equality forces alignment. These results do not verify
-the Python/CUDA mapping, float32 outward rounding, fixed-beam quality, or the unrecorded premise that the
-measured target had nine pre-consensus base-route votes.
+but no converse says nonalignment forces strictness or equality forces alignment. These results do not
+formally verify the Python/CUDA mapping, float32 outward rounding, fixed-beam quality, or the unrecorded
+premise that the measured target had nine pre-consensus base-route votes. The float32 portion is instead
+addressed experimentally below.
+
+That audit also closes four previously separate proof obligations. First, the restricted-read TV, KL, exact
+output residual, two block-output bounds, equal-value fence, and smoothed reverse-divergence limit are one
+checked family. Second, admissible region caps plus strict skip and truncation tests return the strict top set;
+without strict separation, an explicit index order is needed to name one set. SSA now breaks exact parent-score
+ties by the larger parent index. Third, the adaptive read-budget ceiling is the grounded-probe theorem stated
+in Section~\ref{sec:trilemma}, including its finite-randomized extension and zero-depth counterexample. Fourth,
+the nine-vote retention, fixed-carrier union, \texttt{roundWidth + 128} capacity, past bound, and causal cut are
+checked as one composed routing plan. The last statement is still conditional on the vote floor and says
+nothing about attention-output quality, FLOPs, or latency.
+
+The production tree inflates every recursive norm-plus-child-radius result by
+$8(d+4)\varepsilon_{32}$ and rounds the candidate and selected maximum toward $+\infty$; query/node score
+caps receive an analogous absolute-error allowance and upward final rounding. On an RTX 4080, the public
+verifier compared the actual tree with float64 descendant oracles across five ordinary and adversarial
+geometries and fanouts 2, 4, and 16. Unguarded arithmetic underestimated 8,701 of 90,105 radii and 367,480 of
+1,081,260 score caps. The guarded implementation had zero observed underestimates. At 65,536 leaves,
+dimension 64, and fanout 16, construction measured 0.433 ms guarded versus 0.223 ms raw. This is empirical
+stress evidence, not a directed-rounding proof, and it does not turn the fixed-beam traversal into exact
+top-$k$ search. The complete record is \texttt{runs/float\_tree\_verification.json}; reproduce it with
+\texttt{python -m ssa.float\_tree\_verification}.
 
 Two adjacent results remain boundaries rather than implementation claims. A positive log-concave score-spread
 function has a nonincreasing ratio across any fixed nonnegative displacement, but SSA has not established that
@@ -1244,12 +1276,15 @@ $\max_j s_j$, and~\eqref{eq:prune} is its contrapositive against the threshold $
 \section{Self-contained routing invariants}\label{app:invariants}
 
 This appendix contains the mathematical content used to justify the 10M router's center-radius hierarchy,
-causal selected reads, cross-head reservoir, fixed cross-layer carrier, and the factorized-attention and
-strictly-causal comparisons used to delimit the claims. It is included so the public artifact does not depend on
-access to the separate Lean repository. The formal audit is useful corroboration, but the definitions,
+bounded top selection, adaptive read-budget boundary, causal selected reads, cross-head reservoir, fixed
+cross-layer carrier, and the factorized-attention and strictly-causal comparisons used to delimit the claims.
+The restricted-read/output proof is already self-contained in Section~\ref{sec:output-cert}. It is included so
+the public artifact does not depend on access to the separate Lean repository. The formal audit is useful
+corroboration, but the definitions,
 statements, proofs, counterexamples, and scope needed to assess the claims are all below. Every geometric
-statement is over an exact real inner-product space; floating-point consequences require a separate
-outward-rounding argument.
+statement is over an exact real inner-product space. The production implementation uses conservative
+outward inflation and is stress-tested against float64 oracles as reported above; that experiment is not a
+proof of all floating-point executions.
 
 \subsection{Finite families of key regions}
 
@@ -1405,7 +1440,9 @@ fixed threshold; they do not count keys, traversed nodes, or elapsed work.
 
 This establishes exact-real containment at arbitrary depth. It proves neither that a node radius is minimal
 nor that the fixed-beam search visits the correct branch. In float32, containment additionally requires radii
-to be rounded outward or inflated enough to cover accumulated error.
+to be rounded outward or inflated enough to cover accumulated error. The implementation applies the guard
+measured above at every recursive level and to every score cap; zero observed oracle misses do not promote
+that guard to a universal arithmetic theorem.
 
 \subsection{Uniform and position-dependent orthogonal actions}
 
@@ -1521,6 +1558,15 @@ when both components are. This property is preserved by either construction unde
 hypotheses; the union does not create it: at $t=0$, $P=\{0\}$ is past-bounded but $S_0=\{5\}$ and
 $S_0\cup P$ are not. None of these set identities specifies how a selector admits an item, proves a causal
 mask, or proves that the measured target belonged to $P$.
+
+Combining consensus retention, the fixed-carrier bound, and the position cut gives the concrete composed
+plan used by SSA. If 14 heads each select at most 70 blocks, $P$ is a full highest-count reservoir of capacity
+128, every later selection $S_\ell$ has size at most \texttt{roundWidth}, and both $P$ and $S_\ell$ lie at or
+before the query position, then every nine-vote block lies in $P$ and in $S_\ell\cup P$; that union has size
+at most \texttt{roundWidth + 128}, remains past-bounded, and its position-cut read is causal. This conjunction
+is conditional on the nine-vote premise. A 140-block pooled family in which every block has at most two votes
+shows that a full 128-slot reservoir can drop a below-threshold block; capacity alone does not supply the
+premise.
 
 \subsection{Selected reads and position causality}
 
@@ -1665,6 +1711,58 @@ It fixes every $x\perp k$ and sends $k\mapsto(1-\beta\lVert k\rVert^2)k$. Theref
 exactly when $\beta\lVert k\rVert^2>1$, and at $\beta\lVert k\rVert^2=2$ the map is $+1$ on $k^\perp$ and
 $-1$ on the line spanned by $k$: precisely the orthogonal reflection across $k^\perp$. These are statements
 about a compressed linear state update, not sparse selection or attention quality.
+
+\subsection{Bounded selection and the meaning of ``top''}
+
+Let a finite carrier $I$ be partitioned into regions by $b:I\to C$, let $s_i$ be its scores, and suppose
+$s_i\le U_{b(i)}$ for admissible region caps $U_c$. A search probes regions $P$, returns $R\subseteq I$, and
+uses a threshold $\tau$.
+
+\begin{proposition}[Strict bounded selection]\label{prop:app-bounded-top}
+Assume every unprobed cap satisfies $U_c<\tau$, every unreturned member of a probed region has score below
+$\tau$, and every returned member has score at least $\tau$. Then
+\[
+R=\{i:s_i\ge\tau\},
+\]
+and every outsider scores strictly below every member of $R$. If additionally $|R|=k$, then $R$ is a strict
+top-$k$ set.
+\end{proposition}
+\begin{proof}
+A returned member is in the displayed set by hypothesis. An unreturned member is either in a probed region
+and covered by the direct truncation condition, or in an unprobed region and has
+$s_i\le U_{b(i)}<\tau$. This proves the reverse inclusion. Combining an outsider's strict upper bound with a
+member's lower bound gives strict separation.
+\end{proof}
+
+The count $|R|=k$ is a hypothesis, not a consequence of admissibility. Nor does a weak score order name a
+unique set at a tie: under two equal scores, either singleton is weakly top one and neither is strictly top
+one. A deterministic repair orders equal scores by index. SSA uses the larger parent index as the winner of
+an exact routing-score tie. The indexed CCC certificate uses strict unprobed-cap and search-truncation tests;
+its exhaustive corner uses this explicit tie policy.
+
+\subsection{Adaptive read budgets}
+
+Represent a deterministic selector as a finite binary decision tree. Each internal node probes one of $n$
+positions; on the input with its unique spike at $j$, the answer is whether that node probes $j$. Each leaf
+returns a set of positions. The read depth is the maximum root-to-leaf probe count, and the selector is
+\emph{grounded} when every returned position belongs to that input's probe trace.
+
+\begin{proposition}[Grounded recall ceiling]\label{prop:app-read-miss}
+A grounded selector of read depth at most $b$ recalls at most $b$ of the $n$ spike placements. Under a uniform
+placement its recall is at most $b/n$. For every finite distribution over grounded selectors of depth at most
+$b$, some fixed placement has seed-averaged recall at most $b/n$.
+\end{proposition}
+\begin{proof}
+On the all-false reference path the trace $E$ has at most $b$ members. If $j\notin E$, planting the spike at
+$j$ changes no answer on that path, so the trace and returned set remain the reference ones. Grounding then
+prevents the returned set from containing $j$. Thus the recalled placements form a subset of $E$. For a
+finite randomized family, sum the reach indicator over placements and seeds in either order. Every seed's sum
+is at most $b$, so the average total is at most $b$ and some placement has average at most $b/n$.
+\end{proof}
+
+Grounding is necessary: the depth-zero leaf that returns all $n$ positions recalls every placement. A reader
+that probes any fixed set $E$ and returns exactly $E$ attains the bound, so the count is sharp. Preprocessed
+indexes with side information outside the probe trace are not modeled by this proposition.
 
 \begin{thebibliography}{17}
 \bibitem{vaswani2017} A.~Vaswani et al. \emph{Attention Is All You Need.} NeurIPS, 2017.

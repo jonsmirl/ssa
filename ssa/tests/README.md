@@ -79,11 +79,16 @@ evaluation for that geometry.
   chunking invariance; decode == prefill; the `block_route_budget(sub=)` flag (identity + spike recall).
 - the chunk-at-a-time GQA surface equals the whole-tensor driver; the Blackwell-compatible PyTorch
   center-radius tree recovers every visible causal block when its beam and budget are exhaustive.
+- exact routing-score ties use the explicit larger-parent-index policy.
 
 **`test_ccc_certificates.py`** — certificate/escalation/outlier soundness (GPU+faiss).
-- `test_certificate_soundness` (clustered AND random): certified ⇒ selection == exact routing-metric top-κ,
+- `test_certificate_soundness` (clustered AND random): certified ⇒ selection equals the
+  parent-index-tie-broken routing-metric top-κ,
   **zero violations** (the hard gate); radii admissible / exact after rebuild; escalation monotone; the
   outlier channel recovers a hidden high-norm spike; warm-start rebuild preserves the index.
+
+**`test_float_tree_verification.py`** — adversarial CUDA comparison of production recursive radii and score
+caps with float64 descendant oracles; also requires the raw fixture to expose at least one underestimate.
 
 **`test_routing_space.py`** — the trained routing projection (`routing_space.py`, CPU/GPU).
 - identity projection == full scores; KL decreases with training; PCA orthonormal; save/load roundtrip;

@@ -112,6 +112,12 @@ best-key bias `(log n)/β`. `route_recall_tempered` sweeps `β`; recall peaks ne
 recursive radius `R_parent = max_child(‖μ_child − μ_parent‖ + R_child)`, so one parent bound check prunes a
 whole subtree (`hier_approx` vs `flat_approx`, `lossless_cost`). Paper §4.4.
 
+**`float_tree_verification.py`** — CUDA stress test for the production `CausalTree`'s float32 recursive
+radii and score caps. It compares the former raw formulas and the outward-inflated implementation with
+float64 descendant oracles over scale-separated, offset, cancellation-heavy, and axis-aligned geometries.
+The recorded RTX 4080 sweep found zero guarded underestimates in 90,105 balls and 1,081,260 caps. This is
+empirical numerical verification, not a directed-rounding proof. Run `python -m ssa.float_tree_verification`.
+
 **`anisotropic_bound.py`** — the ellipsoidal (covariance) bound `⟨q,μ⟩ + R'·√(qᵀΣq)` (paper Eq. 5.2) prunes
 more than the isotropic radius bound. `cluster_stats` builds the per-cluster `(μ, Σ)`; `bnb_cost` compares the
 two bounds' branch-and-bound cost. Paper §5.1.

@@ -8,16 +8,37 @@ when does it work?**
 > **On the *(proved)* claims below.** Results marked *(proved)* — and the theorem names cited inline
 > (`samuelson_prune_gate`, `ellipsoidal_search_bound`, `temperedLogPartition_max_sandwich`,
 > `lossless_selector_reads_every_key`, `hierarchical_prune`, `dropped_combination_error_bound`, …) — are
-> machine-checked in the Substrate Lean 4 development — namespace `Substrate.Inference.PhaseTransition`,
-> sources under `Substrate/Inference/Algebra/` and `Substrate/Inference/Shadow/` (axiom-pure, no
+> machine-checked in the separate Substrate Lean 4 development, with core declarations under
+> `Substrate.Universal` and domain recognitions under `Substrate.Inference.Shadow` (axiom-pure, no
 > `sorry`/`admit`). That formalization is
 > maintained separately and is **not** included in this public repository; the theorem names are the
 > pointers into it. The Python in this repo *measures* those results — it does not prove them.
 
-Run: `python3 -m ssa.experiments` · Tests: `pytest ssa/tests/` (42 pass).
+Run: `python3 -m ssa.experiments` · Tests: `pytest ssa/tests/`.
 Method: synthetic keys/queries with *exactly controlled* gap, separation, dimension, and count — so
 each prediction is tested against ground truth. No training; this validates the theory and the
 selector mechanism, not a trained model.
+
+## Float32 recursive-ball verification
+
+`python -m ssa.float_tree_verification` compares the actual CUDA `CausalTree` with float64 descendant
+oracles. The RTX 4080 run in [`runs/float_tree_verification.json`](runs/float_tree_verification.json) covers
+five ordinary and adversarial geometries at dimension 64 and fanouts 2, 4, and 16. The unguarded formulas
+underestimated 8,701 of 90,105 recursive radii and 367,480 of 1,081,260 score caps. After dimension-scaled
+inflation and `nextafter(+inf)`, no underestimates were observed. A 65,536-leaf fanout-16 construction took
+0.433 ms guarded and 0.223 ms unguarded. This is floating-point stress evidence, not a proof for all CUDA
+inputs or kernels; the fixed beam remains approximate.
+
+## Formal selector-contract status
+
+The relevant Substrate audit is through `130cae3e9`. Its abstract theorems now cover four contracts used here:
+the exact restricted-read TV/KL and output residual with both block certificate arms; bounded selection as a
+strict top set when all unreturned candidates are strictly below the threshold, with index order as the
+no-margin tie repair; the `b/n` uniform-spike ceiling for grounded adaptive reads plus its finite-randomized
+extension; and the complete conditional routing plan combining nine-vote retention, the uniform
+`roundWidth + 128` block cap, past-boundedness, and a causal position cut. The public paper reproduces these
+statements and proofs. None verifies the Python/CUDA mapping, removes the grounded-output hypothesis, turns
+the nine-vote premise into a quality result, or converts a block-count cap into latency.
 
 ## The read-side theory holds exactly
 
@@ -561,7 +582,7 @@ Three strengths, not equal:
    entries are unbounded (Alman–Song, *Fast Attention Requires Bounded Entries*). The **bounded-entry /
    benign regime is the only escape** — exactly the trilemma's bet and what SSA rests on. Conditional;
    not formalizable (no SETH framework in Mathlib).
-3. **Probe model, unconditionally: YES — and it admits a proof.**
+3. **Grounded probe model, unconditionally: YES — and the grounding hypothesis is essential.**
 
 The argument:
 - `unexamined_argmax_invisible` — for any examined set `S` and any skipped index `j₀ ∉ S`, there is an
@@ -570,18 +591,20 @@ The argument:
 - `lossless_selector_reads_every_key` — capstone: any selector whose output depends only on `S` and that
   is lossless (always returns an argmax) must have `S = univ`. It cannot skip a single key. In the probe
   model (cost = keys examined) lossless selection is therefore `Θ(n)` per query, `Θ(n²)` total.
-- `lossless_adaptive_reads_every_key` — the same conclusion for ADAPTIVE selectors, over an explicit
-  decision-tree probe model (probe an index, branch on its value; the read set becomes the per-input
-  queried path). The adversary `unexamined_argmax_invisible` transfers unchanged. The paper's
-  "deterministic, adaptive or not" in-text claim is now machine-checked; only the randomized/Yao
-  extension remains a remark.
+- `a_spike_outside_the_empty_trace_leaves_the_run_identical` — for an adaptive binary decision tree,
+  a spike outside the all-false reference trace changes neither the trace nor its returned set.
+- `the_reach_share_is_within_the_depth_share` — if the selector returns only positions it probed, a
+  depth-`b` tree recalls at most `b` of `n` one-spike placements, hence at most `b/n` uniformly.
+- `a_spike_is_reached_by_at_most_the_depth_share_over_the_seed` — for any finite distribution over
+  grounded depth-`b` trees, one fixed placement has seed-averaged recall at most `b/n`.
+- The hypothesis cannot be erased: a depth-zero leaf returning the whole carrier recalls every placement.
+  A fixed-set reader attains the `b/n` ceiling, so the grounded count is sharp.
 
-So: **lossless cheap selection is provably impossible in the worst case** — unconditionally in the probe
-model (proved here), and conditionally for general runtime under SETH (Alman–Song). It is
-possible **only on benign / bounded-entry geometry**, never unconditionally for free. This is the exact
-boundary SSA lives on: its 12M-token lossless claim is a bet that real-data geometry is benign enough to
-sit on the *possible* side of this wall — a bet that is, by the wall itself, **not provable in general**,
-which is precisely why no independent party can confirm it from the outside.
+So: **lossless cheap selection is impossible for grounded adaptive probes in the worst case**, and
+conditionally hard for general attention runtime under SETH (Alman–Song). The probe theorem does not cover
+an arbitrary preprocessed index whose side information names positions it did not inspect at query time;
+such a claim needs a model and budget for the index. SSA lives on the measured benign-geometry side of this
+boundary and makes no unconditional losslessness claim there.
 
 ## Routes to improvement — the math, and the deepest one built — the anisotropic bound + `anisotropic_bound.py`
 
@@ -1181,7 +1204,7 @@ outlier side-channel, and per-query admissible certificates with escalation — 
 (`CausalCascade`), and measures which components pay off. Full record: `FLOOR_PROGRAM.md` § P7.
 
 **Certificates are sound.** `test_ccc_certificates.py` pins zero violations of *certified ⇒ selection ==
-exact top-κ under the routing metric* on **both** clustered and random geometry (the certificate uses an
+the parent-index-tie-broken top-κ under the routing metric* on **both** clustered and random geometry (the certificate uses an
 admissible bound over unprobed IVF cells + a search-truncation check; the cascade owns its centroids so the
 probed set and radii match faiss exactly). Fire-rate is geometry-dependent: **0.89 clustered / 0.50 random**
 at 1M (benign certifies; adversarial escalates). The full cascade runs end-to-end to **12M (980 ms, 6.67 GB,
@@ -1199,9 +1222,9 @@ streaming rebuilds, and the 4× sub-block index.
 | spike c=8 (large) | 1.00 | 1.00 | 1.00 |
 
 **Reading.** Sub-block granularity rescues large spikes; the outlier channel *uniquely* rescues the moderate
-c=2 spike (0.38→1.00) that sub-block still washes out; **isolated unit-norm needles stay hard for every cheap
-selector (0.05)** — the impossibility wall in miniature, exactly as the trilemma predicts. No component
-escapes it; the honest boundary is named, not hidden.
+c=2 spike (0.38→1.00) that sub-block still washes out; **isolated unit-norm needles stay hard for every tested
+cheap selector (0.05)** — the grounded-probe obstruction in miniature, not an unrestricted indexing lower
+bound. No tested component escapes it; the honest boundary is named, not hidden.
 
 **The trained routing space — the P2 rebuttal** (`routing_space.py`, real Qwen keys). P2 concluded "low-rank
 routing is a bust (5–14%)" from an *untrained random* projection. Measured on real keys:

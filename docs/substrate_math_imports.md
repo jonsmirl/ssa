@@ -1,23 +1,30 @@
 # Substrate math that applies to SSA — an import list
 
 This assessment maps inspected Substrate results to SSA's selection, attention error, and cost models. The
-current audit is through Substrate commit `21e49cbf3` (2026-09-08).
-The actionable extension is an adaptive output certificate in `ssa/certified_attention.py` (paper §5.7).
-It combines existing log-sum-exp and barycenter bounds with the support-restriction interpretation made
-explicit by Substrate's `UniformSupport.lean` and finite-vector `TotalVariation.lean` results.
-This is an application of established inequalities, not a claim of a new mathematical inequality.
+relevant audit is through Substrate commit `130cae3e9` (2026-09-09); the repository was inspected through
+`83b300c299`, whose later commits in the interval do not bear on SSA.
+The adaptive output certificate in `ssa/certified_attention.py` (paper §5.7) combines log-sum-exp bounds with
+restricted-read identities and value geometry. Its abstract mass, divergence, exact residual, and two output
+arms are now machine-checked; the Python instantiation remains a tested implementation rather than extracted
+Lean code.
 
 The focused source review covers `PartialScore`, `AdmissibleBound`, `LogSumExpBound`, `SelectionGeometry`,
-`ValueAwareSelection`, `UniformSupport`, `TotalVariation`, and `ApproximateSelection`, alongside SSA's
-current implementations and imported results. It is not an exhaustive review of the Substrate tree.
+`ValueAwareSelection`, `RestrictedReadBound`, `RestrictedReadOutputBound`, `BoundedTopSelection`,
+`BoundedReadMiss`, `ComposedSelectionPlan`, and their recognitions, alongside SSA's current implementations
+and imported results. It is not an exhaustive review of the Substrate tree.
 `Carrier/Simplex/ApproximateSelection.lean` concerns continuous selections of correspondences and does
 not provide a sparse-attention selector or a runtime improvement here.
 
-**Formalization scope.** Source theorems are machine-checked in Substrate. **The mapping to SSA and the
-composition of these theorems are not machine-checked.** Paper §5.7 supplies an ordinary mathematical
-proof; Python tests compare the implementation to a dense oracle. Float64 evaluation with an outward
+**Formalization scope.** Source theorems are machine-checked in Substrate. **The mapping to SSA is not
+machine-checked.** The previously separate restricted-read and output-bound composition is now checked in
+`RestrictedReadOutputBound.lean`, and the reservoir/cap/causality composition is checked in
+`ComposedSelectionPlan.lean`. Paper §5.7 and Appendix B remain self-contained for public readers; Python
+tests compare the implementation to dense and float64 oracles. Float64 evaluation with an outward
 score cushion is not interval arithmetic. Declaration names are the stable lookup keys; line references
 in the exploratory entries below are not a guarantee about a concurrently changing Substrate checkout.
+All five universal modules and four inference recognitions from `130cae3e9` rebuilt successfully in the
+post-commit audit; the files' emitted `#print axioms` reports contain only the standard
+`[propext, Classical.choice, Quot.sound]` dependencies.
 
 Paths are relative to `~/substrate/lean/Substrate/Universal/`.
 
@@ -38,6 +45,7 @@ realizes the invariant. It does not mean that the Python/CUDA program has been e
 | `21e49cbf3` — `ReflectionCorner` | **Comparator-only import.** A rank-one delta correction reverses its key line past `beta*||k||^2=1` and is exactly a norm-preserving reflection at equality 2. | This informs the repository's DeltaNet comparison, not sparse key selection. The larger reflection-product expressivity theorem supplies no routing, attention-quality, or long-context execution guarantee. |
 | `183c4824d` — `WindingBridge` | **Length-generalization bridge imported.** Under the no-half-turn anti-aliasing hypothesis, the lifted phase-loop turn count agrees with the discrete winding degree, coordinatewise for a torus of rotary bands. | RoPE does not by itself prove extrapolation to unseen offsets. The theorem connects two exact winding representations; it supplies no quality or kernel result. |
 | `a8d37a176` — audited `PhaseWindingRecognition` wording | **Status correction imported.** The public paper separates relative-offset algebra from winding stability: a nonzero turn needs at least one wavelength, and a changed turn count forces the anti-aliasing margin to fail somewhere. | This commit repairs a stale absence claim—the bridge already existed from the other side. It adds no kernel primitive. The 10M YaRN result remains empirical, especially at its roughly 306x scale factor. |
+| `130cae3e9` — restricted reads/output, bounded top selection, bounded read miss, and composed plan | **Imported.** The paper's mass/KL/output certificate is now backed by exact residual and block-bound theorems; CCC names an index-tie-broken top set; the no-free-selection claim is narrowed to the proved grounded adaptive-read model; and the 14×70/9/128 reservoir, uniform layer cap, past bound, and causal cut are one checked theorem. | Positive weights and a nonempty kept set are required. Strict top-set exactness needs strict exclusion; otherwise an explicit index order pins the result. The `b/n` ceiling needs outputs contained in the probe trace and does not cover arbitrary preprocessed indexes. The composed plan remains conditional on nine votes and proves neither quality nor speed. |
 
 The other commits in this interval are registry, sweep-generation, economics-citation, or unrelated carrier
 maintenance. They were reviewed but do not change SSA's claims or implementation.
@@ -59,7 +67,9 @@ geometry this avoids the flat reference's mandatory evaluation of every visible 
 This is a CPU reference, not a new kernel result.  The tree is positional and its parent balls can
 be loose; diffuse geometry may force all leaves, and the same `O(n)` worst case remains.  Substrate
 proves the unit-scale tree identity, not this Python composition or its floating-point arithmetic;
-the latter is tested against the dense oracle, including causal prefixes and block caps.
+the latter is tested against the dense oracle, including causal prefixes and block caps. Its float64
+leaf and parent radii receive the same style of conservative inflation, while exact zero radii are
+preserved only when member equality establishes them independently.
 
 `CausalTree` in `ssa/cascade_router.py` is the GPU routing counterpart. It maintains an online fanout
 tree over committed sub-block means. Each node stores a center and the recursively composed radius
@@ -68,6 +78,16 @@ priority `dot(q, center) + norm(q) * radius`. A fixed beam deliberately makes it
 not an output certificate; strict causality comes from searching only the committed frontier while the
 current chunk is scored exactly. This backend was required because FAISS-GPU's IVF index killed the
 Blackwell Kaggle process.
+
+The production tree now inflates each float32 norm-plus-child-radius candidate by
+`8 * (d + 4) * eps`, applies `nextafter(+inf)` to the candidate and selected maximum, and uses an
+absolute-error allowance plus upward rounding for query/node caps. `python -m ssa.float_tree_verification`
+exercises the actual `CausalTree` on an RTX 4080 against float64 descendant oracles. Across five adversarial
+geometries and fanouts 2, 4, and 16 it checked 90,105 balls and 1,081,260 caps. Unguarded float32 arithmetic
+underestimated 8,701 radii and 367,480 caps; guarded arithmetic had zero observed underestimates. The
+65,536-leaf fanout-16 build microbenchmark was 0.433 ms guarded versus 0.223 ms raw. This closes the concrete
+implementation gap empirically for the tested regimes; it is neither a directed-rounding proof nor a claim
+that fixed-beam routing finds the exact top branch.
 
 The failed first 10M quality run was not caused by an invalid center-radius inequality: exact-rank probes
 found no relevant violation of that bound. Two composition choices were wrong. First, routing post-RoPE
@@ -86,10 +106,10 @@ single semantic NIAH probe passed. This validates that measured composition, not
 
 | source | inspected declaration | SSA use and scope |
 |---|---|---|
-| `Potential/Entropy/UniformSupport.lean` | `klDiv_uniformSupport`, `klDiv_uniformSupport_lt_of_strict_subset` | At equal logits, `KL(subset || dense) = log(n / kept_count)`; shrinking the kept set increases this divergence. General nonuniform softmax restriction is derived in the paper. |
-| `Potential/Entropy/TotalVariation.lean` | `totalVariation_le_sqrt_klDiv` | Allows zero weights in the first distribution, but requires a strictly positive second one. Applies to subset-to-dense KL. The exact TV identity for restriction is stronger, so Pinsker is not used to set the stop threshold. |
+| `Potential/Entropy/RestrictedReadBound.lean` | `totalVariation_restrictRead_fullRead`, `klDiv_restrictRead_fullRead`, `klDiv_fullRead_smoothRead_unbounded` | Exact nonuniform restricted-read TV and selected-to-dense KL identities; the reverse divergence is proved unbounded by smoothing the omitted support toward zero. Positive weights and a nonempty kept set are explicit. |
+| `Potential/Entropy/RestrictedReadOutputBound.lean` | `fullOut_sub_restrictOut_eq_omit_residual`, `norm_fullOut_sub_restrictOut_le_block_min`, `fullOut_eq_restrictOut_of_one_value` | Exact residual centered at the available restricted output, both block certificate arms and their minimum, plus the equal-value zero-error fence. These now match the public §5.7 proposition directly. |
 | `Potential/Entropy/LogSumExpBound.lean` | `logSumExp_max_sandwich`, `softMax_sandwich` | An admissible maximum-logit bound `U_c` gives unopened block partition mass at most `b_c exp(beta U_c)`; actual block counts matter. |
-| `Generator/Dissipative/SelectionGeometry.lean` | `barycenter_truncation_bound` | Value-dependent output control. The computable form centered at the kept output is derived separately in the paper, rather than substituting an estimate for the unknown dense output in this theorem. |
+| `Generator/Dissipative/SelectionGeometry.lean` | `barycenter_truncation_bound` | Earlier supporting geometry. The exact computable form centered at the kept output is now owned directly by `RestrictedReadOutputBound.lean`; no substitution for an unknown dense output is needed. |
 
 For kept partition sum `Z_S` and omitted partition sum `Z_D`, restriction gives exactly
 
@@ -110,9 +130,10 @@ norm(dense_output - kept_output)
 ```
 
 The lower block bound is Jensen's `b_c exp(beta dot(q,key_mean_c))`; the upper uses a key ball.
-The reverse divergence `KL(dense || subset)` is infinite for any proper restriction of finite-logit
-softmax. Lean's finite real-valued `klDiv`, whose `log 0` is totalized, must not be read as encoding this
-infinity. Both support theorems and the implementation retain the correct direction.
+For a proper restriction, the finite real-valued `klDiv` still totalizes `log 0`; it is not itself infinity.
+`klDiv_fullRead_smoothRead_unbounded` states the correct reverse-direction fact as a limit: leave omitted
+sites an `epsilon` share, and the dense-to-smoothed-selection divergence tends to `+infinity` as
+`epsilon -> 0+`.
 
 The implementation opens blocks in descending upper partition mass, accepts seed blocks from another
 router, checks all requested tolerances, and doubles the opened count on failure. It returns
@@ -133,6 +154,38 @@ Six checks in `ssa/tests/test_certified_attention_gpu.py` compare the certificat
 CUDA SDPA on an RTX 4080, covering concentrated and flat logits, equal values, and both full and
 partial causal blocks. These validate numerical agreement with an independent attention implementation;
 the selector still runs on CPU. GPU routing speed and real-model quality remain unmeasured.
+
+## Imported: bounded top selection and explicit ties
+
+`Carrier/Separation/BoundedTopSelection.lean` separates four facts that earlier SSA prose compressed into
+“exact top-k.” An admissible cap bounds every member of its region. If every unprobed cap and every truncated
+probed member are **strictly** below threshold while every return is at least the threshold, the return is
+exactly the above-threshold set and every outsider is strictly below every insider. The returned count is a
+hypothesis. With a boundary tie, weak top-k does not identify one set and strict top-k may not exist; ordering
+equal scores by carrier index pins one without inventing a margin. `CausalCascade._ordered_candidates` now
+implements that repair by preferring the larger parent index. Indexed certification retains strict `< tau`
+checks; exhaustive routing uses the explicit tie order.
+
+## Imported: the grounded adaptive-read ceiling
+
+`Carrier/Separation/BoundedReadMiss.lean` proves the adaptive argument using the all-false reference trace.
+A spike outside that trace changes no probe answer and therefore changes neither trace nor output. If the
+selector returns only positions it probed, at most `b` of `n` spike placements are recalled by a depth-`b`
+tree; uniform recall is at most `b/n`. Averaging finite seeded selectors puts the same ceiling on some fixed
+placement. The hypotheses matter: a zero-depth leaf returning the whole carrier recalls every placement, so
+no clean budget bound holds without grounded output. Preprocessed indexes carrying side information outside
+the query-time probe trace are not modeled. The public paper's former unrestricted wording has been narrowed
+to exactly this proved scope.
+
+## Imported: one composed 10M routing plan
+
+`Aggregation/ComposedSelectionPlan.lean` checks in one theorem what the earlier imports established
+separately. Under 14 selectors of width at most 70, the positive vote floor 9, a full top-count reservoir of
+capacity 128, bounded later-layer selections, and past-bounded inputs, every nine-vote item remains in every
+layer plan; each plan has at most `roundWidth + 128` distinct blocks, remains past-bounded, and its positional
+cut is causal. A concrete 140-item/two-vote construction shows the reservoir may drop an item below the vote
+floor. The conjunction is not an attention-output, FLOP, or latency result and does not establish that the
+measured needle received nine votes.
 
 ## 1. What the partial-score floor does and does not establish
 

@@ -41,6 +41,15 @@ def _positive_exp(log_value):
     return float(np.exp(max(log_value, np.log(np.nextafter(0.0, 1.0)))))
 
 
+def _outward_radius(radius, dimension, *, exact_zero=False):
+    """Inflate a computed float64 radius, preserving a separately established exact zero."""
+    if exact_zero:
+        return 0.0
+    radius = float(radius)
+    guarded = radius + abs(radius) * (8.0 * (dimension + 4) * np.finfo(np.float64).eps)
+    return float(np.nextafter(guarded, np.inf))
+
+
 class CertifiedBlockAttention:
     """Reusable immutable snapshot of contiguous blocks of keys and values.
 
@@ -76,7 +85,9 @@ class CertifiedBlockAttention:
             part = X[start:start + self.block_size]
             mean = part.mean(axis=0)
             means.append(mean)
-            radii.append(np.linalg.norm(part - mean, axis=1).max())
+            radius = np.linalg.norm(part - mean, axis=1).max()
+            radii.append(_outward_radius(radius, X.shape[1],
+                                         exact_zero=bool(np.all(part == mean))))
         return np.asarray(means), np.asarray(radii)
 
     def read(self, q, beta=1.0, *, mass_tol=None, error_tol=None,

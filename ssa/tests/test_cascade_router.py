@@ -56,6 +56,20 @@ def _bruteforce_subblock_topc(q, k, block, sub, top_c, local):
 
 
 @skip
+def test_topc_exact_ties_are_broken_by_larger_parent_index():
+    """The certified target remains a named set when routing scores tie exactly."""
+    from ssa.cascade_router import CausalCascade
+
+    cc = CausalCascade(64, top_c=2, outlier_cap=0)
+    scores = torch.ones(1, 4, device="cuda")
+    parents = torch.tensor([[0, 3, 1, 2]], device="cuda")
+    keep, tau, count = cc._select_topc(scores, parents, 1, SENT=4)
+    assert keep[keep < 4].tolist() == [3, 2]
+    assert float(tau[0]) == 1.0
+    assert int(count[0]) == 2
+
+
+@skip
 def test_ccc_full_budget_matches_dense():
     from ssa.cascade_router import ccc_prefill
     from ssa.ssa_kernel import dense, BLOCK
