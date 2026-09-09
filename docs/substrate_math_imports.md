@@ -1,8 +1,8 @@
 # Substrate math that applies to SSA — an import list
 
 This assessment maps inspected Substrate results to SSA's selection, attention error, and cost models. The
-relevant audit is through Substrate commit `130cae3e9` (2026-09-09); the repository was inspected through
-`83b300c299`, whose later commits in the interval do not bear on SSA.
+relevant audit is through Substrate commit `77cd1b8c6` (2026-09-09), including the potential-store precursor
+`88a4c7012` and the six subsequent SSA commits named below.
 The adaptive output certificate in `ssa/certified_attention.py` (paper §5.7) combines log-sum-exp bounds with
 restricted-read identities and value geometry. Its abstract mass, divergence, exact residual, and two output
 arms are now machine-checked; the Python instantiation remains a tested implementation rather than extracted
@@ -10,8 +10,10 @@ Lean code.
 
 The focused source review covers `PartialScore`, `AdmissibleBound`, `LogSumExpBound`, `SelectionGeometry`,
 `ValueAwareSelection`, `RestrictedReadBound`, `RestrictedReadOutputBound`, `BoundedTopSelection`,
-`BoundedReadMiss`, `ComposedSelectionPlan`, and their recognitions, alongside SSA's current implementations
-and imported results. It is not an exhaustive review of the Substrate tree.
+`BoundedReadMiss`, `ComposedSelectionPlan`, `StorePotentialRead`, `PotentialStoreProcess`,
+`CumulantEnclosure`, `SequentialErrorComposition`, `GroupedPairingClaim`,
+`DistributionWeightedPartition`, `IndexReadMiss`, and their recognitions, alongside SSA's current
+implementations and imported results. It is not an exhaustive review of the Substrate tree.
 `Carrier/Simplex/ApproximateSelection.lean` concerns continuous selections of correspondences and does
 not provide a sparse-attention selector or a runtime improvement here.
 
@@ -22,9 +24,11 @@ machine-checked.** The previously separate restricted-read and output-bound comp
 tests compare the implementation to dense and float64 oracles. Float64 evaluation with an outward
 score cushion is not interval arithmetic. Declaration names are the stable lookup keys; line references
 in the exploratory entries below are not a guarantee about a concurrently changing Substrate checkout.
-All five universal modules and four inference recognitions from `130cae3e9` rebuilt successfully in the
-post-commit audit; the files' emitted `#print axioms` reports contain only the standard
-`[propext, Classical.choice, Quot.sound]` dependencies.
+All five universal modules and four inference recognitions from `130cae3e9` rebuilt successfully in that
+audit. The eleven theorem and recognition modules named by `88a4c7012` through `77cd1b8c6` were rebuilt
+together in the current audit (8,760 jobs); their emitted `#print axioms` reports contain no dependencies
+beyond the standard `[propext, Classical.choice, Quot.sound]`, with several elementary declarations using
+fewer or none.
 
 Paths are relative to `~/substrate/lean/Substrate/Universal/`.
 
@@ -46,6 +50,13 @@ realizes the invariant. It does not mean that the Python/CUDA program has been e
 | `183c4824d` — `WindingBridge` | **Length-generalization bridge imported.** Under the no-half-turn anti-aliasing hypothesis, the lifted phase-loop turn count agrees with the discrete winding degree, coordinatewise for a torus of rotary bands. | RoPE does not by itself prove extrapolation to unseen offsets. The theorem connects two exact winding representations; it supplies no quality or kernel result. |
 | `a8d37a176` — audited `PhaseWindingRecognition` wording | **Status correction imported.** The public paper separates relative-offset algebra from winding stability: a nonzero turn needs at least one wavelength, and a changed turn count forces the anti-aliasing margin to fail somewhere. | This commit repairs a stale absence claim—the bridge already existed from the other side. It adds no kernel primitive. The 10M YaRN result remains empirical, especially at its roughly 306x scale factor. |
 | `130cae3e9` — restricted reads/output, bounded top selection, bounded read miss, and composed plan | **Imported.** The paper's mass/KL/output certificate is now backed by exact residual and block-bound theorems; CCC names an index-tie-broken top set; the no-free-selection claim is narrowed to the proved grounded adaptive-read model; and the 14×70/9/128 reservoir, uniform layer cap, past bound, and causal cut are one checked theorem. | Positive weights and a nonempty kept set are required. Strict top-set exactness needs strict exclusion; otherwise an explicit index order pins the result. The `b/n` ceiling needs outputs contained in the probe trace and does not cover arbitrary preprocessed indexes. The composed plan remains conditional on nine votes and proves neither quality nor speed. |
+| `88a4c7012` — `StorePotentialRead` and hierarchical attention recognition | **Imported.** The paper defines one finite score/value store whose log-partition derivative is its scalar softmax read, identifies the attention/Hopfield instance, and connects region score caps to the selected-output certificate. | The hierarchy, partition, kept set, bounds, and traversal are supplied. The two-cumulant score is not the potential, and no work or quality claim follows unless the displayed certificate is small. |
+| `fae7dad0f` — `PotentialStoreProcess` | **Imported.** The exact fresh-append mass, potential, surviving-weight, and read laws are stated and proved publicly, including the decomposition when the score surface also changes. | Append-only storage does not imply stable access weight or degraded output. No score update, cumulative drift, recovery, or convergence result is supplied. |
+| `1459a8781` — `CumulantEnclosure` and cumulant-routing recognition | **Imported.** A block logit range turns the mean-plus-variance routing statistic into a deterministic interval for normalized log-sum-exp. | The cubic remainder needs a third-central-moment bound along the whole tilt segment; its value at zero alone is insufficient. The interval selects no route and proves no retrieval accuracy. |
+| `7ecd7832f` — `SequentialErrorComposition` and multi-hop recognition | **Imported.** Routed-read state error obeys the Lipschitz-weighted recurrence, with additive and exact corners and a counterexample to any final bound from local errors alone. | Lipschitz gains and same-input local output errors are hypotheses; score error does not automatically become state error, and this is not a probability-product law. |
+| `51a71137f` — `GroupedPairingClaim` and query-group/transport recognition | **Imported.** The query-group top pairing is the least shared safe claim, retains a maximizer for each query below its maximum, loses drop power monotonically as queries are added, and is fixed by one common linear isometry. | No cheap query summary or algorithm is provided. Distinct position-dependent transports need not preserve even pairing order, and no attention-output claim follows. |
+| `6a88f33e5` — `DistributionWeightedPartition` and certificate-aware partition recognition | **Imported as an objective.** The paper gives the weighted node-read cost, safe-partition monotonicity, strict distribution sensitivity, and least member of a supplied finite certified family. | This neither constructs nor learns a partition, optimizes globally, proves generalization, supplies an asymptotic, nor identifies node count with latency. |
+| `77cd1b8c6` — `IndexReadMiss` and indexed/randomized recognition | **Imported.** The probe lower bound now accounts for a finite index: `K` states, depth `b`, and unread reference-output width `a` reach at most `K(b+a)` placements; finite randomization yields one fixed low-recall placement. | The identity index shows why `K` is necessary. State count is not charged as bits, construction, lookup, or arithmetic cost, and the one-spike equality model is not general scored retrieval. |
 
 The other commits in this interval are registry, sweep-generation, economics-citation, or unrelated carrier
 maintenance. They were reviewed but do not change SSA's claims or implementation.

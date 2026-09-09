@@ -114,7 +114,8 @@ the tightest upper bound available from `(μ_c, Σ_c, b)` alone. On real transfo
 bound can cost at least a full key scan, which is why the scalable implementation uses budgeted lossy routing.
 
 Related algebraic results are machine-checked in the separate Substrate Lean development; the relevant audit
-is through Substrate commit `130cae3e9`. The broader mapping between Substrate results and this code is
+is through Substrate commit `77cd1b8c6`, including the potential-store precursor `88a4c7012` and the six
+subsequent SSA commits through that point. The broader mapping between Substrate results and this code is
 documented in [`docs/substrate_math_imports.md`](docs/substrate_math_imports.md). The checked results now
 include recursive real-valued ball containment and its pairing cap, monotone expansion of the certified drop
 set as a tree bound tightens, causal selection by cutting every routed set at the query's original position,
@@ -136,6 +137,35 @@ selectors that return positions they actually probed, and extends it to finite r
 the reservoir retention, `roundWidth + 128` cap, past bound, and causal cut are checked together as one
 composed plan. Retention remains conditional on nine pre-reservoir votes, and none of these facts proves
 attention-output quality or runtime.
+
+The newer audit also puts the read and router on a common finite-potential object. For scores $a_i(q)$ and
+values $v_i$, the log-partition, softmax weights, and weighted read are three views of one construction; for
+scalar values the read is the directional derivative of the potential. Appending a fresh item of exponential
+mass $a$ to an old mass $Z$ changes the potential by $\log(1+a/Z)$ and moves the read by exactly
+$a/(Z+a)$ times the fresh value's displacement from the old read. This is an access law, not deletion or
+rewriting of append-only stored content, and changing scores adds a separate score-only term.
+
+For a block whose logits lie in $[\ell,h]$, the normalized log-sum-exp change is now certified within
+$|\beta|^3(h-\ell)^3/6$ of its mean-plus-variance Taylor center. The bound controls the third cumulant over
+the whole tilt interval; the third cumulant measured only at zero is insufficient. Across sequential routed
+reads, local output errors obey $e_{t+1}\le\epsilon_t+L_t e_t$ when the exact next read is
+$L_t$-Lipschitz. Errors add only in the separately assumed nonexpansive case; without gain control, even a
+unit first-step error can be amplified beyond any proposed two-step bound.
+
+For query groups, the pointwise maximum pairing is the least shared safe bound, adding a query can only
+reduce the certified drop set, and applying one common linear isometry to every query and region preserves
+the bound and retained set exactly. This does not extend to position-dependent transports. A complementary
+finite objective weights tree-node reads by a supplied query distribution: tighter safe bounds cannot
+increase this cost, and a least-cost member exists in any supplied finite family of certified partitions.
+That is a selection theorem, not a tree-construction, optimization, generalization, asymptotic, or latency
+result.
+
+Finally, the read-budget boundary now includes finite preprocessing capacity. An index with $K$ states,
+per-state adaptive depth at most $b$, and at most $a$ unprobed reference-output positions can reach at most
+$K(b+a)$ single-spike placements. A finite randomized family therefore has some fixed placement with recall
+at most $K(b+a)/n$; grounded outputs remove the $a$ term. The identity index with $K=n$ reaches every spike
+at depth zero, so there is still no index-independent lower bound. State count is not equated with bits,
+index-build work, lookup work, or a general cell-probe cost.
 
 The audit also sharpens two boundaries used by this project. A routed set reused wholesale at every query is
 generally non-causal; SSA is causal because the final attention relation masks by original token position,

@@ -46,7 +46,7 @@ tolerance cannot be certified sparsely (see §5.7).
 | Near-floor kernel scaling to 12M | demonstrated | single-head synthetic IVF benchmark |
 | Omitted-mass and output-error certificates | reference implementation | CPU, adaptive, worst-case full scan |
 | Supporting routing invariants | proved in this paper | self-contained statements and proofs in Appendix B; private Lean audit is corroborating provenance |
-| Cheap worst-case losslessness | impossible under the stated model | arbitrary isolated targets force reads outside any strict sublinear budget |
+| Cheap worst-case losslessness | impossible under the stated models | grounded probes have a $b/n$ ceiling; a $K$-state index with unread-output width $a$ has a $K(b+a)/n$ ceiling |
 
 The paper reports the system as it exists at the stated measurement points. Experiment fixtures are kept
 separate when they establish different claims; results from synthetic kernel timing, real-model routing
@@ -324,12 +324,23 @@ So the tempered score estimates the block's *best* logit — exactly what select
 $(\log b)/\beta$. Small $\beta$ smooths over outliers (the centroid failure); large $\beta$ removes the bias
 but amplifies noise and loses the averaging that makes summaries stable. The cumulant form (4.2) is the
 second-order Taylor truncation of $g_c^{(\beta)}$ about $\beta=0$, used at the measured optimum
-$\beta\approx 2$; its truncation error is the Lagrange remainder $(\beta^2/6)\,K_c'''(\xi)$ for some
-$\xi\in(0,\beta)$, with $K_c$ the cumulant generating function of the in-block logits — a third-cumulant
-(skew) term that vanishes for light-tailed blocks and is *positive* for a positively-skewed (spiked) block,
-so the second-order score under-estimates exactly the outlier blocks it most needs to see at moderate
-$\beta$. That residual gap is the mechanism behind the isolated-needle failures measured in Section 10, and
-the reason the implementation offers an Edgeworth variant that adds the diagonal third-cumulant term.
+$\beta\approx2$. This approximation now has a deterministic interval certificate. If every in-block logit
+$x_j=\langle q,k_j\rangle$ lies in $[\ell,h]$ and
+$K(\beta)=\log\frac1b\sum_j e^{\beta x_j}$, then
+
+$$
+\left|K(\beta)-\left(\beta\bar x+\frac{\beta^2}{2}\operatorname{Var}(x)\right)\right|
+\le \frac{|\beta|^3(h-\ell)^3}{6}.
+\tag{5.4}
+$$
+
+For $\beta\ne0$, divide by $|\beta|$ to bound the error of $g_c^{(\beta)}$. The proof differentiates the
+finite log-partition three times and applies Taylor's theorem: its third derivative is the tilted third
+central moment, in magnitude. The range bound works because every tilted mean remains in $[\ell,h]$, so the
+absolute centered cube is at most $(h-\ell)^3$ throughout the entire segment from $0$ to $\beta$. Controlling
+the ordinary third cumulant only at zero does **not** certify the remainder. Thus an Edgeworth term measured
+at zero remains a heuristic, while (5.4) is a valid, often loose, blockwise interval. The residual is one
+mechanism behind the isolated-needle failures measured in Section 10.
 
 ### 5.3 The Samuelson prune test
 
@@ -339,7 +350,7 @@ element obeys
 $$
 (s_i-\bar s)^2 \;\le\; (m-1)\,\mathrm{Var}, \qquad\text{equivalently}\qquad
 \max_j s_j \;\le\; \bar s + \sqrt{(m-1)\,\mathrm{Var}} .
-\tag{5.4}
+\tag{5.5}
 $$
 Apply it to the in-block logits $s_j=\langle q,k_j\rangle$, whose mean is $\langle q,\mu_c\rangle$ and whose
 variance is $q^\top\Sigma_c q$. Then the block's best logit is bounded by
@@ -347,24 +358,24 @@ $\langle q,\mu_c\rangle+\sqrt{(b-1)\,q^\top\Sigma_c q}$, giving the **prune gate
 discarded against a threshold $\tau=s^\star$ whenever
 $$
 \boxed{\;(s^\star-\langle q,\mu_c\rangle)^2 \;>\; (b-1)\,q^\top\Sigma_c q\quad\text{and}\quad \langle q,\mu_c\rangle<s^\star\;}
-\tag{5.5}
+\tag{5.6}
 $$
 i.e. when the **margin** of the current best over the block mean exceeds $\sqrt{(b-1)\cdot\text{spread}}$. The
 test needs only $(\mu_c,\Sigma_c)$. It is *sufficient* (it never wrongly prunes) but not necessary. It
 sharpens the radius bound (5.1) when the block's spread along $q$ is small relative to its worst-case radius
 ($\sqrt{(b-1)\,q^\top\Sigma_c q}\ll\lVert q\rVert R_c$); neither bound dominates in general —
 $\sqrt{(b-1)\,q^\top\Sigma_c q}$ can exceed $\lVert q\rVert R_c$ by up to a factor $\sqrt{b-1}$ for
-spread-out blocks — so the implementation takes the minimum of the two. Equation (5.5) is the
+spread-out blocks — so the implementation takes the minimum of the two. Equation (5.6) is the
 operational core of cheap exact selection: it fires — and the block is skipped — precisely when the off-target
 spread $q^\top\Sigma_c q$ is small, which is the benign-geometry condition of Section 7.
 
-**Diagonal-summary caveat.** (5.4)–(5.5) are sound with the *full* quadratic form
+**Diagonal-summary caveat.** (5.5)–(5.6) are sound with the *full* quadratic form
 $q^\top\Sigma_c q=\mathrm{Var}_{j\in c}\langle q,k_j\rangle$. With the diagonal summary of (4.1), the proxy
 $\langle q^2,\sigma_c^2\rangle$ *under-estimates* the true logit variance whenever cross-covariances are
-positive, and the gate can then wrongly prune: **run on diagonal summaries, (5.5) is a heuristic, not a
+positive, and the gate can then wrongly prune: **run on diagonal summaries, (5.6) is a heuristic, not a
 certificate.** A sound $O(d)$-summary surrogate exists: by the triangle inequality in $L^2$ over the block,
 $\mathrm{Var}_{j\in c}\langle q,k_j\rangle\le\big(\sum_i\lvert q_i\rvert\,\sigma_{c,i}\big)^2$, so
-substituting $(\sum_i\lvert q_i\rvert\,\sigma_{c,i})^2$ for $q^\top\Sigma_c q$ in (5.5) keeps the gate
+substituting $(\sum_i\lvert q_i\rvert\,\sigma_{c,i})^2$ for $q^\top\Sigma_c q$ in (5.6) keeps the gate
 admissible at the same summary cost (looser, so it fires less often). The prune-rate measurements reported in
 this paper compute the per-member logit variance directly — the full quadratic form — so they certify the
 full-covariance gate, not the diagonal shortcut.
@@ -467,13 +478,13 @@ $\lVert X_c q\rVert^2/b$, i.e. $O(bd)$ — *exactly the cost of scoring the bloc
 
 $$
 B(1+b) \;=\; \tfrac{n}{b}(1+b) \;=\; n + \tfrac{n}{b} \;>\; n \qquad \text{for every } b .
-\tag{5.5}
+\tag{5.8}
 $$
 
 Arithmetic, with no hypothesis about the keys. A search that evaluates the exact summary bound on every
 block **has already paid for a full pass over the data before it skips anything.** Measured against a
 scan on real Gemma-2 layer-6 keys at $n=65536$: 1.062× at $b=16$ falling to 1.004× at $b=256$ — never
-below one, and by (5.5) it cannot be.
+below one, and by (5.8) it cannot be.
 
 **The routing is excellent; the price of asking is the problem.** The same measurement, counting keys
 alone, has contiguous blocks at $b=16$ under the exact bound reading **204 of 65536 keys** — a 321×
@@ -507,8 +518,19 @@ a $(\mu_c,\Sigma_c,b)$ summary costs more than reading every key*, and no rank t
 summary escapes it. It does **not** say summarising a block is hopeless — it bounds this family of
 bounds. Nor does it touch budget-$\kappa$ **lossy** routing, a different object with a different
 accounting and what SSA actually ships; §5.4's floor was always about lossless selection and this is its
-cost-side companion. The measurements are one model at one layer; the arithmetic of (5.5) is the only
+cost-side companion. The measurements are one model at one layer; the arithmetic of (5.8) is the only
 part that is geometry-free.
+
+**Distribution-sensitive certified partition objective.** Worst-case height is not the only honest unit. For
+a finite query family with nonnegative weights $w(q)$ and node-read count $r(q)$, define
+$C(r)=\sum_q w(q)r(q)$. Pointwise fewer reads never increase $C$, and one strict saving at a query of
+positive weight strictly decreases it. A safe partition supplies a cell assignment and query-dependent cell
+bounds dominating every member; only cells whose bounds clear the threshold are read. Lower certified
+bounds retain a subset and therefore have no larger $C$. Every supplied finite nonempty family of such
+partitions has a least-cost member, and the objective equals a tree's weighted node-read cost when their
+per-query counts agree. This licenses distribution-aware comparison among certified candidates. It does not
+construct or learn a tree, optimize over all partitions, prove generalization, or turn node count into
+wall-clock time.
 
 
 ### 5.6 Sharing one selection across a group of queries
@@ -525,6 +547,13 @@ Write $Q$ for the group, $|Q|=m_Q$. A shared bound $U$ is safe for every member 
 `no_safe_bound_holds_below_the_top_claim`, and the negative
 `a_prune_can_drop_the_greatest_part_of_a_second_objective` — a prune beyond reproach for its own objective can
 remove a second objective's best part outright, and the part is then gone rather than approximated.
+
+For the actual pairing claim this statement is exact: $U^*(c)=\max_{q\in Q}\langle q,x_c\rangle$ is the
+least blockwise function safe for every query. If the shared threshold lies below each query's own greatest
+pairing, the retained set $\{c:U^*(c)>\theta\}$ contains a maximizing block for every query. Applying one
+common linear isometry $A$ to all queries and block representatives fixes the claim pointwise because
+$\langle Aq,Ax_c\rangle=\langle q,x_c\rangle$; the shared safety certificate and retained set are therefore
+unchanged. This transport result does not cover a different positional map at each query or key slot.
 
 Two consequences carry into the implementation. The shared **threshold must be the group's weakest incumbent**,
 not its strongest: a block whose bound has fallen under the best member's incumbent may still hold a weaker
@@ -657,6 +686,57 @@ their minimum, the equal-value fence, and the reverse-direction
 unbounded limit. The SSA summary construction and Python implementation
 are not Lean proofs.
 
+#### One potential and an append-only store.
+
+The finite attention surface can be specified by only scores $a_i(q)$ and stored values $v_i$. Its potential
+$\Phi(q)=\log\sum_i e^{a_i(q)}$, normalized weights, dense read, and selected read are then derived rather
+than independent objects. For scalar values, tilting every score by $t v_i$ gives
+
+$$
+\left.\frac{d}{dt}\log\sum_i e^{a_i(q)+t v_i}\right|_{t=0}
+=\sum_i\frac{e^{a_i(q)}}{\sum_j e^{a_j(q)}}v_i.
+\tag{5.13}
+$$
+
+This identifies the Hopfield/attention read with the directional derivative of the same log-partition whose
+first two score moments drive cumulant routing. It does not identify the two-moment approximation with the
+potential.
+
+The distinction between stored content and access weight is exact for an append-only store. Let a nonempty
+old store have exponential mass $Z$, normalized read $r$, and append a fresh value $v$ with exponential mass
+$a>0$, holding the score surface fixed. Then
+
+$$
+Z'=Z+a,\qquad \Phi'-\Phi=\log(1+a/Z),\qquad
+r'-r=\frac{a}{Z+a}(v-r),
+\tag{5.14}
+$$
+
+and every old normalized weight is multiplied by $Z/(Z+a)$ and therefore strictly falls. If scores also
+change between rounds, both potential change and read change split exactly into the fresh-site term evaluated
+at the new scores plus a score-only term on the unchanged old store. No degradation direction follows: the
+fresh value can equal $r$, and a score change can reinforce or cancel the append term. Nothing is deleted or
+rewritten, and no cumulative drift, convergence, or recovery law is implied.
+
+#### Sequential routed reads.
+
+Local output certificates do not simply add through a transformer unless the intervening exact maps control
+how state error propagates. Let $F_t$ be the exact step, $G_t$ its routed approximation,
+$\|G_t(x)-F_t(x)\|\le\epsilon_t$, and let $F_t$ be $L_t$-Lipschitz. For exact and approximate paths starting
+from the same state,
+
+$$
+e_{t+1}\le\epsilon_t+L_t e_t,\qquad e_0=0.
+\tag{5.15}
+$$
+
+Iterating this recurrence is the certified multi-hop bound: an early error is multiplied by every later
+gain. If every $L_t\le1$, then $e_N\le\sum_{t<N}\epsilon_t$; exact local steps give identical paths. The gain
+hypothesis is necessary: a two-step scalar construction can make the first local error exactly one and the
+second local error zero while a shared, arbitrarily high-gain second map makes the final error exceed any
+proposed bound. This is deterministic state-error composition, not multiplication of retrieval success
+probabilities, and the cumulant score interval alone supplies neither $\epsilon_t$ nor $L_t$.
+
 #### Adaptive implementation and cost.
 
 `ssa/certified_attention.py` builds immutable contiguous-block key/value
@@ -724,16 +804,36 @@ weight non-negligibly, and **length-robust** if its accuracy is flat in $n$. A p
 > so at least one placement has seed-averaged recall at most $b/n$. $\square$
 
 The grounded-output hypothesis is essential: a depth-zero procedure can return the whole carrier and thereby
-“recall” every spike without probing one. Likewise, this theorem does not cover an arbitrary preprocessed index
-whose stored side information can name unprobed positions; applying a lower bound to such an index requires a
-model and budget for that information. For grounded adaptive probes, however, worst-case losslessness forces
+“recall” every spike without probing one. This theorem by itself does not cover a preprocessed index whose
+stored side information can name unprobed positions; the finite-state extension below covers one explicit
+capacity model, while an arbitrary index still requires a budget for its information. For grounded adaptive probes, however, worst-case losslessness forces
 $b\ge n$. `BoundedReadMiss.lean` machine-checks the reference-run invariance, deterministic count/rate,
 finite-randomized extension, sharp fixed-position reader, and the zero-depth counterexample.
+
+A finite-state abstraction now makes part of the preprocessing boundary quantitative. Suppose the planted
+position selects one of $K$ index states, each state selects an adaptive read of depth at most $b$, and its
+all-false reference leaf may additionally return at most $a$ unprobed positions. The reachable placements
+are covered by the $K$ statewise reach sets, so
+
+$$
+\#\{\text{recalled placements}\}\le K(b+a).
+\tag{6.1}
+$$
+
+For a finite randomized family, exchanging the seed and placement sums shows that some fixed placement has
+seed-averaged recall at most $K(b+a)/n$ and miss share at least $1-K(b+a)/n$. If every statewise output is
+grounded, the unread-output allowance disappears: the deterministic ceiling is $Kb$, and the same averaging
+argument gives $Kb/n$. The capacity factor is necessary: the identity index uses $K=n$
+states, records the spike position, and returns its singleton at depth zero, recalling every placement. This
+is finite counting, not a general data-structure lower bound: $K$ counts states but does not charge their bit
+representation, index construction, state lookup, arithmetic between probes, or scored/approximate/multiple
+target retrieval.
 
 > **Note on formalization.** The proofs given in this paper, including the complete routing-invariant
 > statements in Appendix B, are the public mathematical arguments. Their
 > formal counterparts — including `the_reach_share_is_within_the_depth_share`,
 > `a_spike_is_reached_by_at_most_the_depth_share_over_the_seed`,
+> `a_spike_is_reached_by_at_most_the_index_state_bound_over_the_seed`,
 > `the_return_is_exactly_the_top_above_the_threshold`, and
 > `the_plan_at_the_capacity_keeps_the_consensus_set_and_stays_capped_and_in_order` — are **machine-checked in a separate Lean 4
 > development** (core declarations in `Substrate.Universal` and domain recognitions in
@@ -766,7 +866,7 @@ trades accuracy. "Length-robust" in the first two rows is the accuracy sense of 
 currencies straight is part of the taxonomy's honesty.
 
 The escape from the trilemma is the third row: cheapness *and* losslessness are jointly available **when the
-bounds (5.1)/(5.2)/(5.5) are tight**, which is a property of the key geometry, not of the algorithm. SSA is
+bounds (5.1)/(5.2)/(5.6) are tight**, which is a property of the key geometry, not of the algorithm. SSA is
 therefore not claimed as universal subquadratic exact attention, but as a mechanism that is cheap,
 lossless, *and* length-robust **on benign geometry**, and merely cheap-and-length-robust-but-approximate
 otherwise. The next section is about making the geometry benign.
@@ -777,14 +877,14 @@ otherwise. The next section is about making the geometry benign.
 
 ### 7.1 Benign geometry, precisely
 
-The branch-and-bound cost and the prune gate (5.5) are governed by the **off-target spread** $q^\top\Sigma_c
+The branch-and-bound cost and the prune gate (5.6) are governed by the **off-target spread** $q^\top\Sigma_c
 q$ for the blocks a query does *not* need, relative to the **margin** $\Delta$ to the block it does. Geometry
 is *benign* for a query $q$ when, for every non-target block $c$,
 $$
 \langle q,\mu_c\rangle + \sqrt{(b-1)\,q^\top\Sigma_c q}\;<\; s^\star(q),
 \tag{7.1}
 $$
-i.e. the prune gate (5.5) fires everywhere except the target's block. Then exactly one block (plus the local
+i.e. the prune gate (5.6) fires everywhere except the target's block. Then exactly one block (plus the local
 window) is opened, branch-and-bound reads $O(b)$ keys, and selection is cheap *and* lossless. Isotropic keys
 violate (7.1) — every block's bound is large and uninformative, so nothing prunes and cost reverts to dense.
 
@@ -797,7 +897,7 @@ $$
 \tag{7.2}
 $$
 Minimizing $\sum_{c\neq\text{target}} q^\top\Sigma_c q$ is exactly minimizing the quantity that appears under
-the square root in the prune gate (5.5), so as training proceeds the gate fires for more non-target blocks and
+the square root in the prune gate (5.6), so as training proceeds the gate fires for more non-target blocks and
 the certified bound (5.1)/(5.2) tightens. Measured: co-training with (7.2) drove the *lossless*
 branch-and-bound cost from $26.5\%$ of keys to $4.2\%$ — a $6\times$ reduction — at **no** loss of retrieval
 accuracy. Training is what manufactures the geometry that the impossibility result (Section 6) says cheap
@@ -812,7 +912,7 @@ nearly low-rank (so a kernel/linear-attention factorization $\phi(q)^\top\phi(k)
 large $B$ it is full-rank (so no linear map approximates it, and one must *select*). Empirically, the effective
 rank of $e^{B\,KK^\top}$ on $256$ keys rose from $2.7$ at $B=0.5$ to $256$ (full) by $B=8$.
 
-The selection route, by contrast, is **scale-invariant**: in the prune gate (5.5) both the squared margin and
+The selection route, by contrast, is **scale-invariant**: in the prune gate (5.6) both the squared margin and
 the spread scale as $B^2$, so the gate's truth value is unchanged by $B$. Selection therefore works at *any*
 entry scale, whereas linear attention works only in the small-$B$ (smooth) regime. Sharp, long-range retrieval
 is the large-$B$ regime — which is why selection, not linearization, is the route for long-context exact
@@ -1094,7 +1194,7 @@ certify lossless selection in the worst case, which Section 6 shows is unavailab
 
 SSA is best understood as the resolution of a constrained problem rather than a universal accelerator. The
 recovery-weight law (3.1) shows selection makes retrieval flat in $n$; the admissible bound (5.1) and the
-prune gate (5.5) show summaries can certify that selection losslessly; the trilemma (Section 6) shows this can
+prune gate (5.6) show summaries can certify that selection losslessly; the trilemma (Section 6) shows this can
 be cheap **only** on benign geometry; and the regularizer (7.2) shows training can supply that geometry. The
 construction pipeline (Section 9) and the staging ladder (Section 8) turn the mechanism into a recipe that
 retrofits a dense model and extends its context a rung at a time.
@@ -1111,7 +1211,8 @@ smaller-scale. Broad retrieval, perplexity, multi-hop evaluation, trained long-c
 frontier-model validation remain open. (vi) The complete implementation is not formally verified end to end.
 Appendix B gives self-contained statements and proofs of the supporting exact-arithmetic invariants; access to
 the separate formalization is not required to inspect them. As corroborating provenance, the audit through
-private Substrate commit `130cae3e9` machine-checks the corresponding results for recursive real-valued ball
+private Substrate commits from the potential-store precursor `88a4c7012` through `77cd1b8c6` machine-check
+the corresponding results for recursive real-valued ball
 containment and monotone drop sets, causal prefix-cut selection, conditional 9-vote retention by a 128-slot
 highest-count reservoir at the 14-selector/70-item route bounds, and survival with a uniform cardinality cap
 under union with a fixed carrier. It also checks the structural two-pass comparison and its fixed-pass
@@ -1133,6 +1234,17 @@ in Section 6, including its finite-randomized extension and zero-depth counterex
 retention, fixed-carrier union, `roundWidth + 128` capacity, past bound, and causal cut are checked as one
 composed routing plan. The last statement is still conditional on the vote floor and says nothing about
 attention-output quality, FLOPs, or latency.
+
+The newer formal layer connects those routing facts to a finite score/value store whose softmax read is the
+derivative of its log-partition and proves the exact append law (5.14). It turns the mean/variance routing
+statistic into the bounded-range interval (5.4), while explicitly requiring third-cumulant control along the
+whole tilt segment. It composes state-dependent routed-read errors by the Lipschitz recurrence (5.15), with a
+counterexample ruling out a final bound from local error alone. It also proves that the pointwise query-group
+pairing maximum is the least shared safe claim and is invariant under one common isometry, defines the
+distribution-weighted node-read objective and finite certified-partition choice, and extends the single-spike
+read ceiling to finite-state indexed and finite-randomized readers. None of these results constructs a cheap
+summary, learns a partition, supplies the required Lipschitz constants, proves route quality, or turns finite
+state count into an implementation cost.
 
 The production tree inflates every recursive norm-plus-child-radius result by
 $8(d+4)\varepsilon_{32}$ and rounds the candidate and selected maximum toward $+\infty$; query/node score
@@ -1178,11 +1290,11 @@ the variance is $q^\top\Sigma_c q$, giving (4.2).
 $e^{\beta M}\le\sum_j e^{\beta x_j}\le b\,e^{\beta M}$. Take $\log$, divide by $\beta$:
 $M\le\beta^{-1}\log\sum_j e^{\beta x_j}\le M+\beta^{-1}\log b$.
 
-**A.4 Samuelson bound (5.4).** Center the data, $d_j=s_j-\bar s$, so $\sum_j d_j=0$. Fix index $i$. By
+**A.4 Samuelson bound (5.5).** Center the data, $d_j=s_j-\bar s$, so $\sum_j d_j=0$. Fix index $i$. By
 Cauchy–Schwarz over the other $m-1$ indices, $d_i^2=(\sum_{j\neq i}d_j)^2\le(m-1)\sum_{j\neq
 i}d_j^2=(m-1)(\sum_j d_j^2-d_i^2)$. Hence $d_i^2\,m\le(m-1)\sum_j d_j^2$, i.e.
 $(s_i-\bar s)^2\le(m-1)\mathrm{Var}$. Taking the max over $i$ and adding $\bar s$ gives the stated bound on
-$\max_j s_j$, and (5.5) is its contrapositive against the threshold $s^\star$.
+$\max_j s_j$, and (5.6) is its contrapositive against the threshold $s^\star$.
 
 ---
 
@@ -1190,7 +1302,9 @@ $\max_j s_j$, and (5.5) is its contrapositive against the threshold $s^\star$.
 
 This appendix contains the mathematical content used to justify the 10M router's center-radius hierarchy,
 bounded top selection, adaptive read-budget boundary, causal selected reads, cross-head reservoir, fixed
-cross-layer carrier, and the factorized-attention and strictly-causal comparisons used to delimit the claims.
+cross-layer carrier, finite potential and append laws, cumulant intervals, sequential error composition,
+query-group transport, distribution-weighted safe partitions, finite index capacity, and the
+factorized-attention and strictly-causal comparisons used to delimit the claims.
 The restricted-read/output proof is already self-contained in §5.7. This appendix is included so the public
 artifact does not depend on access to the separate Lean repository. The formal audit is useful corroboration,
 but the definitions,
@@ -1655,6 +1769,163 @@ $\square$
 Grounding is necessary: the depth-zero leaf that returns all $n$ positions recalls every placement. A reader
 that probes any fixed set $E$ and returns exactly $E$ attains the bound, so the count is sharp. Preprocessed
 indexes with side information outside the probe trace are not modeled by this proposition.
+
+### B.14 Potential reads and append-only stores
+
+Let $I$ be a nonempty finite set, let $a_i(q)\in\mathbb R$ be probe-dependent scores, and let $v_i$ be
+stored values in a real normed vector space. Define
+
+$$
+Z(q)=\sum_{i\in I}e^{a_i(q)},\quad \Phi(q)=\log Z(q),\quad
+p_i(q)=\frac{e^{a_i(q)}}{Z(q)},\quad r(q)=\sum_i p_i(q)v_i.
+$$
+
+These are definitions from the score/value store, not four independently supplied operations.
+
+**Proposition B.17 (one-potential read and exact append law).** For scalar $v_i$,
+
+$$
+\left.\frac{d}{dt}\log\sum_i e^{a_i(q)+t v_i}\right|_{t=0}=r(q).
+$$
+
+If a nonempty finite store of mass $Z$ and read $r$ receives one fresh site $x$ of mass
+$a=e^{a_x}>0$ and value $v_x$, then
+
+$$
+Z'=Z+a,\qquad \Phi'-\Phi=\log(1+a/Z),\qquad
+p_i'=\frac{Z}{Z+a}p_i\ (i\ne x),\qquad
+r'-r=\frac{a}{Z+a}(v_x-r).
+$$
+
+**Proof.** Differentiate the finite exponential sum and divide by it to obtain
+$\sum_i e^{a_i}v_i/Z$. The mass identity is finite-sum insertion. Factor
+$Z+a=Z(1+a/Z)$ for the log identity and divide each old numerator by the new denominator for the weight
+identity. Finally, $r'=(Zr+av_x)/(Z+a)$, whose difference from $r$ is the displayed update. $\square$
+
+When the score surface changes at the same round, insert and subtract the read (or log mass) of the old
+carrier evaluated with the new scores. This splits total change exactly into the append term at the new
+scores and a score-only term on the unchanged old carrier. Consequently append-only retention does not imply
+access-weight retention: old weights strictly fall at a pure append, but no output-degradation direction,
+cumulative drift bound, recovery rule, or convergence statement follows.
+
+### B.15 Bounded-interval cumulant routing
+
+For logits $x_i\in[\ell,h]$, define
+$K(b)=\log\bigl(|I|^{-1}\sum_i e^{b x_i}\bigr)$, their uniform mean $\mu$, and their uniform population
+variance $\sigma^2$. Let $\mathbb E_b$ denote expectation under weights proportional to $e^{b x_i}$.
+
+**Proposition B.18 (second-order routing interval).** For every real $b$,
+
+$$
+\left|K(b)-\left(b\mu+\frac{b^2\sigma^2}{2}\right)\right|
+\le \frac{|b|^3(h-\ell)^3}{6}.
+$$
+
+More generally, $(h-\ell)^3$ may be replaced by any $M$ satisfying
+$|\mathbb E_c[(x-\mathbb E_c x)^3]|\le M$ for every $c$ between $0$ and $b$.
+
+**Proof.** Direct differentiation of the finite log-partition gives
+$K'(c)=\mathbb E_c x$, $K''(c)=\mathbb E_c[(x-\mathbb E_c x)^2]$, and
+$K'''(c)=\mathbb E_c[(x-\mathbb E_c x)^3]$. At zero these are $\mu$ and $\sigma^2$. Every tilted mean
+lies in $[\ell,h]$, hence $|x_i-\mathbb E_c x|\le h-\ell$ and
+$|K'''(c)|\le\mathbb E_c|x-\mathbb E_c x|^3\le(h-\ell)^3$. Taylor's theorem with Lagrange remainder gives
+the claim. $\square$
+
+This encloses a supplied block's normalized log-sum-exp; it neither selects a route nor proves retrieval
+accuracy. The ordinary third cumulant at zero alone does not satisfy the segment hypothesis.
+
+### B.16 Sequential error composition
+
+Let $F_t,G_t:E\to E$ be exact and approximate maps on a metric space. Assume $F_t$ is
+$L_t$-Lipschitz and $d(G_t(x),F_t(x))\le\epsilon_t$ for every input. Starting both paths at $x_0$, write
+$e_t=d(\widetilde x_t,x_t)$.
+
+**Proposition B.19 (Lipschitz-weighted multi-hop error).** The paths obey
+
+$$
+e_{t+1}\le\epsilon_t+L_t e_t,
+$$
+
+and hence the final error is bounded by the fold beginning at zero and repeatedly applying
+$z\mapsto\epsilon_t+L_tz$. If every $L_t\le1$, then
+$e_N\le\sum_{t<N}\epsilon_t$; if $F_t=G_t$ everywhere, the paths agree exactly.
+
+**Proof.** Insert $F_t(\widetilde x_t)$ between $G_t(\widetilde x_t)$ and $F_t(x_t)$. The triangle
+inequality bounds the first distance by $\epsilon_t$, and Lipschitzness bounds the second by $L_te_t$.
+Induction gives the fold and the nonexpansive sum. Pointwise equality gives exactness by the same induction.
+$\square$
+
+Gain control is necessary. Given any proposed two-step bound $B$, let the first approximate scalar map differ
+from the exact one by one and let the shared second map multiply by $|B|+1$. The second local error is zero,
+yet the final discrepancy is $|B|+1>B$. Thus local read certificates alone do not certify a multi-hop path.
+
+### B.17 Query groups and uniform route transport
+
+For finite nonempty query and part sets $Q,B$ with vectors $q_s,x_c$, define the shared claim
+$U^*(c)=\max_{s\in Q}\langle q_s,x_c\rangle$. Call $U$ safe when
+$\langle q_s,x_c\rangle\le U(c)$ for every $s,c$.
+
+**Proposition B.20 (least shared claim).** A function $U$ is safe exactly when $U^*(c)\le U(c)$ for every
+$c$; thus $U^*$ is the least shared safe bound. If
+$\theta<\max_c\langle q_s,x_c\rangle$ for every $s$, then
+$\{c:U^*(c)>\theta\}$ contains a maximizing part for every query. Adding another query can only shrink the
+drop set $\{c:U^*(c)\le\theta\}$. If one linear isometry $A$ is applied to every $q_s$ and $x_c$, then
+$U^*$, its retained set, and the safety relation are unchanged.
+
+**Proof.** A finite maximum dominates every member and is below every common upper bound, proving safety and
+minimality. A query maximizer has score above $\theta$ and no larger than $U^*$, so it is retained. Enlarging
+the query family can only raise a pointwise maximum. Finally,
+$\langle Aq_s,Ax_c\rangle=\langle q_s,x_c\rangle$ for a common isometry, so every displayed object is fixed.
+$\square$
+
+This supplies no cheaper query summary: evaluating the exact top claim may itself cost $|Q|$ pairings per
+part. Nor does it cover distinct position-dependent maps, which can reverse pairing order.
+
+### B.18 Distribution-sensitive certified partitions
+
+For a finite query set with nonnegative weights $w_q$, let the unit-read cost of a count profile $r_q$ be
+$C(r)=\sum_qw_qr_q$. A safe partition assigns every item $i$ to a cell $c(i)$ and supplies bounds
+$U(q,c)$ with $s(q,i)\le U(q,c(i))$. At threshold $\tau(q)$ it reads cells with
+$U(q,c)>\tau(q)$.
+
+**Proposition B.21 (safe finite-family choice).** Pointwise $r_q\le s_q$ implies $C(r)\le C(s)$; if the
+inequality is strict at a query of positive weight, so is the cost inequality. A cell not read by a safe
+partition contains no item above threshold. Replacing its bounds by pointwise lower safe bounds reads a
+subset of cells and cannot increase weighted cost. Every supplied finite nonempty family of safe partitions
+has a least-cost member. If a tree traversal and a partition read equally many nodes/cells for every query,
+their weighted costs agree.
+
+**Proof.** Each cost summand is monotone because $w_q\ge0$, and a strict positive-weight summand makes the
+finite sum strict. For an omitted cell, $U(q,c)\le\tau(q)$ and safety gives
+$s(q,i)\le\tau(q)$. Lower bounds can only remove members from $\{c:U(q,c)>\tau(q)\}$; cardinality and the
+first monotonicity result give the cost claim. A real-valued function on a finite nonempty candidate family
+attains a minimum. The final statement substitutes equal pointwise counts into the same finite sum.
+$\square$
+
+The result chooses among supplied certified candidates. It constructs no partition or tree, proves no global
+optimum or generalization, and treats one node read as one cost unit rather than wall-clock work.
+
+### B.19 Finite index capacity
+
+Extend the spike model of B.13 with a finite index-state set $C$, $|C|=K$. Each spike placement $j$ selects
+a state $c(j)$, and that state selects an adaptive read tree. Suppose every state tree has depth at most $b$
+and its all-false reference output has at most $a$ members.
+
+**Proposition B.22 (indexed and randomized ceiling).** The indexed reader recalls at most $K(b+a)$ spike
+placements. If every state tree is grounded, it recalls at most $Kb$. For any finite distribution over such
+indexed plans, some fixed placement has seed-averaged recall at most $K(b+a)/n$ and miss share at least
+$1-K(b+a)/n$. Under grounding the same averaging argument tightens the recall ceiling to $Kb/n$.
+
+**Proof.** For one fixed state, the B.13 reference-path argument shows that every successful placement lies
+either in its reference probe trace or in its reference output, a set of size at most $b+a$. The complete
+indexed success set is contained in the union of these sets over $K$ states, so its cardinality is at most
+$K(b+a)$. Grounding puts the reference output inside the trace and removes $a$. For randomization, sum reach
+indicators first over positions and then seeds; every seed contributes at most $K(b+a)$. Reversing the two
+finite sums and averaging forces some position below the mean, and reach plus miss equals one. $\square$
+
+The dependence on $K$ cannot be removed: the identity index takes $C=\{0,\ldots,n-1\}$, stores $j$, and
+selects a depth-zero leaf returning $\{j\}$. It recalls every spike. State count is not a storage-bit or
+runtime cost, and the theorem does not cover scored, approximate, or multiple-target retrieval.
 
 ---
 
