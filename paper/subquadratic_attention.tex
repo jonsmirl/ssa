@@ -99,10 +99,12 @@ The $n\times n$ score matrix makes both time and memory $\Theta(n^2 d)$. For con
 this is prohibitive, yet most of the matrix is near-zero: for a given query only a small set of keys carries
 appreciable weight. The question is whether one can \emph{find} that set without forming all $n^2$ scores.
 
-Two subquadratic families answer differently. \emph{Kernel / linear attention} replaces
+Three subquadratic families answer differently. \emph{Kernel / linear attention} replaces
 $\exp(\inner{q}{k})$ by a factorizable feature map $\phi(q)^\top\phi(k)$, giving $O(n)$ cost but a low-rank
-(smoothed) attention matrix. \emph{Sparse / selective attention} keeps the exact softmax but evaluates it only
-on a chosen subset of keys. SSA is in the second family, with three design commitments:
+(smoothed) attention matrix. \emph{Two-pass structural factorization} mixes within blocks and then across
+equal within-block slots, sharing intermediates while retaining a path between every token pair.
+\emph{Sparse / selective attention} keeps the exact softmax but evaluates it only on a chosen subset of keys.
+SSA is in the third family, with three design commitments:
 \begin{enumerate}
 \item \textbf{Content-dependent selection.} The chosen keys depend on the query, not only on position; this is
   what lets a query reach the one relevant block a million tokens back.
@@ -225,6 +227,12 @@ Return O
 \vspace{-0.6em}\noindent\rule{\textwidth}{0.6pt}
 \bigskip
 
+The final line's original-position cut is logically necessary, not cosmetic. A selected set reused wholesale
+at every query is non-causal whenever it contains a position later than the query. Intersecting it with
+$\{j:j\le i\}$ makes the relation causal for every proposed set, and compositions of such causal relations
+remain causal. The implementation additionally applies a token-level causal mask, so even a selected block
+that straddles the query cannot expose its future tokens; chunk-level causality alone would not suffice.
+
 \subsection{Complexity---two regimes, and which claim lives where}\label{sec:complexity}
 
 Routing is $O(n\,B\,d)$ if every query scores every block, and attention is $O(n\,\kappa\,d)$. Two parameter
@@ -254,6 +262,22 @@ So ``$O(n\sqrt n)$ per layer'' and ``recovery flat in $n$'' are claims about \em
 and the hierarchical (or IVF) router at fixed $b,\kappa$ is what reconciles them. Either way the dominant
 $n^2$ term is gone. In a block-sparse kernel implementation the practical speedup over
 a dense exact kernel was $20.6\times$ at $n=262{,}144$ on a single accelerator (Section~\ref{sec:experiments}).
+
+\paragraph{Structural-factorization comparison.} Write a position as $(\text{block},\text{slot})$ with block
+width $w$ and $n/w$ blocks. A within-block pass can move from a source to the target's slot inside the source
+block; a same-slot cross-block pass then reaches the target. Thus two non-dense passes give complete two-hop
+connectivity. If---and only if---a cost model supplies work proportional to $n(w+n/w)$, AM--GM gives
+$w+n/w\ge2\sqrt n$, uniquely at $w=\sqrt n$. This is not SSA's omission-based mechanism, and complete reach
+is not dense-attention equivalence. With the within-block pass fixed, varying the cross-block matrices has
+parameter-space dimension at most $w(n/w)^2$, strictly below the $n^2$ target dimension when $w>1$; the
+symmetric statement holds with the other pass fixed. This proves neither a limitation with both passes free
+nor a rank bound---the product can have full rank.
+
+There is a similarly clean but deliberately unimplemented fanout calculation. If expanding a tree node of
+fanout $f$ costs exactly $f$ scalar units per level, the path cost is proportional to
+$f\log_f B=(\log B)f/\log f$, minimized continuously at $e$ and among integers $f\ge2$ at 3. GPU
+vectorization, memory traffic, fixed-beam recall, and build cost are absent from that model, so it is a
+benchmark hypothesis rather than a reason to replace the measured 10M configuration's fanout 16.
 
 \section{Routing theory: when a summary is enough}\label{sec:routing}
 
@@ -287,6 +311,12 @@ blocks whose bound clears $s^\star$ are ever read.
 The cost of branch-and-bound is the number of blocks whose bound exceeds the true best---a quantity governed
 entirely by how \emph{tight} the bound~\eqref{eq:admissible} is, i.e.\ by the geometry of the keys
 (Sections~\ref{sec:trilemma}--\ref{sec:routability}).
+
+The hierarchy also has a monotone pruning law. Against a fixed reference point, a descendant ball's reach is
+no larger than its ancestor's, hence its score cap is no larger. At any fixed threshold, every region dropped
+by the ancestor cap is therefore also dropped by the descendant cap: refinement can only enlarge the
+certified drop set. This is a correctness/order statement, not a complexity theorem---an algorithm may still
+open every node, and region counts need not equal key counts or wall time.
 
 \paragraph{Anisotropic refinement.} The isotropic radius $R_c$ is loose when a block's keys are spread unevenly
 across directions. Using the covariance ellipsoid instead,
@@ -827,12 +857,19 @@ beyond those it was trained on. The position encoding decides whether it can.
 \subsection{Position-invariant routing under rotary embeddings}
 
 With rotary position embeddings (RoPE), a query/key pair interacts only through their \emph{relative} offset:
-the logit $\inner{q_i}{k_j}$ depends on $i-j$, not on $i,j$ absolutely. A model that has learned \emph{content}
-routing---match a query to the key whose content binds it, at whatever offset---therefore transfers to offsets
-it never saw, because (i)~the decisive relative structure (e.g.\ a key-to-value offset of $+1$) is constant at
-any length and (ii)~content matching is position-free. A model with \emph{learned absolute} position embeddings
-cannot: its embeddings past the trained length are untrained. This predicts, and experiments confirm, zero-shot
-extrapolation of ${\sim}2$--$4\times$ for RoPE and immediate collapse for learned-absolute position.
+the algebraic score depends on $i-j$, not on $i,j$ absolutely. This removes an absolute-position table, but it
+does \emph{not} prove that a trained model transfers to arbitrary unseen offsets. Each rotary band is periodic.
+If its per-position phase advance is bounded by $\omega$, a nonzero wrapped turn over a window requires at
+least one wavelength, $N\ge2\pi/\omega$; below that length the winding is zero. Moreover, two sampled phase
+schedules that differ by less than half a turn at every position have the same winding, so changing the turn
+count forces that anti-aliasing margin to fail somewhere. Extending far enough is therefore a change of
+winding regime, not merely a harmless translation of a relative coordinate.
+
+Content-only routing can still transfer empirically because its proposal geometry omits the rotary action,
+while the attention score keeps the model's post-RoPE vectors. The measured toy staging result and the real
+model's roughly $2$--$4\times$ zero-shot range support limited transfer; they do not establish an unbounded
+RoPE theorem. This distinction is especially important for the 10M run's approximately $306\times$ static
+YaRN factor.
 
 \subsection{The staging ladder}
 
@@ -1150,15 +1187,33 @@ smaller-scale. Broad retrieval, perplexity, multi-hop evaluation, trained long-c
 frontier-model validation remain open. (vi)~The complete implementation is not formally verified end to end.
 Appendix~\ref{app:invariants} gives self-contained statements and proofs of the supporting exact-arithmetic
 invariants; access to the separate formalization is not required to inspect them. As corroborating provenance,
-private Substrate commit \texttt{908ec0d6d} machine-checks the corresponding results for recursive
-real-valued ball containment, conditional 9-vote retention by a 128-slot highest-count reservoir at the
-14-selector/70-item route bounds, and survival with a uniform cardinality cap under union with a fixed carrier.
+the audit through private Substrate commit \texttt{21e49cbf3} machine-checks the corresponding results for
+recursive real-valued ball containment and monotone drop sets, causal prefix-cut selection, conditional
+9-vote retention by a 128-slot highest-count reservoir at the 14-selector/70-item route bounds, and survival
+with a uniform cardinality cap under union with a fixed carrier. It also checks the structural two-pass
+comparison and its fixed-pass expressivity fence, the strictly-causal finite-transfer identity, and the RoPE
+winding facts stated below.
 It also proves that the radial pairing cap is attained under alignment plus a realizable boundary member and
 that the per-centre refinement agrees there. Those alignment hypotheses are sufficient, not shown necessary.
 The per-centre cap is universally no larger; a plane witness exhibits a strict gap as large as the whole cap,
 but no converse says nonalignment forces strictness or equality forces alignment. These results do not verify
 the Python/CUDA mapping, float32 outward rounding, fixed-beam quality, or the unrecorded premise that the
 measured target had nine pre-consensus base-route votes.
+
+Two adjacent results remain boundaries rather than implementation claims. A positive log-concave score-spread
+function has a nonincreasing ratio across any fixed nonnegative displacement, but SSA has not established that
+empirical hypothesis and the result is not an admissible skip bound. Separately, for a strictly
+below-diagonal linear interaction $A$ on an $n$-position carrier, $A^n=0$ and
+$(I-A)^{-1}=\sum_{k=0}^{n-1}A^k$ without a decay condition. Ordinary causal softmax includes its diagonal and
+a transformer includes nonlinear stages, so this identity does not make one SSA layer a complete multi-hop
+solver; it clarifies why the measured two-hop failures remain an empirical model-and-routing question.
+
+The compression comparator has a separate sign boundary. A product of gains in $[0,1]$ can shrink or erase a
+stored scalar but cannot reverse its sign; once negative gains are admitted, reversal is determined by their
+parity. For the DeltaNet-style rank-one correction $T(x)=x-\beta\inner{k}{x}k$, the key direction has gain
+$1-\beta\lVert k\rVert^2$ and becomes the exact reflection across $k^\perp$ at
+$\beta\lVert k\rVert^2=2$. This explains a capability boundary of the compression arm; it does not improve or
+certify SSA's selector.
 
 \appendix
 \section{Derivations}
@@ -1189,7 +1244,8 @@ $\max_j s_j$, and~\eqref{eq:prune} is its contrapositive against the threshold $
 \section{Self-contained routing invariants}\label{app:invariants}
 
 This appendix contains the mathematical content used to justify the 10M router's center-radius hierarchy,
-cross-head reservoir, and fixed cross-layer carrier. It is included so the public artifact does not depend on
+causal selected reads, cross-head reservoir, fixed cross-layer carrier, and the factorized-attention and
+strictly-causal comparisons used to delimit the claims. It is included so the public artifact does not depend on
 access to the separate Lean repository. The formal audit is useful corroboration, but the definitions,
 statements, proofs, counterexamples, and scope needed to assess the claims are all below. Every geometric
 statement is over an exact real inner-product space; floating-point consequences require a separate
@@ -1336,6 +1392,17 @@ $c_u-p$, proves ancestor-reach monotonicity. Proposition~\ref{prop:app-radial} a
 score cap.
 \end{proof}
 
+For a fixed query and reference point, write
+$U_v=\inner{q}{p}+\lVert q\rVert(\lVert c_v-p\rVert+\rho_v)$. Ancestor-reach monotonicity gives
+$U_s\le U_t$ whenever $s\preceq t$. Hence, at every threshold $\theta$,
+\[
+U_t\le\theta\quad\Longrightarrow\quad U_s\le\theta.
+\]
+For any finite family of paired ancestor/descendant regions, the descendant drop set therefore contains the
+ancestor drop set and has at least its cardinality. Likewise Proposition~\ref{prop:app-per-centre} implies that
+the per-centre cap drops every region the reach cap drops. These are consequences of bound dominance at a
+fixed threshold; they do not count keys, traversed nodes, or elapsed work.
+
 This establishes exact-real containment at arbitrary depth. It proves neither that a node radius is minimal
 nor that the fixed-beam search visits the correct branch. In float32, containment additionally requires radii
 to be rounded outward or inflated enough to cover accumulated error.
@@ -1454,6 +1521,150 @@ when both components are. This property is preserved by either construction unde
 hypotheses; the union does not create it: at $t=0$, $P=\{0\}$ is past-bounded but $S_0=\{5\}$ and
 $S_0\cup P$ are not. None of these set identities specifies how a selector admits an item, proves a causal
 mask, or proves that the measured target belonged to $P$.
+
+\subsection{Selected reads and position causality}
+
+Let $L$ be linearly ordered and let $S\subseteq L$ be a finite routed set. Define the whole-set and
+position-cut reads
+\begin{equation}\label{eq:app-causal-cut}
+W_S(i)=S,
+\qquad C_S(i)=\{j\in S:j\le i\}.
+\end{equation}
+Call a read $R$ causal when $j\in R(i)$ always implies $j\le i$.
+
+\begin{proposition}[Causal cut and composition]\label{prop:app-causal-cut}
+The cut read $C_S$ is causal for every $S$. The whole-set read $W_S$ is non-causal whenever some selected
+$j$ lies after a query $i$; in particular, any $S$ with two distinct elements fails at its least element. A
+composition of causal relations is causal.
+\end{proposition}
+\begin{proof}
+Membership in $C_S(i)$ includes $j\le i$ by definition. For $W_S$, the later selected position is returned at
+the earlier query. Finally, if a first causal stage relates $i$ only to $k\le i$ and a second relates $k$ only
+to $j\le k$, transitivity gives $j\le i$.
+\end{proof}
+
+Chunk causality is not position causality: positions 0 and 1 in the same chunk have equal chunk index, yet a
+whole-chunk read at position 0 may expose position 1. SSA's token-level mask implements $C_S$, including at a
+partially visible boundary block.
+
+\subsection{Two-pass cover and its expressivity fence}
+
+Index $n=pw$ positions by pairs $(a,u)$ of a block $a$ and slot $u$. Let a local relation connect pairs with
+the same block, and a global relation connect pairs with the same slot.
+
+\begin{proposition}[Complete two-hop cover and balanced scalar cost]\label{prop:app-two-hop}
+Every source $(a,u)$ reaches every target $(b,v)$ by local then global steps through $(a,v)$; the reverse order
+works through $(b,u)$. Neither relation alone is complete when $p,w\ge2$. If an external accounting assigns
+cost proportional to $n(w+n/w)$ with real $w>0$, then
+\begin{equation}\label{eq:app-balanced}
+w+\frac nw\ge2\sqrt n,
+\end{equation}
+with equality exactly at $w=\sqrt n$.
+\end{proposition}
+\begin{proof}
+The displayed intermediates share the required coordinate with each endpoint. Pairs differing in both
+coordinates witness the failure of either relation alone. For the cost,
+$(w-\sqrt n)^2/w=w+n/w-2\sqrt n\ge0$; equality of a square holds exactly at the stated point.
+\end{proof}
+
+Connectivity is not functional equivalence. Give each block an arbitrary $w\times w$ local mixing matrix and
+each slot an arbitrary $p\times p$ global mixing matrix. With the local family fixed, the composite depends
+linearly on $wp^2$ global parameters, whereas all linear maps on the $pw$ tokens form a space of dimension
+$p^2w^2$. Thus for $p\ge1,w\ge2$ the reachable family is a strict subspace; symmetrically, fixing the global
+family gives at most $pw^2<p^2w^2$ dimensions when $p\ge2,w\ge1$. This says nothing about the bilinear family
+when both passes vary and implies no rank bound: two differently blocked full-rank factors can have a
+full-rank product.
+
+\subsection{Strictly causal finite transfer}
+
+Let $A$ be an $n\times n$ matrix with $A_{ij}=0$ unless $j<i$---a strictly past-only linear interaction with no
+diagonal.
+
+\begin{proposition}[Nilpotence and exact finite inverse]\label{prop:app-transfer}
+A nonzero entry of $A^k$ can move at least $k$ places down the order. Consequently $A^n=0$ and
+\begin{equation}\label{eq:app-transfer}
+(I-A)^{-1}=I+A+\cdots+A^{n-1},
+\end{equation}
+with no bound on the magnitudes of $A$'s entries.
+\end{proposition}
+\begin{proof}
+Induct on $k$. Each additional matrix multiplication inserts one strictly increasing intermediate index, so a
+length-$k$ path needs at least $k$ distinct order steps. No such path of length $n$ exists on $n$ positions,
+hence $A^n=0$. Multiplying the finite geometric sum by $I-A$ on either side telescopes to $I-A^n=I$.
+\end{proof}
+
+This applies to a linear strictly-below-diagonal operator. Standard causal attention admits the current
+position, and transformer layers contain normalization and nonlinear maps, so~\eqref{eq:app-transfer} is not
+a one-layer multi-hop guarantee for SSA.
+
+\subsection{Rotary winding and extrapolation}
+
+Let a lifted phase schedule $\theta_0,\ldots,\theta_N\in\R$ close after $k$ turns,
+$\theta_N-\theta_0=2\pi k$, and suppose every step has magnitude at most $\omega$.
+
+\begin{proposition}[Wavelength floor and winding stability]\label{prop:app-winding}
+The turn count obeys
+\begin{equation}\label{eq:app-winding}
+2\pi|k|\le N\omega.
+\end{equation}
+Thus $N\omega<2\pi$ forces $k=0$. If two closed lifted schedules $\theta,\phi$ differ by less than $\pi$ at
+every sampled position, then their turn counts agree.
+\end{proposition}
+\begin{proof}
+Telescope the increments and apply the triangle inequality:
+$2\pi|k|=|\sum_{t<N}(\theta_{t+1}-\theta_t)|\le N\omega$. For stability, the difference of the two endpoint
+differences is $2\pi(k-\ell)$, while it is also
+$(\theta_N-\phi_N)-(\theta_0-\phi_0)$, whose magnitude is strictly below $2\pi$; the only such integer multiple
+of $2\pi$ is zero.
+\end{proof}
+
+For angles supplied only modulo $2\pi$, identifying the sampled discrete winding with a lift additionally
+requires an anti-aliasing choice---no step may cross half a turn. These statements delimit a positional
+regime; they do not prove that attention quality is good within it or bad outside it.
+
+\subsection{Two analytic baselines not used as certificates}
+
+\begin{proposition}[Log-concave spread ratio]\label{prop:app-log-concave}
+If $\sigma:\R\to(0,\infty)$ has concave $\log\sigma$, then for every $c\ge0$ the ratio
+$\sigma(x+c)/\sigma(x)$ is nonincreasing in $x$.
+\end{proposition}
+\begin{proof}
+A concave function has nonincreasing increments across a fixed nonnegative displacement, so
+$\log\sigma(x+c)-\log\sigma(x)\ge\log\sigma(y+c)-\log\sigma(y)$ for $x\le y$. Exponentiation preserves the
+order.
+\end{proof}
+
+This can support a representative-position heuristic only after the score-spread shape is measured. It is
+not an upper bound on any individual key and licenses no exact prune. The converse at one displacement is
+false, and a conclusion measured at one block length need not transfer to another.
+
+\begin{proposition}[Ideal scalar tree fanout]\label{prop:app-fanout}
+For $B>1$, in the model that charges $f$ units at each of $\log_f B$ levels, $f\log_f B$ is minimized for real $f>1$ at
+$e$ and for integer $f\ge2$ at 3.
+\end{proposition}
+\begin{proof}
+Apart from the positive constant $\log B$, differentiate $f/\log f$; its derivative has the sign of
+$\log f-1$, so the unique real minimum is $e$. The function increases for integers $f\ge3$, and
+$3/\log3<2/\log2$ is equivalent to $2^3<3^2$.
+\end{proof}
+
+This scalar model omits the costs and quality effects that dominate a batched GPU tree. It motivates a fanout
+sweep; it does not select SSA's production fanout.
+
+\subsection{Gain signs and the rank-one reflection corner}
+
+Let $G_m=\prod_{t<m}a_t$. If every $a_t\in[0,1]$, induction gives $G_m\in[0,1]$, so multiplying a positive
+stored scalar by $G_m$ cannot make it negative. If every factor is nonzero, the sign of $G_m$ is negative
+exactly when an odd number of factors are negative.
+
+For a nonzero $k$ define the rank-one correction
+\begin{equation}\label{eq:app-reflection}
+T_{\beta,k}(x)=x-\beta\inner{k}{x}k.
+\end{equation}
+It fixes every $x\perp k$ and sends $k\mapsto(1-\beta\lVert k\rVert^2)k$. Therefore the key line reverses
+exactly when $\beta\lVert k\rVert^2>1$, and at $\beta\lVert k\rVert^2=2$ the map is $+1$ on $k^\perp$ and
+$-1$ on the line spanned by $k$: precisely the orthogonal reflection across $k^\perp$. These are statements
+about a compressed linear state update, not sparse selection or attention quality.
 
 \begin{thebibliography}{17}
 \bibitem{vaswani2017} A.~Vaswani et al. \emph{Attention Is All You Need.} NeurIPS, 2017.

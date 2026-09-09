@@ -1,6 +1,7 @@
 # Substrate math that applies to SSA — an import list
 
-This assessment maps inspected Substrate results to SSA's selection, attention error, and cost models.
+This assessment maps inspected Substrate results to SSA's selection, attention error, and cost models. The
+current audit is through Substrate commit `21e49cbf3` (2026-09-08).
 The actionable extension is an adaptive output certificate in `ssa/certified_attention.py` (paper §5.7).
 It combines existing log-sum-exp and barycenter bounds with the support-restriction interpretation made
 explicit by Substrate's `UniformSupport.lean` and finite-vector `TotalVariation.lean` results.
@@ -19,6 +20,27 @@ score cushion is not interval arithmetic. Declaration names are the stable looku
 in the exploratory entries below are not a guarantee about a concurrently changing Substrate checkout.
 
 Paths are relative to `~/substrate/lean/Substrate/Universal/`.
+
+## Current applicability audit
+
+This is the present disposition of the Substrate activity after `908ec0d6d`, not a change log. “Imported”
+means the public SSA paper now gives a self-contained statement and proof or the implementation already
+realizes the invariant. It does not mean that the Python/CUDA program has been extracted from Lean.
+
+| Commit and result | SSA disposition | Boundary carried into SSA |
+|---|---|---|
+| `466f3e543` — `SelectedPrefixRead`, `TwoHopBlockCover`, `SignedGainTracking` and recognitions | **Imported in three places.** Algorithm 1 and `_stream_mask` cut routed reads at original position; the paper compares the complete two-hop cover and the conditional `w=sqrt(n)` split; the gain-sign result is recorded for the compression comparator. | Whole-set reads and chunk-only masking can leak; connectivity is not dense-softmax equivalence; nonnegative decay cannot reverse sign but says nothing about selection quality. |
+| `9d6c33e30` — `PairingCapAdmissibility` and bounded-region recognition | **Imported.** The center-radius cap is an admissible skip test at every tree node. The public appendix states the threshold/drop-set consequence and the CPU tree has a parent/child monotonicity regression test. | A descendant's tighter cap drops a superset at the same threshold. This proves a pruning order, not traversal cost, termination, GPU arithmetic, or fixed-beam quality. Region counts are not key counts or wall time. |
+| `a2f98ea85` — `ReachableFamilyDimension` | **Expressivity fence imported.** With either pass fixed, varying the other reaches a strict linear subspace in nondegenerate product dimensions; at equal block/slot counts the parameter ceiling is cubic while the target is quartic. | Nothing here bounds the family with both passes free, and no rank bound follows; products of the two differently blocked factors can be full rank. |
+| `27e89ead3` — `TerminatingTransferSum` and multi-hop recognition | **Architecture boundary imported.** A strictly below-diagonal linear interaction is nilpotent and `(I-A)^{-1}=sum_{k<n} A^k` with no decay assumption, so the inverse-shaped linear operator contains every finite hop. | Ordinary causal softmax includes the diagonal and a transformer layer includes normalization and nonlinear maps. The identity neither turns current SSA into a one-layer multi-hop solver nor proves the source's depth or cost claims. |
+| `9fdca844a` — `LogConcaveRatio` and representative-probe recognition | **Relevant, not instantiated.** A positive log-concave score-spread function has an antitone ratio across a fixed block displacement. It can justify a representative-probe heuristic only after its empirical shape hypothesis is measured for SSA's model and block size. | It is not an admissible upper bound and licenses no exact skip. The second-order condition is stronger than log-concavity; a falling ratio at one displacement is weaker and says nothing about another displacement. SSA routes with block summaries, not one sampled position. |
+| `036cd2914` — `BaseCostOptimum` | **Candidate, not retuned.** In the scalar node-work model `f log_f B`, the continuous optimum is `e` and integer fanout 3 beats every other integer `f>=2`. | The model omits GPU vectorization, memory traffic, fixed-beam recall, and tree-build cost. SSA's measured fanout 16 is unchanged until a controlled end-to-end sweep supports a replacement. |
+| `21e49cbf3` — `ReflectionCorner` | **Comparator-only import.** A rank-one delta correction reverses its key line past `beta*||k||^2=1` and is exactly a norm-preserving reflection at equality 2. | This informs the repository's DeltaNet comparison, not sparse key selection. The larger reflection-product expressivity theorem supplies no routing, attention-quality, or long-context execution guarantee. |
+| `183c4824d` — `WindingBridge` | **Length-generalization bridge imported.** Under the no-half-turn anti-aliasing hypothesis, the lifted phase-loop turn count agrees with the discrete winding degree, coordinatewise for a torus of rotary bands. | RoPE does not by itself prove extrapolation to unseen offsets. The theorem connects two exact winding representations; it supplies no quality or kernel result. |
+| `a8d37a176` — audited `PhaseWindingRecognition` wording | **Status correction imported.** The public paper separates relative-offset algebra from winding stability: a nonzero turn needs at least one wavelength, and a changed turn count forces the anti-aliasing margin to fail somewhere. | This commit repairs a stale absence claim—the bridge already existed from the other side. It adds no kernel primitive. The 10M YaRN result remains empirical, especially at its roughly 306x scale factor. |
+
+The other commits in this interval are registry, sweep-generation, economics-citation, or unrelated carrier
+maintenance. They were reviewed but do not change SSA's claims or implementation.
 
 ## Implemented: hierarchical adaptive certificates
 

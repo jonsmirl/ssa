@@ -4,7 +4,9 @@ This is the tree analogue of :mod:`ssa.certified_attention`.  A balanced binary
 tree groups contiguous key blocks.  Every frontier node carries key and value
 balls, so it bounds the total softmax mass and output contribution of all leaves
 below it.  Refinement replaces one admissible node bound by its children; opening
-a leaf scores the corresponding keys exactly.
+a leaf scores the corresponding keys exactly.  Against a fixed reference point,
+each child reach (and therefore its score cap) is no larger than its parent's, so
+at a fixed threshold refinement can only enlarge the set certified droppable.
 
 At unit scale, recursively grouped log partitions flatten to ordinary softmax
 (``Substrate.Universal.treeSoftmax_unitScale``).  The tree therefore changes only

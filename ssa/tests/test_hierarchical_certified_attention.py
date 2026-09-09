@@ -58,3 +58,26 @@ def test_tree_prefix_cannot_observe_future_nodes():
     np.testing.assert_allclose(a.output, b.output)
     assert a.mass_upper == b.mass_upper
     assert a.output_error_upper == b.output_error_upper
+
+
+def test_descendant_caps_tighten_and_drop_at_least_the_parent_cap():
+    """At one threshold, every region pruned by a parent cap is pruned by each child cap."""
+    rng = np.random.default_rng(23)
+    K, V = rng.normal(size=(128, 6)), rng.normal(size=(128, 3))
+    index = CertifiedTreeAttention(K, V, 8)
+    p, q = rng.normal(size=6), rng.normal(size=6)
+    qnorm = np.linalg.norm(q)
+
+    for parent in index._nodes:
+        if parent.children is None:
+            continue
+        parent_reach = np.linalg.norm(parent.key_mean - p) + parent.key_radius
+        parent_cap = q @ p + qnorm * parent_reach
+        threshold = np.nextafter(parent_cap, np.inf)
+        for child_id in parent.children:
+            child = index._nodes[child_id]
+            child_reach = np.linalg.norm(child.key_mean - p) + child.key_radius
+            child_cap = q @ p + qnorm * child_reach
+            assert child_reach <= parent_reach + 1e-12
+            assert child_cap <= parent_cap + 1e-12
+            assert child_cap <= threshold
