@@ -1,0 +1,205 @@
+{
+  "status": "complete",
+  "target_tokens": 10000128,
+  "started": 1788901155.4888449,
+  "machine": {
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "python": "3.12.13",
+    "torch": "2.10.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "gpu_total_gib": 94.97,
+    "system_ram_gib": 176.88,
+    "nvidia_smi": "NVIDIA RTX PRO 6000 Blackwell Server Edition, 97887 MiB, 580.159.04"
+  },
+  "log": [
+    "machine: {'platform': 'Linux-6.12.90+-x86_64-with-glibc2.35', 'python': '3.12.13', 'torch': '2.10.0+cu128', 'cuda': '12.8', 'gpu': 'NVIDIA RTX PRO 6000 Blackwell Server Edition', 'gpu_total_gib': 94.97, 'system_ram_gib': 176.88, 'nvidia_smi': 'NVIDIA RTX PRO 6000 Blackwell Server Edition, 97887 MiB, 580.159.04'}",
+    "model attachment: /kaggle/input/models/qwen-lm/qwen2.5/transformers/0.5b/1",
+    "loaded model: {'name': 'Qwen2.5-0.5B', 'layers': 24, 'hidden_size': 896, 'query_heads': 14, 'kv_heads': 2, 'head_dim': 64, 'dtype': 'bfloat16', 'load_s': 11.879, 'parameters': 494032768}",
+    "4K dense-equivalence smoke: {'tokens': 4096, 'max_abs_logit_delta': 0.46875, 'dense_quality': {'gold': 'walnut', 'predicted': 'walnut', 'correct': True, 'candidate_logits': {'walnut': 14.75, 'crimson': 7.28125, 'lantern': 5.34375, 'marble': 10.5625}}, 'streamed_quality': {'gold': 'walnut', 'predicted': 'walnut', 'correct': True, 'candidate_logits': {'walnut': 15.0, 'crimson': 7.28125, 'lantern': 5.28125, 'marble': 10.625}}, 'stats': {'tokens': 4096, 'layers': 24, 'elapsed_s': 7.62, 'tokens_per_s': 537.527, 'route_s': 0.363, 'attention_s': 7.178, 'mlp_s': 0.022, 'peak_allocated_gb': 1.049, 'selected_fraction_upper': 1.0}, 'passed': True}",
+    "128K dense reference: {'tokens': 131072, 'elapsed_s': 2.556, 'peak_allocated_gb': 5.806, 'quality': {'gold': 'walnut', 'predicted': 'walnut', 'correct': True, 'candidate_logits': {'walnut': 5.15625, 'crimson': 3.28125, 'lantern': 1.80469, 'marble': 4.28125}}}",
+    "128K streamed reference: {'tokens': 131072, 'stats': {'tokens': 131072, 'layers': 24, 'elapsed_s': 4.675, 'tokens_per_s': 28035.092, 'route_s': 2.896, 'attention_s': 1.226, 'mlp_s': 0.371, 'peak_allocated_gb': 1.824, 'selected_fraction_upper': 0.13198361280487805}, 'quality': {'gold': 'walnut', 'predicted': 'walnut', 'correct': True, 'candidate_logits': {'walnut': 8.0625, 'crimson': 5.0625, 'lantern': 3.60938, 'marble': 5.8125}}}",
+    "starting complete streamed prefill at 10,000,128 tokens",
+    "layer 01/24 elapsed=45.4s peak=24.8GB",
+    "layer 02/24 elapsed=90.5s peak=24.8GB",
+    "layer 03/24 elapsed=135.6s peak=24.8GB",
+    "layer 04/24 elapsed=180.8s peak=24.8GB",
+    "layer 05/24 elapsed=225.9s peak=24.8GB",
+    "layer 06/24 elapsed=271.1s peak=24.8GB",
+    "layer 07/24 elapsed=316.2s peak=24.8GB",
+    "layer 08/24 elapsed=361.4s peak=24.8GB",
+    "layer 09/24 elapsed=406.5s peak=24.8GB",
+    "layer 10/24 elapsed=451.7s peak=24.8GB",
+    "layer 11/24 elapsed=496.8s peak=24.8GB",
+    "layer 12/24 elapsed=541.9s peak=24.8GB",
+    "layer 13/24 elapsed=587.1s peak=25.1GB",
+    "layer 14/24 elapsed=590.5s peak=25.1GB",
+    "layer 15/24 elapsed=593.9s peak=25.1GB",
+    "layer 16/24 elapsed=597.3s peak=25.1GB",
+    "layer 17/24 elapsed=600.7s peak=25.1GB",
+    "layer 18/24 elapsed=604.1s peak=25.1GB",
+    "layer 19/24 elapsed=607.5s peak=25.1GB",
+    "layer 20/24 elapsed=610.8s peak=25.1GB",
+    "layer 21/24 elapsed=614.2s peak=25.1GB",
+    "layer 22/24 elapsed=617.6s peak=25.1GB",
+    "layer 23/24 elapsed=621.0s peak=25.1GB",
+    "layer 24/24 elapsed=624.4s peak=25.1GB",
+    "COMPLETE: {'tokens': 10000128, 'over_10m': True, 'complete_transformer': True, 'all_layers': True, 'stats': {'tokens': 10000128, 'layers': 24, 'elapsed_s': 624.416, 'tokens_per_s': 16015.163, 'route_s': 543.299, 'attention_s': 44.492, 'mlp_s': 27.679, 'peak_allocated_gb': 25.121, 'selected_fraction_upper': 0.0017911628091612}, 'quality': {'gold': 'walnut', 'predicted': 'marble', 'correct': False, 'candidate_logits': {'walnut': 1.90625, 'crimson': 0.39453, 'lantern': 1.24219, 'marble': 2.29688}}, 'scope': 'one final-token semantic-candidate NIAH ranking; no full decode cache retained'}"
+  ],
+  "rope": {
+    "type": "static_yarn",
+    "factor": 306.0,
+    "native_tokens": 32768,
+    "configured_tokens": 10027008,
+    "caveat": "far beyond training range; capacity/mechanism evidence, not absolute LM quality"
+  },
+  "model": {
+    "name": "Qwen2.5-0.5B",
+    "layers": 24,
+    "hidden_size": 896,
+    "query_heads": 14,
+    "kv_heads": 2,
+    "head_dim": 64,
+    "dtype": "bfloat16",
+    "load_s": 11.879,
+    "parameters": 494032768
+  },
+  "smoke": {
+    "tokens": 4096,
+    "max_abs_logit_delta": 0.46875,
+    "dense_quality": {
+      "gold": "walnut",
+      "predicted": "walnut",
+      "correct": true,
+      "candidate_logits": {
+        "walnut": 14.75,
+        "crimson": 7.28125,
+        "lantern": 5.34375,
+        "marble": 10.5625
+      }
+    },
+    "streamed_quality": {
+      "gold": "walnut",
+      "predicted": "walnut",
+      "correct": true,
+      "candidate_logits": {
+        "walnut": 15.0,
+        "crimson": 7.28125,
+        "lantern": 5.28125,
+        "marble": 10.625
+      }
+    },
+    "stats": {
+      "tokens": 4096,
+      "layers": 24,
+      "elapsed_s": 7.62,
+      "tokens_per_s": 537.527,
+      "route_s": 0.363,
+      "attention_s": 7.178,
+      "mlp_s": 0.022,
+      "peak_allocated_gb": 1.049,
+      "selected_fraction_upper": 1.0
+    },
+    "passed": true
+  },
+  "router": {
+    "backend": "tree",
+    "block": 128,
+    "chunk_blocks": 128,
+    "top_c": 64,
+    "local": 1,
+    "sub": 32,
+    "nprobe": 16,
+    "search_k": 256,
+    "build_threshold": 512,
+    "outlier_rate": 0.001,
+    "outlier_cap": 4,
+    "outlier_store_cap": 1024,
+    "share_route_from": 12,
+    "complexity": "fixed selected blocks/token; streaming IVF summaries; fixed outlier reservoir",
+    "strict_causal": true,
+    "native_gqa": true
+  },
+  "reference_dense": {
+    "tokens": 131072,
+    "elapsed_s": 2.556,
+    "peak_allocated_gb": 5.806,
+    "quality": {
+      "gold": "walnut",
+      "predicted": "walnut",
+      "correct": true,
+      "candidate_logits": {
+        "walnut": 5.15625,
+        "crimson": 3.28125,
+        "lantern": 1.80469,
+        "marble": 4.28125
+      }
+    }
+  },
+  "reference_streamed": {
+    "tokens": 131072,
+    "stats": {
+      "tokens": 131072,
+      "layers": 24,
+      "elapsed_s": 4.675,
+      "tokens_per_s": 28035.092,
+      "route_s": 2.896,
+      "attention_s": 1.226,
+      "mlp_s": 0.371,
+      "peak_allocated_gb": 1.824,
+      "selected_fraction_upper": 0.13198361280487805
+    },
+    "quality": {
+      "gold": "walnut",
+      "predicted": "walnut",
+      "correct": true,
+      "candidate_logits": {
+        "walnut": 8.0625,
+        "crimson": 5.0625,
+        "lantern": 3.60938,
+        "marble": 5.8125
+      }
+    }
+  },
+  "progress": {
+    "layer": 24,
+    "layers": 24,
+    "elapsed_s": 624.415,
+    "layer_s": 3.394,
+    "route_s": 543.299,
+    "attention_s": 44.492,
+    "mlp_s": 27.679,
+    "peak_allocated_gb": 25.121
+  },
+  "main": {
+    "tokens": 10000128,
+    "over_10m": true,
+    "complete_transformer": true,
+    "all_layers": true,
+    "stats": {
+      "tokens": 10000128,
+      "layers": 24,
+      "elapsed_s": 624.416,
+      "tokens_per_s": 16015.163,
+      "route_s": 543.299,
+      "attention_s": 44.492,
+      "mlp_s": 27.679,
+      "peak_allocated_gb": 25.121,
+      "selected_fraction_upper": 0.0017911628091612
+    },
+    "quality": {
+      "gold": "walnut",
+      "predicted": "marble",
+      "correct": false,
+      "candidate_logits": {
+        "walnut": 1.90625,
+        "crimson": 0.39453,
+        "lantern": 1.24219,
+        "marble": 2.29688
+      }
+    },
+    "scope": "one final-token semantic-candidate NIAH ranking; no full decode cache retained"
+  },
+  "finished": 1788901823.2394521,
+  "total_s": 667.751
+}

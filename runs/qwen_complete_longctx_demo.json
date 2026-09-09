@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "model": "Qwen/Qwen2.5-0.5B",
+    "transformer_layers": 24,
+    "query_heads": 14,
+    "kv_heads": 2,
+    "head_dim": 64,
+    "dtype": "bfloat16",
+    "rope": "yarn4",
+    "router": "strictly-causal streaming CCC/FAISS-IVF",
+    "attention_kernel": "PyTorch FlexAttention",
+    "block": 128,
+    "sub": 32,
+    "top_c": 64,
+    "local": 1,
+    "nprobe": 16,
+    "search_k": 256,
+    "chunk_blocks": 128,
+    "build_threshold": 512,
+    "outlier_rate": 0.001,
+    "outlier_cap": 4,
+    "outlier_store_cap": 1024,
+    "timing_warmup": 1,
+    "timing_reps": 3,
+    "share_route_from": 12,
+    "quality_trials_per_geometry": 1,
+    "twohop_trials_per_geometry": 1,
+    "gpu": "NVIDIA GeForce RTX 4080",
+    "torch": "2.10.0+cu128",
+    "scope": "frozen inference swap; decode uses the analytic sparse fallback after CCC prefill"
+  },
+  "smoke": {
+    "dense_lm_loss": 3.875178089848271,
+    "full_budget_fused_lm_loss": 3.876406846223054,
+    "absolute_delta": 0.0012287563747830355,
+    "passed": true
+  },
+  "rows": [
+    {
+      "arm": "ccc",
+      "n": 32768,
+      "niah_acc": 1.0,
+      "twohop_acc": 1.0,
+      "prefill_ms": 1167.51,
+      "route_ms": 504.905,
+      "route_share": 0.43246310524106857,
+      "peak_mem_gb": 2.61,
+      "selected_fraction_upper": 0.47133390077821014,
+      "speedup_vs_dense": 0.7866313778896968
+    },
+    {
+      "arm": "dense",
+      "n": 32768,
+      "niah_acc": 1.0,
+      "twohop_acc": 1.0,
+      "prefill_ms": 918.4,
+      "route_ms": 0.0,
+      "peak_mem_gb": 2.609,
+      "selected_fraction_upper": 1.0
+    },
+    {
+      "arm": "ccc",
+      "n": 131072,
+      "niah_acc": 1.0,
+      "twohop_acc": 0.6667,
+      "prefill_ms": 4926.32,
+      "route_ms": 2089.601,
+      "route_share": 0.42417078062326447,
+      "peak_mem_gb": 7.422,
+      "selected_fraction_upper": 0.13198361280487805,
+      "speedup_vs_dense": 1.9272174767371995
+    },
+    {
+      "arm": "dense",
+      "n": 131072,
+      "niah_acc": 1.0,
+      "twohop_acc": 1.0,
+      "prefill_ms": 9494.09,
+      "route_ms": 0.0,
+      "peak_mem_gb": 7.418,
+      "selected_fraction_upper": 1.0
+    }
+  ]
+}

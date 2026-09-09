@@ -471,18 +471,15 @@ class CausalTree:
     full certificate.  It exists primarily for CUDA architectures unsupported by FAISS GPU.
     """
 
-    def __init__(self, d, block=BLOCK, sub=32, query_sub=None, top_c=8, local=1,
-                 search_k=None, n_hint=None,
+    def __init__(self, d, block=BLOCK, sub=32, top_c=8, local=1, search_k=None, n_hint=None,
                  outlier_rate=1e-3, outlier_cap=4, outlier_store_cap=1024,
                  tree_fanout=16, tree_beam=None, chunk_blocks=128, **_ignored):
         if n_hint is None or n_hint % sub:
             raise ValueError("CausalTree needs a sub-block-aligned n_hint")
-        query_sub = block if query_sub is None else int(query_sub)
-        if block % sub or block % query_sub:
-            raise ValueError("sub and query_sub must divide block")
-        self.d, self.block, self.sub, self.query_sub = d, block, sub, query_sub
+        if block % sub:
+            raise ValueError("sub must divide block")
+        self.d, self.block, self.sub = d, block, sub
         self.spb = block // sub
-        self.qspb = block // query_sub
         self.top_c, self.local = top_c, local
         self.chunk_blocks = chunk_blocks
         self.search_k = search_k or 4 * top_c
@@ -619,85 +616,36 @@ class CausalTree:
         val, pick = score.topk(keep, dim=1)
         return val, idx.gather(1, pick)
 
-    def _compact_distinct_topc(self, scores, parents, rows, SENT):
-        """Return fixed-width, scored top-parent rows.
-
-        Candidate search is performed separately for every query sub-block.  Compacting each result
-        before taking their union keeps the final distinct-parent reduction small: a parent in the
-        top-k of ``max_r score(r, parent)`` must be top-k for at least one representative ``r``.
-        """
-        keep, _, _ = CausalCascade._select_topc(self, scores, parents, rows, SENT)
-        valid = keep < SENT
-        # ``keep`` is aligned with scores sorted by descending score inside _select_topc. Recreate that
-        # ordering so the compact values retain the score belonging to each selected parent.
-        order = scores.argsort(dim=1, descending=True)
-        sorted_scores = scores.gather(1, order)
-        selected_scores = torch.where(valid, sorted_scores, torch.full_like(sorted_scores, NEG))
-        width = min(self.top_c, selected_scores.shape[1])
-        values, pick = selected_scores.topk(width, dim=1)
-        selected = keep.gather(1, pick)
-        selected = torch.where(values > NEG, selected, torch.full_like(selected, SENT))
-        return values, selected
-
-    def _outlier_parents_reps(self, qr, tau, qblocks, SENT):
-        """Outlier side channel under max-over-query-representatives block scoring."""
-        nbq = qr.shape[0]
-        if self.n_out == 0:
-            return torch.full((nbq, self.outlier_cap), SENT, device=qr.device, dtype=torch.long)
-        score = torch.einsum("brd,sd->brs", qr, self.O[:self.n_out]).amax(1)
-        parents = self.O_parent[:self.n_out]
-        hit = (parents[None] < qblocks[:, None]) & (score > tau[:, None])
-        score = score.masked_fill(~hit, NEG)
-        cap = min(self.outlier_cap, self.n_out)
-        values, pick = score.topk(cap, dim=1)
-        selected = torch.where(values > NEG, parents[pick], torch.full_like(parents[pick], SENT))
-        if cap < self.outlier_cap:
-            pad = torch.full((nbq, self.outlier_cap - cap), SENT,
-                             device=qr.device, dtype=selected.dtype)
-            selected = torch.cat((selected, pad), dim=1)
-        return selected
-
     def route(self, q_chunk, qpos, certify=False, search_k=None):
         if search_k is not None and search_k != self.search_k:
             raise ValueError("CausalTree search_k is fixed at construction")
-        # A BlockMask row is shared by every query in a parent block.  Therefore its routing score must
-        # cover the union of those queries' needs.  Averaging all 128 queries is not max-preserving;
-        # score smaller query summaries independently and max-pool their selected parent candidates.
-        qr = sub_block_means(q_chunk, self.block, self.query_sub)
-        nbq, qb_start = q_chunk.shape[0] // self.block, qpos // self.block
-        qr = qr.view(nbq, self.qspb, self.d)
+        qb = block_means(q_chunk, self.block)
+        nbq, qb_start = qb.shape[0], qpos // self.block
         SENT = qb_start + nbq
-        qblocks = qb_start + torch.arange(nbq, device=qr.device)
-        representative_scores, representative_parents = [], []
-        for rep in range(self.qspb):
-            query = qr[:, rep]
-            old_v, old_sub = self._search_committed(query)
-            if self.stage is None:
-                stage_v = torch.empty(nbq, 0, device=qr.device)
-                stage_sub = stage_v.long()
-            else:
-                stage_v = query @ self.stage.T
-                sub_ids = self.committed + torch.arange(self.stage.shape[0], device=qr.device)
-                stage_parent = sub_ids // self.spb
-                stage_v = stage_v.masked_fill(stage_parent[None] >= qblocks[:, None], NEG)
-                keep = min(self.search_k, self.stage.shape[0])
-                stage_v, pick = stage_v.topk(keep, dim=1)
-                stage_sub = sub_ids[pick]
-            scores = torch.cat((old_v, stage_v), dim=1)
-            parents = torch.cat((old_sub, stage_sub), dim=1) // self.spb
-            parents = torch.where(scores > NEG, parents, torch.full_like(parents, SENT))
-            values, selected = self._compact_distinct_topc(scores, parents, nbq, SENT)
-            representative_scores.append(values)
-            representative_parents.append(selected)
-        scores = torch.cat(representative_scores, dim=1)
-        parents = torch.cat(representative_parents, dim=1)
+        old_v, old_sub = self._search_committed(qb)
+        if self.stage is None:
+            stage_v = torch.empty(nbq, 0, device=qb.device)
+            stage_sub = stage_v.long()
+        else:
+            stage_v = qb @ self.stage.T
+            sub_ids = self.committed + torch.arange(self.stage.shape[0], device=qb.device)
+            parents = sub_ids // self.spb
+            qblocks = qb_start + torch.arange(nbq, device=qb.device)
+            stage_v = stage_v.masked_fill(parents[None] >= qblocks[:, None], NEG)
+            keep = min(self.search_k, self.stage.shape[0])
+            stage_v, pick = stage_v.topk(keep, dim=1)
+            stage_sub = sub_ids[pick]
+        scores = torch.cat((old_v, stage_v), dim=1)
+        parents = torch.cat((old_sub, stage_sub), dim=1) // self.spb
+        parents = torch.where(scores > NEG, parents, torch.full_like(parents, SENT))
         keep_pars, tau, _ = CausalCascade._select_topc(self, scores, parents, nbq, SENT)
-        outliers = self._outlier_parents_reps(qr, tau, qblocks, SENT)
-        local = qblocks[:, None] - torch.arange(self.local + 1, device=qr.device)
+        qblocks = qb_start + torch.arange(nbq, device=qb.device)
+        outliers = CausalCascade._outlier_parents(self, qb, tau, qblocks, SENT)
+        local = qblocks[:, None] - torch.arange(self.local + 1, device=qb.device)
         local = torch.where(local >= 0, local, torch.full_like(local, SENT))
         width = min(self.top_c + self.local + 1 + self.outlier_cap, SENT)
         kn, ki = CausalCascade._pack(self, torch.cat((keep_pars, local, outliers), 1), SENT, width)
-        cert = torch.zeros(nbq, dtype=torch.bool, device=qr.device) if certify else None
+        cert = torch.zeros(nbq, dtype=torch.bool, device=qb.device) if certify else None
         return kn, ki, cert, {"nbq": nbq, "backend": "torch_tree", "cert_rate": None}
 
     _min_kept = staticmethod(CausalCascade._min_kept)

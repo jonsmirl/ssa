@@ -38,10 +38,19 @@ class SSAConfig:
     route_full_only: bool = True  # only sparsify full-attention layers (is_sliding == False)
     edgeworth: bool = False    # add the (diagonal) 3rd-cumulant/skew term to routing (outlier detector)
     dense_layers: tuple = ()   # layer_idx values to leave DENSE (bypass selection) — e.g. the worst router
-    impl: str = "analytic"     # "analytic" = O(n²) score+mask (quality); "flex" = the fused kernel (speed)
+    impl: str = "analytic"     # "analytic" | "flex" (flat router) | "ccc" (streaming IVF cascade)
     share_route_from: int | None = None  # donor layer: compute the selection once here, reuse above it
     share_below: str = "per_layer"       # layers below the donor: "per_layer" | "dense"
     proj_path: str | None = None         # a trained RoutingProjection (.pt) — route in the shared low-dim space
+    nprobe: int = 8             # IVF cells searched per query block (impl="ccc")
+    search_k: int | None = None # candidates before parent-block pooling (default 4*top_c)
+    sub: int = 32               # sub-block summary size for the causal cascade
+    chunk_blocks: int = 128     # blocks routed before the next key chunk is committed
+    build_threshold: int = 512  # sub-block means needed before switching flat prefix -> IVF
+    retrain_every: int | None = 0  # 0 keeps first IVF centroids; positive N rebuilds every N chunks
+    outlier_rate: float = 1e-3
+    outlier_cap: int = 4
+    outlier_store_cap: int | None = 1024 # fixed reservoir keeps exhaustive side lookup O(n)
 
 
 # module-level config the registered interface reads; the kappa-sweep driver mutates this.
@@ -137,7 +146,7 @@ def _selection_mask(q, k, cfg: SSAConfig, qpos=None, kpos=None):
     return torch.where(allow, 0.0, torch.tensor(NEG, device=q.device))
 
 
-def _flex_mask(query, k, cfg, dense, proj, n):
+def _flex_mask(query, k, cfg, dense, proj, n, route_key=None):
     """Route -> BlockMask (the selection). Timed as the router; shareable across layers (same shape)."""
     import time
     from ssa import ssa_kernel as K
@@ -151,28 +160,45 @@ def _flex_mask(query, k, cfg, dense, proj, n):
     if query.is_cuda:
         torch.cuda.synchronize()
     t0 = time.time()
-    kv_num, kv_idx, _ = K.block_route_budget(
-        qq, kk, blk, budget_frac=(1.0 if dense else cfg.budget_frac),
-        top_c=(None if dense else cfg.top_c), local=cfg.local_w, beta=cfg.beta,
-        edgeworth=cfg.edgeworth, n_real=n, sub=None, proj=proj)
+    if cfg.impl == "ccc" and not dense:
+        if cfg.top_c is None:
+            raise ValueError('impl="ccc" requires a fixed top_c block budget')
+        if proj is not None:
+            raise ValueError('impl="ccc" does not currently support proj_path')
+        from ssa.cascade_router import ccc_route_gqa
+        rk = route_key if route_key is not None else k
+        rk = F.pad(rk, (0, 0, 0, pad)) if pad else rk
+        kv_num, kv_idx, _ = ccc_route_gqa(
+            qq, rk, blk, top_c=cfg.top_c, local=cfg.local_w, sub=cfg.sub,
+            chunk_blocks=cfg.chunk_blocks, build_threshold=cfg.build_threshold,
+            retrain_every=cfg.retrain_every,
+            nprobe=cfg.nprobe, search_k=cfg.search_k,
+            outlier_rate=cfg.outlier_rate, outlier_cap=cfg.outlier_cap,
+            outlier_store_cap=cfg.outlier_store_cap)
+    else:
+        kv_num, kv_idx, _ = K.block_route_budget(
+            qq, kk, blk, budget_frac=(1.0 if dense else cfg.budget_frac),
+            top_c=(None if dense else cfg.top_c), local=cfg.local_w, beta=cfg.beta,
+            edgeworth=cfg.edgeworth, n_real=n, sub=None, proj=proj)
 
     def mm(bb, hh, qi, kv):
         return (kv <= qi) & (kv < n)                                 # token-causal AND drop pad keys
 
-    bm = BlockMask.from_kv_blocks(kv_num, kv_idx, BLOCK_SIZE=blk, mask_mod=mm, seq_lengths=(N, N))
+    bm = BlockMask.from_kv_blocks(kv_num, kv_idx, BLOCK_SIZE=blk, mask_mod=mm,
+                                  seq_lengths=(N, N), compute_q_blocks=False)
     if query.is_cuda:
         torch.cuda.synchronize()
     ROUTE_MS += (time.time() - t0) * 1000
     return bm, N, pad
 
 
-def _flex_forward(query, k, v, cfg, scaling, dense=False, proj=None, bm_pad=None):
+def _flex_forward(query, k, v, cfg, scaling, dense=False, proj=None, bm_pad=None, route_key=None):
     """The fused block-sparse kernel path (prefill only). `bm_pad` = a (BlockMask, N, pad) reused from the
     donor layer (cross-layer sharing); else route here. Returns (out (b,hq,n,d), (bm,N,pad))."""
     from ssa import ssa_kernel as K
     b, hq, n, d = query.shape
     if bm_pad is None:
-        bm_pad = _flex_mask(query, k, cfg, dense, proj, n)
+        bm_pad = _flex_mask(query, k, cfg, dense, proj, n, route_key=route_key)
     bm, N, pad = bm_pad
     if pad:
         query, k, v = (F.pad(t, (0, 0, 0, pad)) for t in (query, k, v))
@@ -206,7 +232,7 @@ def ssa_attention_forward(module, query, key, value, attention_mask=None,
         or (cfg.top_c is None and cfg.budget_frac >= 1.0)
     # the fused kernel path — prefill-shaped CUDA calls only; decode (q_len==1), chunked prefill
     # (q_len != kv_len), and CPU fall through to the analytic path below (already decode-correct).
-    if cfg.impl == "flex" and query.is_cuda and q_len == kv_len and q_len > cfg.block:
+    if cfg.impl in ("flex", "ccc") and query.is_cuda and q_len == kv_len and q_len > cfg.block:
         li = getattr(module, "layer_idx", None)
         donor = cfg.share_route_from
         bm_pad = None
@@ -217,7 +243,8 @@ def ssa_attention_forward(module, query, key, value, attention_mask=None,
                 sig = (tuple(query.shape), kv_len, str(query.device))
                 if _SHARE["sig"] == sig:
                     bm_pad = _SHARE["bm"]
-        out, made = _flex_forward(query, k, v, cfg, scaling, dense=is_dense, proj=_PROJ, bm_pad=bm_pad)
+        out, made = _flex_forward(query, k, v, cfg, scaling, dense=is_dense, proj=_PROJ,
+                                  bm_pad=bm_pad, route_key=key)
         if donor is not None and li == donor:                      # donor stashes its selection for consumers
             _SHARE["sig"] = (tuple(query.shape), kv_len, str(query.device))
             _SHARE["bm"] = made

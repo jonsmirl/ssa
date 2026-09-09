@@ -99,9 +99,11 @@ def niah_accuracy(model, tokenizer, n_tokens, depths=(0.1, 0.5, 0.9),
             text, gold = make_niah_text(val, d, units)
             ids = tokenizer(text, return_tensors="pt", truncation=True,
                             max_length=n_tokens + 64)["input_ids"].to(dev)
+            attention_mask = torch.ones_like(ids)
             with torch.no_grad():
                 out = model.generate(ids, max_new_tokens=max_new_tokens, do_sample=False,
-                                     pad_token_id=getattr(tokenizer, "eos_token_id", None))
+                                     pad_token_id=getattr(tokenizer, "eos_token_id", None),
+                                     attention_mask=attention_mask)
             gen = tokenizer.decode(out[0, ids.shape[1]:], skip_special_tokens=True)
             hits += int(score_continuation(gen, gold))
             total += 1
@@ -129,9 +131,11 @@ def two_hop_accuracy(model, tokenizer, n_tokens, depth_pairs=((0.2, 0.6), (0.6, 
             text, gold = make_two_hop_text(kw, val, dk, dv, units, question=question)
             ids = tokenizer(text, return_tensors="pt", truncation=True,
                             max_length=n_tokens + 96)["input_ids"].to(dev)
+            attention_mask = torch.ones_like(ids)
             with torch.no_grad():
                 out = model.generate(ids, max_new_tokens=max_new_tokens, do_sample=False,
-                                     pad_token_id=getattr(tokenizer, "eos_token_id", None))
+                                     pad_token_id=getattr(tokenizer, "eos_token_id", None),
+                                     attention_mask=attention_mask)
             gen = tokenizer.decode(out[0, ids.shape[1]:], skip_special_tokens=True)
             ok = score_word(gen, kw) if mode == "hop1" else score_continuation(gen, gold)
             hits += int(ok); total += 1
@@ -148,7 +152,7 @@ def lm_loss(model, tokenizer, texts, max_len=2048, device=None):
         if ids.shape[1] < 2:
             continue
         with torch.no_grad():
-            logits = model(ids).logits[:, :-1].float()
+            logits = model(ids, attention_mask=torch.ones_like(ids)).logits[:, :-1].float()
             tgt = ids[:, 1:]
             nll = torch.nn.functional.cross_entropy(
                 logits.reshape(-1, logits.shape[-1]), tgt.reshape(-1), reduction="sum")

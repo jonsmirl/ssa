@@ -1,0 +1,111 @@
+{
+  "status": "starting",
+  "target_tokens": 10000128,
+  "started": 1788900493.6319172,
+  "machine": {
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "python": "3.12.13",
+    "torch": "2.10.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "gpu_total_gib": 94.97,
+    "system_ram_gib": 176.88,
+    "nvidia_smi": "NVIDIA RTX PRO 6000 Blackwell Server Edition, 97887 MiB, 580.159.04"
+  },
+  "log": [
+    "machine: {'platform': 'Linux-6.12.90+-x86_64-with-glibc2.35', 'python': '3.12.13', 'torch': '2.10.0+cu128', 'cuda': '12.8', 'gpu': 'NVIDIA RTX PRO 6000 Blackwell Server Edition', 'gpu_total_gib': 94.97, 'system_ram_gib': 176.88, 'nvidia_smi': 'NVIDIA RTX PRO 6000 Blackwell Server Edition, 97887 MiB, 580.159.04'}",
+    "model attachment: /kaggle/input/models/qwen-lm/qwen2.5/transformers/0.5b/1",
+    "loaded model: {'name': 'Qwen2.5-0.5B', 'layers': 24, 'hidden_size': 896, 'query_heads': 14, 'kv_heads': 2, 'head_dim': 64, 'dtype': 'bfloat16', 'load_s': 25.6, 'parameters': 494032768}",
+    "4K dense-equivalence smoke: {'tokens': 4096, 'max_abs_logit_delta': 0.46875, 'dense_quality': {'gold': 'walnut', 'predicted': 'walnut', 'correct': True, 'candidate_logits': {'walnut': 14.75, 'crimson': 7.28125, 'lantern': 5.34375, 'marble': 10.5625}}, 'streamed_quality': {'gold': 'walnut', 'predicted': 'walnut', 'correct': True, 'candidate_logits': {'walnut': 15.0, 'crimson': 7.28125, 'lantern': 5.28125, 'marble': 10.625}}, 'stats': {'tokens': 4096, 'layers': 24, 'elapsed_s': 7.589, 'tokens_per_s': 539.757, 'route_s': 0.314, 'attention_s': 7.194, 'mlp_s': 0.022, 'peak_allocated_gb': 1.049, 'selected_fraction_upper': 1.0}, 'passed': True}",
+    "128K dense reference: {'tokens': 131072, 'elapsed_s': 2.532, 'peak_allocated_gb': 5.806, 'quality': {'gold': 'walnut', 'predicted': 'walnut', 'correct': True, 'candidate_logits': {'walnut': 5.15625, 'crimson': 3.28125, 'lantern': 1.80469, 'marble': 4.28125}}}"
+  ],
+  "rope": {
+    "type": "static_yarn",
+    "factor": 306.0,
+    "native_tokens": 32768,
+    "configured_tokens": 10027008,
+    "caveat": "far beyond training range; capacity/mechanism evidence, not absolute LM quality"
+  },
+  "model": {
+    "name": "Qwen2.5-0.5B",
+    "layers": 24,
+    "hidden_size": 896,
+    "query_heads": 14,
+    "kv_heads": 2,
+    "head_dim": 64,
+    "dtype": "bfloat16",
+    "load_s": 25.6,
+    "parameters": 494032768
+  },
+  "smoke": {
+    "tokens": 4096,
+    "max_abs_logit_delta": 0.46875,
+    "dense_quality": {
+      "gold": "walnut",
+      "predicted": "walnut",
+      "correct": true,
+      "candidate_logits": {
+        "walnut": 14.75,
+        "crimson": 7.28125,
+        "lantern": 5.34375,
+        "marble": 10.5625
+      }
+    },
+    "streamed_quality": {
+      "gold": "walnut",
+      "predicted": "walnut",
+      "correct": true,
+      "candidate_logits": {
+        "walnut": 15.0,
+        "crimson": 7.28125,
+        "lantern": 5.28125,
+        "marble": 10.625
+      }
+    },
+    "stats": {
+      "tokens": 4096,
+      "layers": 24,
+      "elapsed_s": 7.589,
+      "tokens_per_s": 539.757,
+      "route_s": 0.314,
+      "attention_s": 7.194,
+      "mlp_s": 0.022,
+      "peak_allocated_gb": 1.049,
+      "selected_fraction_upper": 1.0
+    },
+    "passed": true
+  },
+  "router": {
+    "block": 128,
+    "chunk_blocks": 128,
+    "top_c": 64,
+    "local": 1,
+    "sub": 32,
+    "nprobe": 16,
+    "search_k": 256,
+    "build_threshold": 512,
+    "outlier_rate": 0.001,
+    "outlier_cap": 4,
+    "outlier_store_cap": 1024,
+    "share_route_from": 12,
+    "complexity": "fixed selected blocks/token; streaming IVF summaries; fixed outlier reservoir",
+    "strict_causal": true,
+    "native_gqa": true
+  },
+  "reference_dense": {
+    "tokens": 131072,
+    "elapsed_s": 2.532,
+    "peak_allocated_gb": 5.806,
+    "quality": {
+      "gold": "walnut",
+      "predicted": "walnut",
+      "correct": true,
+      "candidate_logits": {
+        "walnut": 5.15625,
+        "crimson": 3.28125,
+        "lantern": 1.80469,
+        "marble": 4.28125
+      }
+    }
+  }
+}

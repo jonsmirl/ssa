@@ -18,6 +18,23 @@ def _qkv(n, d=64, seed=0):
     return q, k, v
 
 
+def test_head_consensus_is_bounded_broadcast_union():
+    from ssa.streaming_qwen import StreamingQwenPrefill
+    # Block 7 is independently selected by three heads; block 9 by one. The own/local blocks 10/11
+    # are unanimous. With cap=3, consensus retains 10, 11, and 7, then broadcasts them without dupes.
+    idx = torch.tensor([[[[10, 11, 7, 0]], [[10, 11, 7, 0]],
+                         [[10, 11, 7, 0]], [[10, 11, 9, 0]]]], dtype=torch.int32)
+    num = torch.full((1, 4, 1), 3, dtype=torch.int32)
+    extra_num, extra_idx = StreamingQwenPrefill._head_consensus(num, idx, 16, 3, 2)
+    assert int(extra_num[0, 0]) == 3
+    assert set(extra_idx[0, 0, :3].tolist()) == {7, 10, 11}
+    out_num, out_idx = StreamingQwenPrefill._augment_plan(num, idx, extra_num, extra_idx, 16)
+    for head in range(4):
+        got = out_idx[0, head, 0, :int(out_num[0, head, 0])].tolist()
+        assert len(got) == len(set(got))
+        assert {7, 10, 11}.issubset(got)
+
+
 def _bruteforce_subblock_topc(q, k, block, sub, top_c, local):
     """Reference selection: block score = max over sub-block ⟨q̄, μ_sub⟩, causal, top_c + own + local."""
     n, d = q.shape[2], q.shape[3]
@@ -127,6 +144,79 @@ def test_ccc_chunking_invariance():
 
 
 @skip
+def test_streaming_gqa_router_matches_whole_tensor_driver():
+    """The >10M streaming surface is exactly the same selector contract as ccc_route_gqa."""
+    from ssa.cascade_router import StreamingGQARouter, ccc_route_gqa
+    from ssa.ssa_kernel import BLOCK
+    g = torch.Generator(device="cuda").manual_seed(17)
+    n, hq, hkv, d, cb = 8 * BLOCK, 4, 2, 64, 2 * BLOCK
+    q = torch.randn(1, hq, n, d, generator=g, device="cuda", dtype=torch.float16)
+    k = torch.randn(1, hkv, n, d, generator=g, device="cuda", dtype=torch.float16)
+    cfg = dict(top_c=3, local=1, sub=32, chunk_blocks=2, search_k=32,
+               build_threshold=10_000, outlier_cap=0)
+    with torch.no_grad():
+        want_n, want_i, _ = ccc_route_gqa(q, k, block=BLOCK, **cfg)
+        stream = StreamingGQARouter(1, hq, hkv, n, d, block=BLOCK, **cfg)
+        got_n = torch.empty_like(want_n)
+        got_i = torch.empty_like(want_i)
+        for start in range(0, n, cb):
+            stop = start + cb
+            kn, ki, _ = stream.route_chunk(q[:, :, start:stop], k[:, :, start:stop], start)
+            got_n[:, :, start // BLOCK:stop // BLOCK] = kn
+            got_i[:, :, start // BLOCK:stop // BLOCK] = ki
+    assert torch.equal(got_n, want_n)
+    for h in range(hq):
+        for b in range(n // BLOCK):
+            count = int(got_n[0, h, b])
+            assert set(got_i[0, h, b, :count].tolist()) == \
+                   set(want_i[0, h, b, :count].tolist())
+
+
+@skip
+def test_torch_tree_backend_full_budget_is_exact_and_causal():
+    """The Blackwell fallback hierarchy recovers the complete causal prefix at full budget."""
+    from ssa.cascade_router import ccc_route_gqa
+    from ssa.ssa_kernel import BLOCK
+    n, nb = 16 * BLOCK, 16
+    q, k, _ = _qkv(n, seed=19)
+    with torch.no_grad():
+        kn, ki, _ = ccc_route_gqa(
+            q, k, backend="tree", top_c=nb, local=nb, sub=32,
+            chunk_blocks=4, search_k=nb * 4, tree_beam=nb * 4, outlier_cap=0,
+        )
+    for i in range(nb):
+        got = set(ki[0, 0, i, :int(kn[0, 0, i])].tolist())
+        assert got == set(range(i + 1)), (i, sorted(got))
+
+
+@skip
+def test_torch_tree_max_pools_query_and_key_subblocks():
+    """A shared 128-query mask represents a union, so routing must max-pool both sides."""
+    from ssa.cascade_router import ccc_route_gqa
+    from ssa.ssa_kernel import BLOCK
+    n, nb, sub, top_c = 12 * BLOCK, 12, 32, 3
+    q, k, _ = _qkv(n, seed=29)
+    with torch.no_grad():
+        kn, ki, _ = ccc_route_gqa(
+            q, k, backend="tree", top_c=top_c, local=0, sub=sub, query_sub=sub,
+            chunk_blocks=nb, search_k=nb * (BLOCK // sub),
+            tree_beam=nb * (BLOCK // sub), outlier_cap=0,
+        )
+        qsub = q[0, 0].view(nb, BLOCK // sub, sub, -1).float().mean(2)
+        ksub = k[0, 0].view(nb, BLOCK // sub, sub, -1).float().mean(2)
+        score = torch.einsum("qrd,ksd->qkrs", qsub, ksub).amax((2, 3))
+        causal = torch.arange(nb, device="cuda")[:, None] > torch.arange(nb, device="cuda")[None]
+        score.masked_fill_(~causal, float("-inf"))
+    for query_block in range(nb):
+        got = set(ki[0, 0, query_block, :int(kn[0, 0, query_block])].tolist())
+        want = {query_block}
+        if query_block:
+            count = min(top_c, query_block)
+            want.update(score[query_block].topk(count).indices.tolist())
+        assert got == want, (query_block, sorted(got), sorted(want))
+
+
+@skip
 def test_ccc_decode_step_matches_prefill_row():
     from ssa.cascade_router import CausalCascade, ccc_prefill
     from ssa.ivf_decode import decode_attend
@@ -193,3 +283,19 @@ def test_starved_probe_pads_never_reach_the_mask():
     nb_global = cc.n_sub * cc.sub // cc.block + 1
     assert (kv_idx >= 0).all() and (kv_idx < nb_global).all()
     assert not bool(cert[0])                                        # starved + tiny budget: fails closed
+
+
+@skip
+def test_outlier_reservoir_has_a_fixed_global_cap():
+    """A fixed reservoir prevents the optional outlier lookup from growing with context length."""
+    from ssa.cascade_router import CausalCascade
+    from ssa.ssa_kernel import BLOCK
+    _, k, _ = _qkv(8 * BLOCK, seed=13)
+    cc = CausalCascade(64, block=BLOCK, sub=32, top_c=2, chunk_blocks=2,
+                       outlier_rate=0.25, outlier_cap=2, outlier_store_cap=7)
+    with torch.no_grad():
+        for start in range(0, 8 * BLOCK, 2 * BLOCK):
+            cc.append(k[0, 0, start:start + 2 * BLOCK])
+            assert cc.n_out <= 7
+    assert cc.n_out == 7
+    assert cc.O.shape[0] == cc.O_parent.shape[0] == cc.O_pos.shape[0] == cc.O_score.shape[0] == 7

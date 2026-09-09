@@ -105,3 +105,27 @@ def test_flex_pad_nonmultiple_length():
     ref = F.scaled_dot_product_attention(q, k, v, is_causal=True).transpose(1, 2)
     assert out.shape == (1, n, 1, d)
     assert torch.allclose(out, ref, atol=2e-2), (out - ref).abs().max().item()
+
+
+@pytest.mark.skipif(not cuda, reason="CCC flex path needs CUDA + faiss-gpu")
+def test_ccc_flex_path_runs_with_gqa_and_is_causal():
+    """The model-facing cascade accepts unrepeated GQA keys and cannot observe future values."""
+    pytest.importorskip("faiss")
+    from ssa import gemma_ssa as G
+    from ssa.gemma_ssa import ssa_attention_forward
+    torch.manual_seed(7)
+    n, d, cut = 8 * 128, 64, 400
+    q = torch.randn(1, 6, n, d, device="cuda", dtype=torch.float16)
+    k = torch.randn(1, 2, n, d, device="cuda", dtype=torch.float16)
+    v = torch.randn_like(k)
+    G.CFG = G.SSAConfig(block=128, top_c=3, local_w=1, impl="ccc", nprobe=4,
+                        chunk_blocks=2, build_threshold=16, outlier_cap=1)
+    mod = _mod(groups=3)
+    with torch.no_grad():
+        out1, _ = ssa_attention_forward(mod, q, k, v, scaling=1.0 / (d ** 0.5))
+        k2, v2 = k.clone(), v.clone()
+        k2[:, :, cut + 1:] += 5 * torch.randn_like(k2[:, :, cut + 1:])
+        v2[:, :, cut + 1:] += 5 * torch.randn_like(v2[:, :, cut + 1:])
+        out2, _ = ssa_attention_forward(mod, q, k2, v2, scaling=1.0 / (d ** 0.5))
+    assert out1.shape == (1, n, 6, d)
+    assert torch.allclose(out1[:, :cut + 1], out2[:, :cut + 1], atol=2e-2)

@@ -1,0 +1,23 @@
+{
+  "id": "jonsmirl/ssa-complete-transformer-10m",
+  "title": "ssa-complete-transformer-10m",
+  "code_file": "ssa_10m.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "docker_image": "gcr.io/kaggle-private-byod/python@sha256:57e612b484cf3df5026ee4dcc3cb176974b22b2bc0937fb1e16132a8be4cb13c",
+  "machine_shape": "NvidiaRtxPro6000",
+  "dataset_sources": [
+    "jonsmirl/ssa-10m-offline-wheels"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [
+    "arc-prize-2026-arc-agi-3"
+  ],
+  "model_sources": [
+    "qwen-lm/qwen2.5/transformers/0.5b/1"
+  ]
+}

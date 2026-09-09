@@ -1,0 +1,191 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4080",
+  "model": "Qwen/Qwen2.5-0.5B",
+  "rope": {
+    "type": "static_yarn",
+    "factor": 16.0,
+    "native": 32768
+  },
+  "rows": [
+    {
+      "tokens": 524288,
+      "query_sub": 128,
+      "forced_needle": false,
+      "route_geometry": "pre_rope",
+      "share_route_from": 0,
+      "wall_s": 19.626,
+      "quality": {
+        "gold": "walnut",
+        "predicted": "marble",
+        "correct": false,
+        "candidate_logits": {
+          "walnut": 2.39062,
+          "crimson": -0.44336,
+          "lantern": 1.77344,
+          "marble": 2.625
+        }
+      },
+      "stats": {
+        "tokens": 524288,
+        "layers": 24,
+        "elapsed_s": 19.592,
+        "tokens_per_s": 26759.995,
+        "route_s": 3.811,
+        "attention_s": 8.101,
+        "mlp_s": 5.448,
+        "peak_allocated_gb": 2.752,
+        "selected_fraction_upper": 0.033883524720832316,
+        "route_probe": [
+          {
+            "layer": 1,
+            "target_block": 2047,
+            "heads_selected": 2,
+            "heads_exact_top_c": 5,
+            "heads": [
+              {
+                "head": 0,
+                "kv_head": 0,
+                "selected": false,
+                "exact_rank": 1093,
+                "within_top_c": false,
+                "target_score": 1203.125977,
+                "whole_query_mean_rank": 1093,
+                "whole_query_mean_score": 1203.125977
+              },
+              {
+                "head": 1,
+                "kv_head": 0,
+                "selected": false,
+                "exact_rank": 1,
+                "within_top_c": true,
+                "target_score": 7173.787109,
+                "whole_query_mean_rank": 1,
+                "whole_query_mean_score": 7173.787109
+              },
+              {
+                "head": 2,
+                "kv_head": 0,
+                "selected": false,
+                "exact_rank": 1,
+                "within_top_c": true,
+                "target_score": 3418.17041,
+                "whole_query_mean_rank": 1,
+                "whole_query_mean_score": 3418.17041
+              },
+              {
+                "head": 3,
+                "kv_head": 0,
+                "selected": false,
+                "exact_rank": 1,
+                "within_top_c": true,
+                "target_score": 2382.380371,
+                "whole_query_mean_rank": 1,
+                "whole_query_mean_score": 2382.380371
+              },
+              {
+                "head": 4,
+                "kv_head": 0,
+                "selected": false,
+                "exact_rank": 3002,
+                "within_top_c": false,
+                "target_score": 720.144104,
+                "whole_query_mean_rank": 3002,
+                "whole_query_mean_score": 720.144104
+              },
+              {
+                "head": 5,
+                "kv_head": 0,
+                "selected": false,
+                "exact_rank": 3547,
+                "within_top_c": false,
+                "target_score": 1332.558838,
+                "whole_query_mean_rank": 3547,
+                "whole_query_mean_score": 1332.558838
+              },
+              {
+                "head": 6,
+                "kv_head": 0,
+                "selected": false,
+                "exact_rank": 3821,
+                "within_top_c": false,
+                "target_score": 3984.153809,
+                "whole_query_mean_rank": 3821,
+                "whole_query_mean_score": 3984.153809
+              },
+              {
+                "head": 7,
+                "kv_head": 1,
+                "selected": false,
+                "exact_rank": 1093,
+                "within_top_c": false,
+                "target_score": 1162.460571,
+                "whole_query_mean_rank": 1093,
+                "whole_query_mean_score": 1162.460571
+              },
+              {
+                "head": 8,
+                "kv_head": 1,
+                "selected": false,
+                "exact_rank": 1093,
+                "within_top_c": false,
+                "target_score": 2766.640869,
+                "whole_query_mean_rank": 1093,
+                "whole_query_mean_score": 2766.640869
+              },
+              {
+                "head": 9,
+                "kv_head": 1,
+                "selected": false,
+                "exact_rank": 1093,
+                "within_top_c": false,
+                "target_score": 338.793152,
+                "whole_query_mean_rank": 1093,
+                "whole_query_mean_score": 338.793152
+              },
+              {
+                "head": 10,
+                "kv_head": 1,
+                "selected": true,
+                "exact_rank": 1,
+                "within_top_c": true,
+                "target_score": 1084.209717,
+                "whole_query_mean_rank": 1,
+                "whole_query_mean_score": 1084.209717
+              },
+              {
+                "head": 11,
+                "kv_head": 1,
+                "selected": true,
+                "exact_rank": 1,
+                "within_top_c": true,
+                "target_score": 1250.216553,
+                "whole_query_mean_rank": 1,
+                "whole_query_mean_score": 1250.216553
+              },
+              {
+                "head": 12,
+                "kv_head": 1,
+                "selected": false,
+                "exact_rank": 1911,
+                "within_top_c": false,
+                "target_score": 1172.979004,
+                "whole_query_mean_rank": 1911,
+                "whole_query_mean_score": 1172.979004
+              },
+              {
+                "head": 13,
+                "kv_head": 1,
+                "selected": false,
+                "exact_rank": 2185,
+                "within_top_c": false,
+                "target_score": 1244.964844,
+                "whole_query_mean_rank": 2185,
+                "whole_query_mean_score": 1244.964844
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

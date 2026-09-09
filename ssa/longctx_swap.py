@@ -47,15 +47,14 @@ def load(model_name, yarn):
 
 
 def _ids_of_len(tok, n, dev):
-    """A token tensor of length exactly n (a NIAH-style prompt padded with filler then trimmed)."""
+    """A real-text token tensor of length exactly n, without constructing an oversized prompt."""
     import torch
-    from ssa.gemma_ssa_eval import make_niah_text
-    text, _ = make_niah_text(50000, 0.5, max(4, n // 8))
-    ids = tok(text, return_tensors="pt")["input_ids"]
-    if ids.shape[1] < n:                                          # pad by repeating the filler tokenization
-        reps = (n // ids.shape[1]) + 1
-        ids = ids.repeat(1, reps)
-    return ids[:, :n].to(dev)
+    from ssa.gemma_ssa_eval import FILLER
+    seed = tok(FILLER, return_tensors="pt", add_special_tokens=False)["input_ids"]
+    if seed.shape[1] == 0:
+        raise ValueError("tokenizer produced no filler tokens")
+    reps = (n + seed.shape[1] - 1) // seed.shape[1]
+    return seed.repeat(1, reps)[:, :n].to(dev)
 
 
 def prefill_ms(model, ids, warmup=2, reps=3):
@@ -97,13 +96,18 @@ def main():
     ap.add_argument("--lengths", default="8192,16384,32768")
     ap.add_argument("--budgets", default="1.0,0.25,0.12,0.06")
     ap.add_argument("--block", type=int, default=128)
-    ap.add_argument("--impl", default="flex", choices=["flex", "analytic"])
+    ap.add_argument("--impl", default="flex", choices=["flex", "ccc", "analytic"])
+    ap.add_argument("--top-c", type=int, default=None,
+                    help="fixed block budget; required for the subquadratic causal cascade")
+    ap.add_argument("--nprobe", type=int, default=8)
     ap.add_argument("--beta", type=float, default=2.0)
     ap.add_argument("--niah-trials", type=int, default=3)
     ap.add_argument("--twohop-trials", type=int, default=3)
     ap.add_argument("--yarn", action="store_true", help="YaRN ×4 for n>32768 (native window is 32768)")
     ap.add_argument("--out", default="runs/qwen_longctx.json")
     args = ap.parse_args()
+    if args.impl == "ccc" and args.top_c is None:
+        ap.error("--impl ccc requires --top-c")
 
     import torch
     from ssa import gemma_ssa as G
@@ -152,7 +156,8 @@ def main():
 
     # 2) install SSA + smoke gate (full-budget kernel must reproduce the dense LM loss)
     base = lm_loss(model, tok, LM_TEXTS, max_len=512, device=dev)
-    install_ssa(model, block=args.block, budget_frac=1.0, beta=args.beta, impl=args.impl)
+    install_ssa(model, block=args.block, budget_frac=1.0, top_c=None,
+                beta=args.beta, impl=args.impl, nprobe=args.nprobe)
     gated = lm_loss(model, tok, LM_TEXTS, max_len=512, device=dev)
     ok = abs(gated - base) < 5e-2
     print(f"  [smoke] dense={base:.4f} SSA@1.0({args.impl})={gated:.4f} delta={abs(gated-base):.2e} "
@@ -168,7 +173,8 @@ def main():
             if key in rows:
                 print(f"  [skip] {args.impl} n={n} budget={b}", flush=True)
                 continue
-            G.CFG = G.SSAConfig(block=args.block, budget_frac=b, beta=args.beta, impl=args.impl)
+            G.CFG = G.SSAConfig(block=args.block, budget_frac=b, top_c=args.top_c,
+                                beta=args.beta, impl=args.impl, nprobe=args.nprobe)
             m = measure(model, tok, n, dev, args.niah_trials, args.twohop_trials)
             rows[key] = {"impl": args.impl, "n": n, "budget": b, "rope": rope, **m}
             save()

@@ -64,6 +64,24 @@ def test_ivf_selection_is_causal_and_owns_its_block():
 
 
 @skip
+def test_gqa_router_matches_repeated_kv_router():
+    """The GQA optimization builds one index per KV head without changing selected blocks."""
+    from ssa.ivf_kernel import ivf_route, ivf_route_gqa
+    from ssa.gemma_ssa import repeat_kv
+    from ssa.ssa_kernel import BLOCK
+    torch.manual_seed(4)
+    n = 16 * BLOCK
+    q = torch.randn(1, 6, n, 64, device="cuda", dtype=torch.float16)
+    k = torch.randn(1, 2, n, 64, device="cuda", dtype=torch.float16)
+    with torch.no_grad():
+        g_num, g_idx = ivf_route_gqa(q, k, top_c=4, local=1, nprobe=8, search_k=12)
+        r_num, r_idx = ivf_route(q, repeat_kv(k, 3), top_c=4, local=1,
+                                 nprobe=8, search_k=12)
+    assert torch.equal(g_num, r_num)
+    assert torch.equal(g_idx, r_idx)
+
+
+@skip
 def test_ivf_agreement_with_flat_router():
     """On clustered geometry, IVF block selection overlaps the flat block_route selection (Jaccard)."""
     from ssa.ivf_kernel import ivf_route

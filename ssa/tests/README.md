@@ -28,6 +28,11 @@ concentrated logits, flat logits, equal values, and full/partial causal blocks. 
 on the same inputs to isolate truncation error; it does not certify fp16 rounding error or measure
 GPU routing speed. Validated on an RTX 4080; skips without CUDA.
 
+**`test_hierarchical_certified_attention.py`** — dense-oracle validation of the tree-frontier version
+of the adaptive certificate. Exercises causal prefixes, hard caps, seed blocks, future-token isolation,
+and the equal-value shortcut; a high-margin fixture locks in logarithmic rather than flat leaf-summary
+evaluation for that geometry.
+
 **`test_core.py`** — the theory predictions and the baseline selector (paper §3).
 - `test_recovery_weight_is_exact_target_mass`, `test_recovery_threshold_at_half` — the recovery-weight law
   `σ(βΔ − log μ)` and its `½` crossing.
@@ -72,6 +77,8 @@ GPU routing speed. Validated on an RTX 4080; skips without CUDA.
 **`test_cascade_router.py`** — the Certified Causal Cascade selector (`cascade_router.py`; GPU+faiss).
 - full-budget == dense; causal/own/unique selection; exhaustive == brute-force sub-block max-pool;
   chunking invariance; decode == prefill; the `block_route_budget(sub=)` flag (identity + spike recall).
+- the chunk-at-a-time GQA surface equals the whole-tensor driver; the Blackwell-compatible PyTorch
+  center-radius tree recovers every visible causal block when its beam and budget are exhaustive.
 
 **`test_ccc_certificates.py`** — certificate/escalation/outlier soundness (GPU+faiss).
 - `test_certificate_soundness` (clustered AND random): certified ⇒ selection == exact routing-metric top-κ,

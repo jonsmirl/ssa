@@ -23,14 +23,34 @@ training can be made to manufacture, via a routability regularizer that shrinks 
 length generalization (rotary position + staged continued training reaches $32\times$ the trained length
 at $0.98$ recall for $\sim\!800$ adaptation steps) and a construction pipeline that converts a dense
 pretrained model into a subquadratic one by swapping the attention and briefly adapting (recovering to within
-$+1.2$ perplexity of a dense model given equal training while attending $38\%$ of keys) are demonstrated. All claims are
-accompanied by measurements at controlled scale.
+$+1.2$ perplexity of a dense model given equal training while attending $38\%$ of keys) are demonstrated.
+At operational scale, a fixed-beam center-radius router and sparse GQA execute every layer and head of a
+frozen Qwen2.5-0.5B over 10,000,128 tokens on one RTX Pro 6000 in 713.2 s with 25.72 GB peak allocation. A
+4K dense-equivalence gate, dense and streamed 128K retrieval gates, and one semantic 10M retrieval ranking
+pass. The 10M result establishes the complete execution conjunction; one retrieval instance does not
+establish broad quality preservation.
 
 ---
 
 A separate adaptive reference bounds omitted softmax mass, the subset-to-dense KL divergence, and
 attention-output error from key and value summaries, with a full-scan fallback when the requested
 tolerance cannot be certified sparsely (see §5.7).
+
+### Evidence status
+
+| Claim | Status | Scope |
+|---|---|---|
+| Complete transformer execution beyond 10M | demonstrated | one frozen 0.5B model, all layers and heads, one GPU |
+| Subquadratic router and sparse kernel at 10M | demonstrated | bounded fixed-beam tree; exact softmax over the selected set |
+| Semantic retrieval at 10M | narrow evidence | one NIAH ranking; no broad task suite or dense 10M baseline |
+| Near-floor kernel scaling to 12M | demonstrated | single-head synthetic IVF benchmark |
+| Omitted-mass and output-error certificates | reference implementation | CPU, adaptive, worst-case full scan |
+| Supporting routing invariants | proved in this paper | self-contained statements and proofs in Appendix B; private Lean audit is corroborating provenance |
+| Cheap worst-case losslessness | impossible under the stated model | arbitrary isolated targets force reads outside any strict sublinear budget |
+
+The paper reports the system as it exists at the stated measurement points. Experiment fixtures are kept
+separate when they establish different claims; results from synthetic kernel timing, real-model routing
+quality, and complete-transformer execution are not combined into an unmeasured speedup or quality claim.
 
 ## 1. Introduction
 
@@ -186,10 +206,11 @@ in the same one:
 - **Hierarchical router at fixed $b$ and fixed $\kappa$** — the configuration that delivers both. Organize
   blocks into a tree of summaries and descend it per query with branch-and-bound pruning (Section 5.1), so
   each query inspects $O(k\log B)$ nodes rather than all $B$ — a benign-geometry cost, not a worst-case
-  guarantee. Routing drops toward $O(n\log n\,d)$ while $\kappa$ stays fixed. The practical instance is the
-  *approximate* IVF router of Section 10 (0.93–0.97 block agreement), which is how the measured 12M-token
-  forward reaches $\sim\!2.9\times$ the $n\,\kappa$ floor — in the cheap+length-robust-but-approximate corner
-  of Section 6, not the certified one.
+  guarantee. Routing drops toward $O(n\log n\,d)$ while $\kappa$ stays fixed. Two practical approximate
+  instances are measured: the IVF router of Section 10 (0.93–0.97 block agreement), which places the isolated
+  12M kernel at $\sim\!2.9\times$ the $n\,\kappa$ floor, and the fixed-beam center-radius tree used in the
+  complete 10M transformer. Both occupy the cheap+length-robust-but-approximate corner of Section 6, not the
+  certified one.
 
 So "$O(n\sqrt n)$ per layer" and "recovery flat in $n$" are claims about **different** configurations, and the
 hierarchical (or IVF) router at fixed $b,\kappa$ is what reconciles them. Either way the dominant $n^2$ term
@@ -357,7 +378,7 @@ bounds admissible, so recall is 1.000 throughout):
 Three readings. First, the routability programme has a **measurable ceiling**: driving the geometry benign
 moves the summary price from 63× the floor to 8×, monotonically — but not to 1×, and the proposition says why
 it cannot. Second, **reading keys is worth roughly 3.5×** at benign geometry (203.2 against 720.3 at spread
-0.02), the first absolute justification for the anisotropic refinement; `ρ_c` is not a minor sharpening but
+0.02), a quantitative justification for the anisotropic refinement; `ρ_c` is not a minor sharpening but
 most of the distance to the floor — *at these shapes*, a qualification the next paragraph makes precise. Third, the partition price is nearly flat in the spread (89.0 → 64.1) while
 the summary price moves by a factor of six: **the geometry is a fact about summaries, not about partitions.**
 
@@ -365,21 +386,21 @@ the summary price moves by a factor of six: **the geometry is a fact about summa
 ~64 keys. On real Gemma-2 layer-6 keys (`d = 2304`, blocks of 64–256) the same stored scalar **costs**
 rather than buys — 0.7×, 0.9×, 1.0× at `n = 4096/16384/65536` — because `Σ_c` is then deeply rank-deficient,
 `S_c = Σ_c + εI` is dominated by `ε`, and the honest `√(qᵀΣ_c q + ε‖q‖²)` is loose exactly where the whitened
-radius is large. The anisotropic refinement is therefore a recommendation **scoped to `b ≳ d`**. The
-unregularised bound concealed this, reporting `ρ_c` buying 1.1× on the identical run: the correction does not
-shift a number, it reverses which of the two bounds is better on real keys.
+radius is large. The anisotropic refinement is therefore a recommendation **scoped to `b ≳ d`**. Omitting
+the regularization term produces an inadmissible estimate and the wrong ordering of the two bounds on real
+keys.
 
 **Scope.** k-means blocks on synthetic clustered keys at one `(n,d,B)` and one query-noise level — the
 adaptive/IVF regime, not the contiguous-position blocking of the flat kernel; the oracle is a reference and
 not an achievable router; and the floor is about *lossless* selection, so a budget-κ lossy router may sit
 below it and SSA's does. The proposition itself is geometry-free and carries none of these caveats.
 
-**Correction, and where the room actually is.** `ρ_c` and `R_c` are *query-independent*, hence precomputed
+**Ellipsoidal refinement and the remaining room.** `ρ_c` and `R_c` are *query-independent*, hence precomputed
 and stored as one scalar per block: the ellipsoidal bound is summary-only at query time too, and the
 hierarchy is about summary *size* rather than summaries versus keys. That strengthens the reading — at spread
-0.02 one extra stored scalar takes the bound from 8.7× to 2.5× the floor, i.e. the shipped bound reads 5.33%
-of keys against a floor of 2.10%. Two attempts to tighten it further were measured against the floor and both
-failed: seeding the incumbent with precomputed block representatives saves *exactly* zero (B&B opens blocks in
+0.02 one extra stored scalar takes the bound from 8.7× to 2.5× the floor, i.e. the implemented bound reads
+5.33% of keys against a floor of 2.10%. Measurements of two further refinements show no general gain: seeding
+the incumbent with precomputed block representatives saves *exactly* zero (B&B opens blocks in
 decreasing `U_c`, so the first block opened already sets `s★` to the true maximum — cost is bound-driven, not
 incumbent-driven), and an axis-aligned box bound in a shared basis is *worse* than the ellipsoid, with `min` of
 the two buying 8% at the most benign geometry alone. The remaining lever is the **partition**.
@@ -399,7 +420,7 @@ pointwise tighter bound provably drops a superset of the parts (`a_higher_bound_
 bound (`familyMax_le_of_isAdmissible`); an attained bound admits nothing smaller
 (`no_bound_below_an_attained_one`), the proposition above in abstract form; and the minimum of two admissible
 bounds is admissible (`min_isAdmissible`), which licenses the implementation's `min` of the isotropic and
-ellipsoidal bounds — previously an unwarranted convenience. Finally
+ellipsoidal bounds. Finally,
 `at_the_floor_a_maximal_threshold_drops_every_part` predicts the null above: at the floor a maximal threshold
 drops every part, so a search still reading parts is paying for bounds above the floor and a better incumbent
 cannot help it.
@@ -670,12 +691,13 @@ fundamental limit.
 >
 > The argument covers any *deterministic* selector, adaptive or not: run it, let $\mathcal R$ be the keys its
 > execution actually read, and perturb an unread one — the execution, hence the output, is unchanged. The
-> adaptive case is now itself machine-checked (`lossless_adaptive_reads_every_key`, over an explicit
+> adaptive case is machine-checked (`lossless_adaptive_reads_every_key`, over an explicit
 > decision-tree probe model in which the read set is the per-input queried path). A
 > *randomized* selector reading $o(n)$ keys misses a uniformly-planted spike with probability $1-o(1)$, so
 > the conclusion survives in expectation; we state that extension as a remark, not a formalized claim.
 
-> **Note on formalization.** The proofs given in this paper are the elementary in-text arguments. Their
+> **Note on formalization.** The proofs given in this paper, including the complete routing-invariant
+> statements in Appendix B, are the public mathematical arguments. Their
 > formal counterparts — `subquadratic_forces_skip`, `flat_router_work`, `lossless_selector_reads_every_key`,
 > `lossless_adaptive_reads_every_key`, `capacity_pigeonhole_tension`, `read_capacity_le_dim`,
 > `hierarchical_prune`, and the rest of the `(proved)` results — are **machine-checked in a separate Lean 4
@@ -683,7 +705,8 @@ fundamental limit.
 > and inference recognition modules, with supporting results in `Substrate.Universal`; Lean + Mathlib), each confirmed
 > `sorry`-free and axiom-clean (`#print axioms` → only `[propext, Classical.choice, Quot.sound]`). That
 > development is **not bundled in this repository**, so a reader of this artifact alone cannot re-run the
-> checker; and the formal statements are deliberately modest — finite-counting / probe-model lower bounds and
+> checker, but no routing-invariant claim is available only by private reference. The formal statements are
+> deliberately modest — finite-counting / probe-model lower bounds and
 > sufficient conditions, not the grander informal reading (e.g. `subquadratic_forces_skip` proves only that
 > sub-`Q·B` work must skip some block, not that any specific system achieves a quality-preserving 1,000×).
 
@@ -865,7 +888,7 @@ both routers on-device (no host transfer):
 | 8M | OOM (nb²=17.2 GB) | 63.7 ms | IVF only |
 
 The single-head GEMM's constant wins below ~3M; it OOMs only at 8M (17 GB matrix), while the kernel's actual
-router (block_route, H heads + argsort) OOMs near 1M; the IVF runs linearly past both, now measured to **12M
+router (block_route, H heads + argsort) OOMs near 1M; the IVF runs linearly past both and is measured to **12M
 (94 ms)**. Crossover ~3M (IVF 1.7× faster at 4M).
 
 **The gap, closed end-to-end (measured).** Wiring the IVF router into the FlexAttention kernel — emitting the
@@ -879,17 +902,19 @@ single-head, to 12M on one 16 GB GPU:
 | 4M | 36.4 | 0.003 | 13.5 | 52.0 | 3.9× | 2.18 GB |
 | 12M | 101.4 | 0.003 | 47.5 | **139.5** | **2.9×** | 6.55 GB |
 
-The argsort mask build — the projected $n^{2.12}$ wall (40.7 s at 12M) — is now **sub-millisecond**, and the
-residual gap to the floor is a *measured* 2.9× rather than the 128× the flat kernel paid. The remaining caveats
-are narrower than before: the end-to-end run is **single-head** (H=8 does not fit at 12M) and on **synthetic
-keys** (a speed result), and the whole story is conditional on benign geometry — adversarial or multi-hop
+The direct-index mask build is **0.003 ms**, compared with a 40.7 s extrapolation for the argsort path, and the
+residual gap to the floor is a *measured* 2.9×. The scope is **single-head** (H=8 does not fit at 12M) and
+**synthetic keys** (a speed result), and the whole story is conditional on benign geometry — adversarial or multi-hop
 retrieval returns κ_min to the 50% floor, where no speedup exists. Both ingredients of a quality-preserving
 large-context speedup — a floor-lowering training stage and a sub-linear indexer — are thus exhibited, and the
 indexer is shown driving a live kernel to ~the floor, under exactly that benign-geometry condition.
 
 ## 11. Experiments
 
-All experiments are at controlled scale; the point is to validate mechanisms, not to set absolute records.
+The evidence below is organized by current claim and fixture. Synthetic timing establishes kernel scaling;
+controlled training establishes mechanism behavior; frozen pretrained models establish integration and
+retrieval behavior. Only the complete 10M experiment combines real-model geometry, every layer and head,
+long context, subquadratic routing, sparse execution, and an observed quality outcome.
 
 **Routing.** Second-order (cumulant) routing recovers targets where centroid routing collapses, matching the
 $1/b$ outlier-attenuation analysis of Section 5.2; routing quality peaks near $\beta\approx2$, consistent with
@@ -904,10 +929,9 @@ $2.9\times$ the $n\!\cdot\!\kappa$ floor (versus the $128\times$ gap the flat ke
 build collapses to sub-millisecond because the IVF emits block indices directly. The autoregressive decode step
 is **flat in $n$** ($\sim\!0.6$ ms from 1M to 12M at fixed $\kappa$) while a fair fp16 flash-decode step's prefix
 read grows with $n$ ($0.5\to5.3$ ms) — a $9\times$ per-step gap at 12M with the crossover near 1M–2M, both
-measured. (An earlier $55\times$ figure was measured against a naive dense reference that upcast the whole prefix
-K/V to fp32 every step, ${\sim}5\times$ slower than the fair fp16 row; the naive reference is retained in the
-benchmark but no longer headlined. Single head; synthetic keys — a speed
-result, with selection quality the separate benign-geometry story.)
+measured. The comparison uses the fair fp16 flash-decode row; a naive fp32-upcasting reference remains in the
+benchmark only as a diagnostic. This is a single-head synthetic-key speed result; selection quality is a
+separate benign-geometry claim.
 
 **Multi-hop composition.** A chained retrieval through the same budgeted block selector obeys the composition law
 $\text{chain}\approx\prod_j\rho_j$: benign single needles hold at $1.00$ while a *mixed* two-hop chain (one benign
@@ -918,10 +942,21 @@ split as a prediction of the same theory rather than an anomaly.
 **The fused kernel inside a real model.** Swapping the kernel into a pretrained Qwen2.5-0.5B (`impl="flex"`) and
 measuring at $8$K–$128$K preserves single-needle NIAH at $1.00$ while giving a $1.5$–$1.6\times$ prefill speedup
 at $32$K (budget $0.06$–$0.12$), the speedup growing with $n$ and with a tighter budget — the synthetic-key
-crossover shape, now inside a real model. At matched budget the analytic $O(n^2)$ path needs $10.7$ GB and $3.5$ s
+crossover shape inside a real model. At matched budget the analytic $O(n^2)$ path needs $10.7$ GB and $3.5$ s
 where the fused kernel needs $1.4$ GB and $130$ ms, and the analytic path OOMs before $64$K while the kernel
-reaches $128$K (under YaRN). The real-model two-hop chain shows the predicted budget-sensitivity. This is the
-first result simultaneously real-model, long-context, subquadratic-kernel, and quality-measured — at $0.5$B scale.
+reaches $128$K (under YaRN). The real-model two-hop chain shows the predicted budget-sensitivity. This
+configuration jointly measures a real model, long context, a subquadratic kernel, and quality at $0.5$B scale.
+
+**Complete pretrained transformer beyond 10M.** The memory-bounded Qwen2.5-0.5B path processes
+**10,000,128 tokens** through all 24 layers, 14 query heads, and 2 KV heads on one RTX Pro 6000. It completes
+in **713.2 s** at **14,022 token/s** with **25.72 GB** peak CUDA allocation. The fixed-beam center-radius tree
+routes on pre-RoPE content geometry; native GQA sparse attention scores the selected blocks with post-RoPE Q/K.
+Layer-1 cross-head consensus and a bounded 128-block cross-layer reservoir retain route evidence while keeping
+the per-query/head budget at no more than 198 blocks, an upper selected fraction of **0.506%**. The 4K
+dense-equivalence gate, dense and streamed 128K NIAH gates, and the 10M semantic ranking pass (`walnut` 5.844,
+best distractor 4.438). The model is frozen and uses static YaRN at approximately 306× its training range.
+Consequently this experiment demonstrates the full execution conjunction and one successful quality outcome,
+not dense-equivalent output or general long-context quality.
 
 **An optimal selector: the Certified Causal Cascade.** Composing five ingredients — a shared low-dim routing
 space, sub-block max-pool summaries, a chunked-causal streaming index, an exact outlier side-channel, and
@@ -934,9 +969,9 @@ component table is the trilemma made concrete: sub-block granularity and the out
 spikes, but **isolated unit-norm needles stay unretrievable for every cheap selector** (recall $0.05$) — the
 impossibility of Section 6 in miniature. On the selector's cost: per-layer routing is $\sim\!59\%$ of a
 Qwen-0.5B prefill (at DSA's reported $58\%$), and the lever that makes it cheap is **cross-layer sharing from a
-mid donor layer** — measured cutting it to $\sim\!6\%$ with single-needle retrieval preserved (the first
-measurement of the "$\div 5$" folklore; sharing from layer 0 fails). A trained $d_r{=}16$ routing projection
-rebuts the "low-rank is a bust" verdict on real keys ($0.32 \to 0.65$ block agreement) but is itself too lossy
+mid donor layer** — measured cutting it to $\sim\!6\%$ with single-needle retrieval preserved, consistent with
+the analytic $\div 5$ estimate; sharing from layer 0 fails. A trained $d_r{=}16$ routing projection reaches
+$0.65$ block agreement on real keys versus $0.32$ untrained, but is itself too lossy
 to drive retrieval — the honest boundary. This gives a falsifiable signature for any production selector: cheap
 $\Leftrightarrow$ shared from a mid layer, preserving single-needle recall while sagging on isolated/multi-hop.
 
@@ -946,7 +981,7 @@ measured against Lean predictions, place it. The READ rule sets the capacity cla
 $o = S q$ is rank-$d$ capped (recall collapses at $m\approx d$; `read_capacity_le_dim` / `rank_d_read_wall`
 prove the $\le d$ ceiling) while a softmax read over the same pairs holds
 far past $m=d$ (measured to $m=512$; `softmax_capacity` gives the exponential form) — capacity is a
-property of the read, not the substrate, now proved on both sides of the contrast. The load-bearing measurement (empirical, no theorem) is that
+property of the read, not the substrate, with machine-checked results on both sides of the contrast. The load-bearing measurement (empirical, no theorem) is that
 **compression $\neq$ selection**: a needle salient only at read time is lost by a surprise-gated fixed memory
 (recall $0.10$) where selection recovers it ($1.00$) — write-time compression cannot keep what the future
 query has not yet made relevant. A distribution shift is a fold a fixed memory cannot track
@@ -957,11 +992,11 @@ NIAH-$\gg$-multi-hop split is architecture-independent: it holds whichever corne
 
 **The compression corner, trained.** The reference memories above are untrained; the zero-attention recipe's
 load-bearing half is *training-dependent* — a learned write gate and an auxiliary future-prediction objective.
-We reach it with a small micro-LM (d=128, head_dim $d_h=16$) trained end-to-end on MQAR with a token-mixer
+The trained fixture is a small micro-LM (d=128, head_dim $d_h=16$) trained end-to-end on MQAR with a token-mixer
 swappable between the two corners at matched state (DeltaNet state $d_h$ vs an SSA budget $\kappa\approx d_h$).
 Three measurements. (i) *Capacity:* trained selection (dense, SSA) is flat in load, while the trained DeltaNet
 groks the task and holds to $m\approx d_h$ then walls at the same rank-$d_h$ boundary — training moves the wall,
-it does not remove it. (ii) *The learned write gate is a null ingredient:* on write-salient MQAR (keep-worthy
+it does not remove it. (ii) *The learned write gate has no measured benefit:* on write-salient MQAR (keep-worthy
 pairs use reserved marker keys, identifiable at write time) the no-gate delta rule already solves it — training
 shapes the $\le d_h$ keepable keys itself; on read-salient MQAR nothing lifts the compression wall, gate or no
 gate. (iii) *The future-prediction auxiliary loss is flat in its weight* on the read-salient wall. So the
@@ -985,10 +1020,9 @@ for $\sim\!800$ adaptation steps, SSA-preserved.
 **Construction pipeline.** Table in Section 9: swap $+13.2$ perplexity, $94\%$ recovered to within $+1.2$ of
 the dense-adapted control at $\sim\!38\%$ of keys.
 
-**What the headline retrieval numbers do and do not show.** Reported single-target needle-in-a-haystack
-accuracies of $98$–$100\%$ at $10^6$–$10^7$ tokens are real and consistent with (3.1)–(3.2), but they live in a
-specific regime. Retrieval was measured as a function of context length at fixed budget $\kappa\approx10^3$ and
-margin $\Delta=0.55$:
+**Retrieval regime boundaries.** The complete 10M run supplies one successful semantic ranking. The controlled
+sweep below isolates the geometry behind such single-target results by measuring retrieval as a function of
+context length at fixed budget $\kappa\approx10^3$ and margin $\Delta=0.55$:
 
 | context $n$ | dense | SSA, isolated target | SSA, benign target |
 |---|---|---|---|
@@ -1000,7 +1034,7 @@ margin $\Delta=0.55$:
 
 An **isolated** target — a lone spike with no correlated neighbors — *collapses* with length: cheap moment
 routing averages it into its block and loses it among the fluctuations of the growing number of blocks (the
-$1/b$ attenuation of Section 5.2, now competing against more and more random blocks). This is the impossibility
+$1/b$ attenuation of Section 5.2, competing against more and more random blocks). This is the impossibility
 of Section 6 in miniature. A **benign** target — one accompanied by a coherent span of query-aligned neighbors,
 as a real answer is by its surrounding context — lifts its whole block's score and stays flat at $1.00$,
 *beating dense* at long $n$ because selection caps the effective distractor count. The same separation appears
@@ -1020,15 +1054,27 @@ be cheap **only** on benign geometry; and the regularizer (7.2) shows training c
 construction pipeline (Section 9) and the staging ladder (Section 8) turn the mechanism into a recipe that
 retrofits a dense model and extends its context a rung at a time.
 
-Honest limitations follow directly from the theory. (i) **Worst-case losslessness is not available cheaply** —
+The current limitations follow directly from the theory and evidence. (i) **Worst-case losslessness is not available cheaply** —
 a sufficiently adversarial or genuinely low-margin target can always evade summary routing; SSA's guarantees
 are conditional on the (trained, measured) benign geometry. (ii) **Multi-needle and low-margin retrieval** are
 the hard regime the headline single-needle numbers do not address. (iii) The selection budget $\kappa$ sets a
-floor margin $\sqrt{2\log\kappa/d}$; targets below it are missed regardless of $n$. (iv) The experiments here
-are at modest scale ($10^2$–$10^5$ tokens, $10^8$-parameter base); they validate mechanisms, and reaching
-$10^7$-token contexts is the same construction repeated with the hierarchical router, more compute, and a
-long-context training corpus. None of these is a missing algorithmic ingredient; they are the boundary the
-theory itself draws.
+floor margin $\sqrt{2\log\kappa/d}$; targets below it are missed regardless of $n$. (iv) The complete 10M
+experiment uses a frozen 0.5B model, static YaRN far outside its training range, one semantic NIAH ranking,
+and no dense 10M baseline; it is execution evidence rather than a broad quality result. (v) The 12M IVF
+near-floor timing is single-head and synthetic, while the real-model 128K timing and quality measurements are
+smaller-scale. Broad retrieval, perplexity, multi-hop evaluation, trained long-context models, and
+frontier-model validation remain open. (vi) The complete implementation is not formally verified end to end.
+Appendix B gives self-contained statements and proofs of the supporting exact-arithmetic invariants; access to
+the separate formalization is not required to inspect them. As corroborating provenance, private Substrate
+commit `908ec0d6d` machine-checks the corresponding results for recursive
+real-valued ball containment, conditional 9-vote retention by a 128-slot highest-count reservoir at the
+14-selector/70-item route bounds, and survival with a uniform cardinality cap under union with a fixed carrier.
+It also proves that the radial pairing cap is attained under alignment plus a realizable boundary member and
+that the per-centre refinement agrees there. Those alignment hypotheses are sufficient, not shown necessary.
+The per-centre cap is universally no larger; a plane witness exhibits a strict gap as large as the whole cap,
+but no converse says nonalignment forces strictness or equality forces alignment. These results do not verify
+the Python/CUDA mapping, float32 outward rounding, fixed-beam quality, or the unrecorded premise that the
+measured target had nine pre-consensus base-route votes.
 
 ---
 
@@ -1053,6 +1099,268 @@ Cauchy–Schwarz over the other $m-1$ indices, $d_i^2=(\sum_{j\neq i}d_j)^2\le(m
 i}d_j^2=(m-1)(\sum_j d_j^2-d_i^2)$. Hence $d_i^2\,m\le(m-1)\sum_j d_j^2$, i.e.
 $(s_i-\bar s)^2\le(m-1)\mathrm{Var}$. Taking the max over $i$ and adding $\bar s$ gives the stated bound on
 $\max_j s_j$, and (5.5) is its contrapositive against the threshold $s^\star$.
+
+---
+
+## Appendix B. Self-contained routing invariants
+
+This appendix contains the mathematical content used to justify the 10M router's center-radius hierarchy,
+cross-head reservoir, and fixed cross-layer carrier. It is included so the public artifact does not depend on
+access to the separate Lean repository. The formal audit is useful corroboration, but the definitions,
+statements, proofs, counterexamples, and scope needed to assess the claims are all below. Every geometric
+statement is over an exact real inner-product space; floating-point consequences require a separate outward-
+rounding argument.
+
+### B.1 Finite families of key regions
+
+Let $I$ be finite and nonempty. In a real inner-product space, let key $x_i$ lie in the closed ball with centre
+$c_i$ and radius $r_i$:
+$$
+\lVert x_i-c_i\rVert\le r_i .
+$$
+For a reference point $p$, define the **radial reach** and its score cap by
+$$
+R=\max_{i\in I}\bigl(\lVert c_i-p\rVert+r_i\bigr),
+\qquad U_R(q)=\langle q,p\rangle+\lVert q\rVert R .
+\tag{B.1}
+$$
+
+**Proposition B.1 (admissibility and radial minimality).** For every $i$ and $q$,
+$$
+\lVert x_i-p\rVert\le R,
+\qquad \langle q,x_i\rangle\le U_R(q).
+\tag{B.2}
+$$
+Moreover, $R$ is attained by some index and is the least number satisfying
+$\lVert c_i-p\rVert+r_i\le R$ for all $i$.
+
+**Proof.** The triangle inequality gives
+$$
+\lVert x_i-p\rVert
+\le \lVert x_i-c_i\rVert+\lVert c_i-p\rVert
+\le r_i+\lVert c_i-p\rVert\le R.
+$$
+Then
+$\langle q,x_i\rangle-\langle q,p\rangle
+=\langle q,x_i-p\rangle
+\le\lVert q\rVert\lVert x_i-p\rVert\le\lVert q\rVert R$
+by Cauchy–Schwarz. Attainment and minimality follow directly because (B.1) is the maximum of a finite,
+nonempty family. $\square$
+
+Radial minimality does **not** make $U_R$ the sharpest score bound available from the same data. Define the
+per-centre cap
+$$
+U_C(q)=\max_{i\in I}\bigl(\langle q,c_i\rangle+\lVert q\rVert r_i\bigr).
+\tag{B.3}
+$$
+
+**Proposition B.2 (per-centre refinement).** Every key is bounded by its own centre,
+$$
+\langle q,x_i\rangle\le\langle q,c_i\rangle+\lVert q\rVert r_i,
+$$
+and $U_C(q)\le U_R(q)$ for every query.
+
+**Proof.** Apply Cauchy–Schwarz to $x_i-c_i$ for the first inequality. For the second, apply it to
+$c_i-p$:
+$$
+\langle q,c_i\rangle+\lVert q\rVert r_i
+\le \langle q,p\rangle+\lVert q\rVert
+   \bigl(\lVert c_i-p\rVert+r_i\bigr)
+\le U_R(q),
+$$
+then maximize the left side over $i$. $\square$
+
+The comparison can be strict. In $\mathbb R^2$, take one region with $p=(0,0)$, $q=(1,0)$,
+$c_1=(0,1)$, $r_1=0$, and $x_1=c_1$. Then $R=1$ and $U_R(q)=1$, whereas
+$U_C(q)=\langle q,x_1\rangle=0$. Thus the gap can equal the whole reach term. This is one witness, not a
+theorem that nonalignment always makes the inequality strict.
+
+For the equality case, write $e_q=\lVert q\rVert^{-1}q$, using $e_0=0$. Say two vectors are on the same ray
+when one is a nonnegative scalar multiple of the other; then
+$\langle q,v\rangle=\lVert q\rVert\lVert v\rVert$.
+
+**Proposition B.3 (aligned realizable attainment).** Suppose an index $i_\star$ attains the reach,
+$\lVert c_{i_\star}-p\rVert+r_{i_\star}=R$, the vectors $q$ and $c_{i_\star}-p$ lie on the same ray, and
+$$
+x_{i_\star}=c_{i_\star}+r_{i_\star}e_q .
+\tag{B.4}
+$$
+Then
+$$
+\langle q,x_{i_\star}\rangle=U_R(q).
+\tag{B.5}
+$$
+Consequently, if $B$ bounds every $\langle q,x_i\rangle$ for this fixed family and query, then
+$U_R(q)\le B$; no smaller skip bound is admissible there. Under the reach-attainment and same-ray hypotheses
+alone—without the boundary-member hypothesis (B.4)—$U_C(q)=U_R(q)$.
+
+**Proof.** Same-ray equality and (B.4) give
+$$
+\begin{aligned}
+\langle q,x_{i_\star}\rangle
+ &=\langle q,p\rangle+\langle q,c_{i_\star}-p\rangle
+   +r_{i_\star}\langle q,e_q\rangle\\
+ &=\langle q,p\rangle+\lVert q\rVert
+   \bigl(\lVert c_{i_\star}-p\rVert+r_{i_\star}\bigr)=U_R(q).
+\end{aligned}
+$$
+Any common bound $B$ must bound this member, proving the next claim. For the cap comparison, the
+$i_\star$ term in (B.3) equals $U_R(q)$ under alignment, while Proposition B.2 supplies the reverse
+inequality. $\square$
+
+No $q\ne0$ hypothesis is needed: at $q=0$, $e_q=0$ and both sides of (B.5) vanish. Nor does equality require
+$r_{i_\star}\ge0$. That sign condition is needed only to make the constructed boundary member admissible:
+$\lVert r_{i_\star}e_q\rVert\le r_{i_\star}$ when $r_{i_\star}\ge0$. The hypotheses above are sufficient;
+neither attainment nor equality of the two caps is proved to force alignment.
+
+### B.2 Recursive ball containment
+
+Define a ball tree recursively. A leaf stores a centre and radius. A node stores a centre $c_t$ and children
+$u$, and its radius is
+$$
+\rho_t=\max\!\left(0,\max_{u\text{ child of }t}
+  \bigl(\lVert c_u-c_t\rVert+\rho_u\bigr)\right).
+\tag{B.6}
+$$
+Let $s\preceq t$ mean that $s=t$ or $s$ is below $t$ through a finite chain of child edges.
+
+**Proposition B.4 (containment and ancestor cap).** Every child ball lies inside its parent ball. More
+generally, if $s\preceq t$ and $\lVert x-c_s\rVert\le\rho_s$, then
+$$
+\lVert x-c_t\rVert\le\rho_t.
+\tag{B.7}
+$$
+For every reference point $p$, ancestor reach is monotone:
+$$
+\lVert c_s-p\rVert+\rho_s
+\le \lVert c_t-p\rVert+\rho_t.
+\tag{B.8}
+$$
+Consequently, if each key lies in a descendant ball below $t$ and
+$\lVert c_t-p\rVert+\rho_t\le R_t$, then
+$$
+\langle q,x_i\rangle\le\langle q,p\rangle+\lVert q\rVert R_t
+$$
+for every such key.
+
+**Proof.** Equation (B.6) directly gives
+$\lVert c_u-c_t\rVert+\rho_u\le\rho_t$ for each child. If $x$ lies in $u$, the triangle inequality yields
+$\lVert x-c_t\rVert\le\lVert x-c_u\rVert+\lVert c_u-c_t\rVert\le\rho_t$.
+Induction on the child path proves (B.7). The same induction, now applying the triangle inequality to
+$c_u-p$, proves (B.8). Proposition B.1 applied at node $t$ gives the score cap. $\square$
+
+This establishes exact-real containment at arbitrary depth. It proves neither that a node radius is minimal
+nor that the fixed-beam search visits the correct branch. In float32, (B.7) additionally requires radii to be
+rounded outward or inflated enough to cover accumulated error.
+
+### B.3 Uniform and position-dependent orthogonal actions
+
+**Proposition B.5 (what orthogonality preserves).** If one orthogonal map $A$ is applied to the query and both
+keys, then
+$$
+\langle Aq,Ax\rangle<\langle Aq,Ay\rangle
+\quad\Longleftrightarrow\quad
+\langle q,x\rangle<\langle q,y\rangle.
+$$
+Different maps at different key positions need not preserve the order.
+
+**Proof.** Orthogonality gives $\langle Au,Av\rangle=\langle u,v\rangle$. For the negative statement in
+$\mathbb R^2$, take $q=x=(1,0)$, $y=(1/2,0)$, $A=-I$, and $B=I$. Initially
+$\langle q,y\rangle=1/2<1=\langle q,x\rangle$, but
+$\langle q,Ax\rangle=-1<1/2=\langle q,By\rangle$. $\square$
+
+RoPE is position-dependent, so the second statement explains why pre-RoPE and post-RoPE rankings are not
+identities. It is only an existence counterexample: it says nothing about how often rankings change or which
+ranking gives better retrieval quality.
+
+### B.4 Cross-head consensus and top-count retention
+
+Let $H$ selectors choose finite sets $S_h$, each of cardinality at most $W$. Let
+$U=\bigcup_h S_h$, let $\nu(a)=|\{h:a\in S_h\}|$, and define
+$C_v=\{a\in U:\nu(a)\ge v\}$.
+
+**Proposition B.6 (consensus counting).** For every $v$,
+$$
+|C_v|v\le HW,
+$$
+and for $v>0$, $|C_v|\le\lfloor HW/v\rfloor$.
+
+**Proof.** Double-count selector–element incidences:
+$$
+\sum_h|S_h|=\sum_{a\in U}\nu(a).
+$$
+The left side is at most $HW$, while elements of $C_v$ contribute at least $|C_v|v$ to the right side.
+$\square$
+
+A **top-count reservoir** of capacity $k$ is a set $T\subseteq U$ such that
+$|T|=\min(k,|U|)$ and every outsider has count no larger than every member:
+$$
+a\in U\setminus T,\ b\in T\quad\Longrightarrow\quad\nu(a)\le\nu(b).
+\tag{B.9}
+$$
+Such a reservoir exists by sorting the finite pool by $\nu$; ties may be broken arbitrarily.
+
+**Proposition B.7 (consensus retention).** If $v>0$ and $\lfloor HW/v\rfloor\le k$, then every top-count
+reservoir of capacity $k$ contains $C_v$.
+
+**Proof.** Suppose $a\in C_v\setminus T$. By (B.9), every $b\in T$ has
+$\nu(b)\ge\nu(a)\ge v$, so $T\cup\{a\}\subseteq C_v$. Hence
+$|T|+1\le|C_v|\le\lfloor HW/v\rfloor\le k$, giving $|T|<k$. The fullness condition
+$|T|=\min(k,|U|)$ then forces $|T|=|U|$. Since $T\subseteq U$, this implies $T=U$, contradicting
+$a\notin T$. $\square$
+
+For SSA's route limits, $H=14$, $W=70$, and $v=9$, so
+$$
+|C_9|\le\left\lfloor\frac{14\cdot70}{9}\right\rfloor=108<128.
+$$
+Therefore every nine-vote item is retained by any full 128-slot highest-count reservoir, independent of tie
+breaking. This is conditional on the item actually receiving nine **pre-reservoir** selections. It says
+nothing about items at the implementation's two-vote admission threshold, for which the same bound is
+$\lfloor980/2\rfloor=490$.
+
+The fullness equality in the reservoir definition is essential: merely requiring $|T|\le k$ allows the empty
+set, which retains nothing. The multiplied counting bound is attained in general when all $H$ selectors choose
+the same $W$ items and $v=H$. No construction here is claimed to attain the numeric ceiling 108 at
+$(H,W,v)=(14,70,9)$.
+
+### B.5 Accumulating runs and a fixed cross-layer carrier
+
+Let $S_\ell$ be the selection made at round (or layer) $\ell$, and let $P$ be a carried finite set. There are
+two different constructions:
+$$
+A_0=P,\qquad A_{n+1}=S_n\cup A_n,
+\qquad\text{and}\qquad
+F_\ell=S_\ell\cup P.
+\tag{B.10}
+$$
+
+**Proposition B.8 (retention and capacity).** The accumulating run satisfies
+$$
+A_n=P\cup\bigcup_{\ell<n}S_\ell,
+\qquad A_n\subseteq A_m\ (n\le m),
+\qquad |A_n|\le|P|+nW
+$$
+when $|S_\ell|\le W$. If additionally $|P|\le C$, the fixed-carrier state satisfies, for every $\ell$,
+$$
+P\subseteq F_\ell,
+\qquad |F_\ell|\le W+C.
+\tag{B.11}
+$$
+
+**Proof.** The closed form and monotonicity follow by induction from (B.10). The cardinality claims use
+$|A\cup B|\le|A|+|B|$, once per induction step for $A_n$ and once directly for $F_\ell$. The inclusion in
+(B.11) is immediate from the union. $\square$
+
+The constructions must not be conflated. With $P=\varnothing$ and $S_\ell=\{\ell\}$,
+$F_0=\{0\}$ is not a subset of $F_1=\{1\}$, while $A_1=\{0\}\ne F_1$. Thus the fixed carrier preserves
+$P$, not every earlier layer's transient selection, and its $W+C$ cap is uniform precisely because it does not
+accumulate those selections.
+
+Finally, if “past-bounded at $t$” means every member of a set is at most $t$, a union is past-bounded only when
+both components are. This property is preserved by either construction under the corresponding hypotheses;
+the union does not create it: at $t=0$, $P=\{0\}$ is past-bounded but $S_0=\{5\}$ and
+$S_0\cup P$ are not. None of these set identities specifies how a selector admits an item, proves a causal
+mask, or proves that the measured target belonged to $P$.
 
 ---
 

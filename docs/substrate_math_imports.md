@@ -20,6 +20,44 @@ in the exploratory entries below are not a guarantee about a concurrently changi
 
 Paths are relative to `~/substrate/lean/Substrate/Universal/`.
 
+## Implemented: hierarchical adaptive certificates
+
+Substrate gained `Potential/Entropy/BlockLogPartition.lean` and
+`Potential/Entropy/TreeLogPartition.lean` after the first review.  The declarations
+`blockSoftmax_one` and `treeSoftmax_unitScale` prove that a unit-scale block/tree decomposition has
+exactly the same site weights as ordinary flat softmax.  This licenses a useful implementation
+distinction: SSA may organize *bounds* hierarchically without changing the target distribution.
+
+`ssa/hierarchical_certified_attention.py` combines that identity with the existing admissible key
+and value balls.  An unopened tree node bounds the partition mass of every key below it; best-first
+refinement replaces the node by its children, and a leaf is opened only when necessary.  The dense
+output contract and the mass, KL, and value-aware certificates are unchanged.  On concentrated
+geometry this avoids the flat reference's mandatory evaluation of every visible leaf summary.
+
+This is a CPU reference, not a new kernel result.  The tree is positional and its parent balls can
+be loose; diffuse geometry may force all leaves, and the same `O(n)` worst case remains.  Substrate
+proves the unit-scale tree identity, not this Python composition or its floating-point arithmetic;
+the latter is tested against the dense oracle, including causal prefixes and block caps.
+
+`CausalTree` in `ssa/cascade_router.py` is the GPU routing counterpart. It maintains an online fanout
+tree over committed sub-block means. Each node stores a center and the recursively composed radius
+`max_child (norm(child_center - center) + child_radius)`, so Cauchy–Schwarz gives the admissible search
+priority `dot(q, center) + norm(q) * radius`. A fixed beam deliberately makes it an approximate selector,
+not an output certificate; strict causality comes from searching only the committed frontier while the
+current chunk is scored exactly. This backend was required because FAISS-GPU's IVF index killed the
+Blackwell Kaggle process.
+
+The failed first 10M quality run was not caused by an invalid center-radius inequality: exact-rank probes
+found no relevant violation of that bound. Two composition choices were wrong. First, routing post-RoPE
+vectors made semantic proximity depend on a huge positional rotation; the corrected executor routes on
+pre-RoPE content Q/K but evaluates attention with the unchanged post-RoPE Q/K. Second, independently selected
+evidence could disappear across heads and layers. The corrected bounded union stores the 128 blocks with the
+most layer-1 head votes and injects them into each later sparse plan. This cap has a direct counting guarantee
+for the observed case: 14 heads × at most 70 base selections = 980 votes, so at most `floor(980/9)=108` blocks
+can receive the needle's nine-or-more votes; a 128-slot reservoir must retain it. The final run processed every
+layer/head of Qwen2.5-0.5B at 10,000,128 tokens in 713.2 s (25.72 GB peak, 0.506% selected upper bound), and the
+single semantic NIAH probe passed. This validates that measured composition, not general quality preservation.
+
 ---
 
 ## Implemented: adaptive mass, KL and value-aware output certificates
