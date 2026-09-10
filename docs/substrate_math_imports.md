@@ -1,8 +1,9 @@
 # Substrate math that applies to SSA — an import list
 
 This assessment maps inspected Substrate results to SSA's selection, attention error, and cost models. The
-relevant audit is through Substrate commit `77cd1b8c6` (2026-09-09), including the potential-store precursor
-`88a4c7012` and the six subsequent SSA commits named below.
+relevant audit is through Substrate commit `fad55ff82` (2026-09-09), including the potential-store precursor
+`88a4c7012`, the six subsequent SSA commits, the variance-sensitive mass-tree core, and its Inference
+consumer named below.
 The adaptive output certificate in `ssa/certified_attention.py` (paper §5.7) combines log-sum-exp bounds with
 restricted-read identities and value geometry. Its abstract mass, divergence, exact residual, and two output
 arms are now machine-checked; the Python instantiation remains a tested implementation rather than extracted
@@ -12,7 +13,9 @@ The focused source review covers `PartialScore`, `AdmissibleBound`, `LogSumExpBo
 `ValueAwareSelection`, `RestrictedReadBound`, `RestrictedReadOutputBound`, `BoundedTopSelection`,
 `BoundedReadMiss`, `ComposedSelectionPlan`, `StorePotentialRead`, `PotentialStoreProcess`,
 `CumulantEnclosure`, `SequentialErrorComposition`, `GroupedPairingClaim`,
-`DistributionWeightedPartition`, `IndexReadMiss`, and their recognitions, alongside SSA's current
+`DistributionWeightedPartition`, `IndexReadMiss`, `BoundedExponentialMass`, `MomentMassTree`,
+`MassTreeRead`, `MassTreeComplexity`, `OutlierMassTree`, and their recognitions including
+`Attention/OutlierPeeledReadRecognition`, alongside SSA's current
 implementations and imported results. It is not an exhaustive review of the Substrate tree.
 `Carrier/Simplex/ApproximateSelection.lean` concerns continuous selections of correspondences and does
 not provide a sparse-attention selector or a runtime improvement here.
@@ -28,7 +31,8 @@ All five universal modules and four inference recognitions from `130cae3e9` rebu
 audit. The eleven theorem and recognition modules named by `88a4c7012` through `77cd1b8c6` were rebuilt
 together in the current audit (8,760 jobs); their emitted `#print axioms` reports contain no dependencies
 beyond the standard `[propext, Classical.choice, Quot.sound]`, with several elementary declarations using
-fewer or none.
+fewer or none. The later mass-tree core was reported clean at 10,868 jobs, its covariance extension at
+15,101 jobs, and the outlier-read recognition at 15,103 jobs with the same standard axiom footprint.
 
 Paths are relative to `~/substrate/lean/Substrate/Universal/`.
 
@@ -57,6 +61,10 @@ realizes the invariant. It does not mean that the Python/CUDA program has been e
 | `51a71137f` — `GroupedPairingClaim` and query-group/transport recognition | **Imported.** The query-group top pairing is the least shared safe claim, retains a maximizer for each query below its maximum, loses drop power monotonically as queries are added, and is fixed by one common linear isometry. | No cheap query summary or algorithm is provided. Distinct position-dependent transports need not preserve even pairing order, and no attention-output claim follows. |
 | `6a88f33e5` — `DistributionWeightedPartition` and certificate-aware partition recognition | **Imported as an objective.** The paper gives the weighted node-read cost, safe-partition monotonicity, strict distribution sensitivity, and least member of a supplied finite certified family. | This neither constructs nor learns a partition, optimizes globally, proves generalization, supplies an asymptotic, nor identifies node count with latency. |
 | `77cd1b8c6` — `IndexReadMiss` and indexed/randomized recognition | **Imported.** The probe lower bound now accounts for a finite index: `K` states, depth `b`, and unread reference-output width `a` reach at most `K(b+a)` placements; finite randomization yields one fixed low-recall placement. | The identity index shows why `K` is necessary. State count is not charged as bits, construction, lookup, or arithmetic cost, and the one-spike equality model is not general scored retrieval. |
+| `6b3da713a` — bounded exponential mass and moment-tree certificates | **Imported and experimentally instantiated.** `CertifiedTreeAttention(..., mass_bound="bennett")` stores trace spread, evaluates the stable Bennett cap, and takes its minimum with the radius cap. The experiment found zero cap underestimates and a large synthetic work reduction, but no sparse exact certificate on the measured Qwen head. | The vector trace lift can be much looser than directional covariance. The work theorem assumes a per-level active-node bound and an arithmetic subquadratic inequality; it does not derive either from geometry or count total kernel work. Proper-frontier attainment, tree learning, and real-model usefulness are not theorems. |
+| `da13ebeba` — full-covariance moment-mass certificate | **Imported and experimentally instantiated.** The covariance identity removes the trace lift's dimension loss. `mass_bound="bennett_covariance"` recursively stores the matrix and evaluates $q^TCq$. It reduced the median real-Qwen cap by 6.06 log units versus 0.73 for trace, with zero observed underestimates. | Storage is $O(d^2)$ per node and evaluation is a quadratic form. Median cap slack still measured 28.03 log units and the traversal opened every visible block, isolating the worst-radius exponential tail as the remaining obstruction on this head. |
+| `9c6b1ad35` — deterministic outlier-peeled mass tree | **Imported and experimentally instantiated.** The reference peels the largest residual norms with stable index ties, scores their mass exactly, recentres the core, and applies trace or covariance Bennett. At $t=4$ plus covariance it tightened the median Qwen cap by 11.96 log units with zero observed underestimates. Its force-kept form was also tested by promoting exposed keys' containing blocks. | Median slack was still 23.39 log units and every visible block opened, including with force-kept seeds; at $t=4$ those seeds reduced mean bound evaluations from 190.63 to 166.78 but not keys read. Fixed peel depths cost $O(td)$ node storage/query work; the experiment does not claim raw-depth monotonicity, implement an optimized builder or individual-key side channel, or derive a bounded active frontier. |
+| `fad55ff82` — outlier-peeled read recognition | **Imported as the Inference consumer.** Eleven direct re-exports connect deterministic tied peeling, residual geometry, three mass caps, peeled-set TV/KL/output/causal certificates, and work/storage accounting without duplicating the Universal proofs. | The quality certificate does not earn the runtime conclusion by itself. Subquadratic work still assumes bounded active width, the per-node certificate charge, and the explicit total-work inequality; moments, radii, construction cost, and finite-precision behavior remain supplied or external. |
 
 The other commits in this interval are registry, sweep-generation, economics-citation, or unrelated carrier
 maintenance. They were reviewed but do not change SSA's claims or implementation.

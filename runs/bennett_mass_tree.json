@@ -1,0 +1,1071 @@
+{
+  "method": "radius vs min-radius trace/covariance/outlier-peeled Bennett caps",
+  "beta": 0.125,
+  "block": 64,
+  "scope": "float64 oracle verification; Qwen extraction on CUDA; not an IEEE proof",
+  "synthetic": {
+    "node_caps": {
+      "query_node_pairs": 8160,
+      "per_node_extra_scalars": {
+        "radius": 0,
+        "bennett": 1,
+        "bennett_covariance": 4096,
+        "peel_1": 130,
+        "peel_2": 194,
+        "peel_4": 322,
+        "peel_8": 578,
+        "peel_covariance_4": 4418
+      },
+      "seconds": 1.6909901079998235,
+      "radius_violations": 0,
+      "max_radius_deficit_log": 0.0,
+      "radius_excess_log_median": 0.8158201952184982,
+      "bennett_violations": 0,
+      "max_bennett_deficit_log": 0.0,
+      "bennett_excess_log_median": 0.008101092786465536,
+      "bennett_covariance_violations": 0,
+      "max_bennett_covariance_deficit_log": 0.0,
+      "bennett_covariance_excess_log_median": 2.5581553506182075e-05,
+      "peel_1_violations": 0,
+      "max_peel_1_deficit_log": 0.0,
+      "peel_1_excess_log_median": 0.0011349881084248281,
+      "peel_2_violations": 0,
+      "max_peel_2_deficit_log": 0.0,
+      "peel_2_excess_log_median": 0.0009447592577553898,
+      "peel_4_violations": 0,
+      "max_peel_4_deficit_log": 0.0,
+      "peel_4_excess_log_median": 0.0009001660906275966,
+      "peel_8_violations": 0,
+      "max_peel_8_deficit_log": 0.0,
+      "peel_8_excess_log_median": 0.0008377030283770459,
+      "peel_covariance_4_violations": 0,
+      "max_peel_covariance_4_deficit_log": 0.0,
+      "peel_covariance_4_excess_log_median": 2.4718379210142416e-07,
+      "bennett_strictly_tighter_fraction": 1.0,
+      "bennett_cap_reduction_log_median": 0.8074201748969121,
+      "bennett_cap_reduction_log_p90": 0.8663760669651469,
+      "bennett_cap_reduction_log_max": 5.00371742512154,
+      "bennett_covariance_strictly_tighter_fraction": 1.0,
+      "bennett_covariance_cap_reduction_log_median": 0.8154858738286066,
+      "bennett_covariance_cap_reduction_log_p90": 0.8759968243561334,
+      "bennett_covariance_cap_reduction_log_max": 5.1988442865052775,
+      "peel_1_strictly_tighter_fraction": 1.0,
+      "peel_1_cap_reduction_log_median": 0.8132575228823704,
+      "peel_1_cap_reduction_log_p90": 0.8745658997544218,
+      "peel_1_cap_reduction_log_max": 5.654315799031695,
+      "peel_2_strictly_tighter_fraction": 1.0,
+      "peel_2_cap_reduction_log_median": 0.814182874363202,
+      "peel_2_cap_reduction_log_p90": 0.875249831819662,
+      "peel_2_cap_reduction_log_max": 5.661064908396261,
+      "peel_4_strictly_tighter_fraction": 1.0,
+      "peel_4_cap_reduction_log_median": 0.814596867967067,
+      "peel_4_cap_reduction_log_p90": 0.8748656568899458,
+      "peel_4_cap_reduction_log_max": 5.675185874525136,
+      "peel_8_strictly_tighter_fraction": 1.0,
+      "peel_8_cap_reduction_log_median": 0.814470585732451,
+      "peel_8_cap_reduction_log_p90": 0.874951509351946,
+      "peel_8_cap_reduction_log_max": 5.700190630864167,
+      "peel_covariance_4_strictly_tighter_fraction": 1.0,
+      "peel_covariance_4_cap_reduction_log_median": 0.8158178571460191,
+      "peel_covariance_4_cap_reduction_log_p90": 0.8767578532968534,
+      "peel_covariance_4_cap_reduction_log_max": 5.84471568251462
+    },
+    "traversal": {
+      "build_seconds": {
+        "radius": 0.008499163006490562,
+        "bennett": 0.01001997300045332,
+        "bennett_covariance": 0.019509358004142996,
+        "peel_1": 0.03633865700248862,
+        "peel_2": 0.03753343899734318,
+        "peel_4": 0.037458774000697304,
+        "peel_8": 0.03828697300195927,
+        "peel_covariance_4": 0.055405096005415544
+      },
+      "fixed_budget": {
+        "0.010": {
+          "radius": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.6510343384304839,
+            "mean_actual_omitted_mass": 0.6060971143364752,
+            "median_mass_upper": 0.9999963237246561,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.6065528858153963,
+            "mean_actual_omitted_mass": 0.6060970404397266,
+            "median_mass_upper": 0.9997281404114513,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.60622559047913,
+            "mean_actual_omitted_mass": 0.6060970404397266,
+            "median_mass_upper": 0.9996817181857356,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_1": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.6064526170245497,
+            "mean_actual_omitted_mass": 0.6060970404397266,
+            "median_mass_upper": 0.9995284533943198,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.606433411878321,
+            "mean_actual_omitted_mass": 0.6060970404397266,
+            "median_mass_upper": 0.9995251087385367,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.6064012728209884,
+            "mean_actual_omitted_mass": 0.6060970404397266,
+            "median_mass_upper": 0.9995180879513396,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.6063510462947388,
+            "mean_actual_omitted_mass": 0.6060970404397266,
+            "median_mass_upper": 0.999504998595586,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 1.4375,
+            "mean_bounds_evaluated": 16.625,
+            "mean_mass_upper": 0.6061591316175866,
+            "mean_actual_omitted_mass": 0.6060970404397266,
+            "median_mass_upper": 0.9994414375270624,
+            "max_soundness_deficit": 0.0
+          }
+        },
+        "0.050": {
+          "radius": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.16273593582025098,
+            "mean_actual_omitted_mass": 0.08116598723738978,
+            "median_mass_upper": 0.15683137902399968,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.08174021193195556,
+            "mean_actual_omitted_mass": 0.08115998195209992,
+            "median_mass_upper": 0.07787693150717692,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.08116203935632768,
+            "mean_actual_omitted_mass": 0.08115995935010631,
+            "median_mass_upper": 0.07732751354522557,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_1": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.0812271761767828,
+            "mean_actual_omitted_mass": 0.08115995881246058,
+            "median_mass_upper": 0.07738949294056731,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.08122560767772369,
+            "mean_actual_omitted_mass": 0.08115995881246056,
+            "median_mass_upper": 0.07738800188193548,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.08122271675866388,
+            "mean_actual_omitted_mass": 0.08115995881246056,
+            "median_mass_upper": 0.07738524232769523,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.08121735987604958,
+            "mean_actual_omitted_mass": 0.08115995881246056,
+            "median_mass_upper": 0.07738014417025767,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 5.3125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.08115997471363828,
+            "mean_actual_omitted_mass": 0.08115995834942588,
+            "median_mass_upper": 0.07732542192037087,
+            "max_soundness_deficit": 0.0
+          }
+        },
+        "0.100": {
+          "radius": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.1549018631810709,
+            "mean_actual_omitted_mass": 0.07689654058632303,
+            "median_mass_upper": 0.14918405920818434,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.07743703077695888,
+            "mean_actual_omitted_mass": 0.07688416570689124,
+            "median_mass_upper": 0.07365699357124852,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.07688593932601728,
+            "mean_actual_omitted_mass": 0.07688409148875722,
+            "median_mass_upper": 0.07311093694944348,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_1": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.07694808263980765,
+            "mean_actual_omitted_mass": 0.0768840906122994,
+            "median_mass_upper": 0.07317230123822929,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.0769465900628365,
+            "mean_actual_omitted_mass": 0.07688409027937991,
+            "median_mass_upper": 0.07317082374587819,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.07694383991059175,
+            "mean_actual_omitted_mass": 0.07688409027937991,
+            "median_mass_upper": 0.07316810711801594,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.07693874218171473,
+            "mean_actual_omitted_mass": 0.07688409098952069,
+            "median_mass_upper": 0.07316306697897693,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 10.09375,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.07688410494323179,
+            "mean_actual_omitted_mass": 0.07688408937574406,
+            "median_mass_upper": 0.07310904334617607,
+            "max_soundness_deficit": 0.0
+          }
+        }
+      },
+      "stopping": {
+        "0.1": {
+          "radius": {
+            "mean_blocks_opened": 61.1875,
+            "mean_keys_scored": 3884.03125,
+            "mean_bounds_evaluated": 177.5,
+            "mean_mass_upper": 0.05671855991491396,
+            "mean_actual_omitted_mass": 0.026249190624102834,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 1.1102230246251565e-16
+          },
+          "bennett": {
+            "mean_blocks_opened": 9.1875,
+            "mean_keys_scored": 556.03125,
+            "mean_bounds_evaluated": 82.4375,
+            "mean_mass_upper": 0.0758483325902912,
+            "mean_actual_omitted_mass": 0.07528987971537036,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 9.0625,
+            "mean_keys_scored": 548.03125,
+            "mean_bounds_evaluated": 71.0625,
+            "mean_mass_upper": 0.07542063978221626,
+            "mean_actual_omitted_mass": 0.07541847219146511,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_1": {
+            "mean_blocks_opened": 9.1875,
+            "mean_keys_scored": 556.03125,
+            "mean_bounds_evaluated": 82.4375,
+            "mean_mass_upper": 0.07563220533099177,
+            "mean_actual_omitted_mass": 0.07528985514179094,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_blocks_opened": 9.1875,
+            "mean_keys_scored": 556.03125,
+            "mean_bounds_evaluated": 82.4375,
+            "mean_mass_upper": 0.07560739390055547,
+            "mean_actual_omitted_mass": 0.07528985514179094,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_blocks_opened": 9.1875,
+            "mean_keys_scored": 556.03125,
+            "mean_bounds_evaluated": 82.4375,
+            "mean_mass_upper": 0.07556751973946951,
+            "mean_actual_omitted_mass": 0.07528985514179096,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_blocks_opened": 9.1875,
+            "mean_keys_scored": 556.03125,
+            "mean_bounds_evaluated": 82.4375,
+            "mean_mass_upper": 0.07550685083915654,
+            "mean_actual_omitted_mass": 0.07528985514179096,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 9.0625,
+            "mean_keys_scored": 548.03125,
+            "mean_bounds_evaluated": 71.0625,
+            "mean_mass_upper": 0.07541961418793289,
+            "mean_actual_omitted_mass": 0.07541847219146511,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 0.0
+          }
+        },
+        "0.01": {
+          "radius": {
+            "mean_blocks_opened": 96.375,
+            "mean_keys_scored": 6136.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.00020686093907112667,
+            "mean_actual_omitted_mass": 9.330485052615883e-05,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "bennett": {
+            "mean_blocks_opened": 95.0,
+            "mean_keys_scored": 6048.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.0010757287947606453,
+            "mean_actual_omitted_mass": 0.00106712142825972,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 95.0,
+            "mean_keys_scored": 6048.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.0010671941826852125,
+            "mean_actual_omitted_mass": 0.0010671162671993355,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_1": {
+            "mean_blocks_opened": 95.0,
+            "mean_keys_scored": 6048.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.001068118142537133,
+            "mean_actual_omitted_mass": 0.0010671154444700237,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_2": {
+            "mean_blocks_opened": 95.0,
+            "mean_keys_scored": 6048.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.0010680939101444101,
+            "mean_actual_omitted_mass": 0.0010671154444700272,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_4": {
+            "mean_blocks_opened": 95.0,
+            "mean_keys_scored": 6048.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.0010680505662634399,
+            "mean_actual_omitted_mass": 0.0010671154444700272,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_8": {
+            "mean_blocks_opened": 95.0,
+            "mean_keys_scored": 6048.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.001067971362385535,
+            "mean_actual_omitted_mass": 0.0010671154444700272,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 95.0,
+            "mean_keys_scored": 6048.03125,
+            "mean_bounds_evaluated": 187.25,
+            "mean_mass_upper": 0.0010671156553498365,
+            "mean_actual_omitted_mass": 0.0010671154001655227,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          }
+        }
+      },
+      "force_kept_stopping": {
+        "0.1": {
+          "peel_1": {
+            "mean_forced_seed_blocks": 3.8125,
+            "mean_blocks_opened": 10.25,
+            "mean_keys_scored": 624.03125,
+            "mean_bounds_evaluated": 57.1875,
+            "mean_mass_upper": 0.07517504857338805,
+            "mean_actual_omitted_mass": 0.07478969958584065,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_forced_seed_blocks": 6.15625,
+            "mean_blocks_opened": 12.03125,
+            "mean_keys_scored": 738.03125,
+            "mean_bounds_evaluated": 53.125,
+            "mean_mass_upper": 0.07384588358602531,
+            "mean_actual_omitted_mass": 0.07349809078305107,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_forced_seed_blocks": 9.90625,
+            "mean_blocks_opened": 15.53125,
+            "mean_keys_scored": 962.03125,
+            "mean_bounds_evaluated": 52.65625,
+            "mean_mass_upper": 0.07063383135807641,
+            "mean_actual_omitted_mass": 0.07036192539223798,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_forced_seed_blocks": 15.53125,
+            "mean_blocks_opened": 19.9375,
+            "mean_keys_scored": 1244.03125,
+            "mean_bounds_evaluated": 51.125,
+            "mean_mass_upper": 0.06697600956369076,
+            "mean_actual_omitted_mass": 0.06675833616997356,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_forced_seed_blocks": 9.90625,
+            "mean_blocks_opened": 15.53125,
+            "mean_keys_scored": 962.03125,
+            "mean_bounds_evaluated": 52.65625,
+            "mean_mass_upper": 0.07036291468089145,
+            "mean_actual_omitted_mass": 0.07036192449435696,
+            "max_soundness_deficit": 0.0
+          }
+        },
+        "0.01": {
+          "peel_1": {
+            "mean_forced_seed_blocks": 3.8125,
+            "mean_blocks_opened": 95.1875,
+            "mean_keys_scored": 6060.03125,
+            "mean_bounds_evaluated": 174.1875,
+            "mean_mass_upper": 0.0008293389235140013,
+            "mean_actual_omitted_mass": 0.0008285324125524747,
+            "max_soundness_deficit": 2.220446049250313e-16
+          },
+          "peel_2": {
+            "mean_forced_seed_blocks": 6.15625,
+            "mean_blocks_opened": 94.6875,
+            "mean_keys_scored": 6028.03125,
+            "mean_bounds_evaluated": 171.0625,
+            "mean_mass_upper": 0.001214566144755215,
+            "mean_actual_omitted_mass": 0.001213428996729174,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_4": {
+            "mean_forced_seed_blocks": 9.90625,
+            "mean_blocks_opened": 95.15625,
+            "mean_keys_scored": 6058.03125,
+            "mean_bounds_evaluated": 165.15625,
+            "mean_mass_upper": 0.0012474259523676556,
+            "mean_actual_omitted_mass": 0.0012464011278824315,
+            "max_soundness_deficit": 2.220446049250313e-16
+          },
+          "peel_8": {
+            "mean_forced_seed_blocks": 15.53125,
+            "mean_blocks_opened": 93.84375,
+            "mean_keys_scored": 5974.03125,
+            "mean_bounds_evaluated": 160.125,
+            "mean_mass_upper": 0.0017119232556783931,
+            "mean_actual_omitted_mass": 0.0017105173835427583,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_covariance_4": {
+            "mean_forced_seed_blocks": 9.90625,
+            "mean_blocks_opened": 95.15625,
+            "mean_keys_scored": 6058.03125,
+            "mean_bounds_evaluated": 165.15625,
+            "mean_mass_upper": 0.00124640134747661,
+            "mean_actual_omitted_mass": 0.001246401083577934,
+            "max_soundness_deficit": 2.220446049250313e-16
+          }
+        }
+      }
+    }
+  },
+  "qwen": {
+    "model": "Qwen/Qwen2.5-0.5B",
+    "layer": 18,
+    "kv_head": 0,
+    "query_head": 0,
+    "sequence": 8192,
+    "dimension": 64,
+    "queries": 32,
+    "meta": {
+      "cache": "/tmp/ssa_bennett_qwen_8192.npz",
+      "cache_hit": true,
+      "cuda_device": "NVIDIA GeForce RTX 4080",
+      "torch": "2.10.0+cu128"
+    },
+    "node_caps": {
+      "query_node_pairs": 8160,
+      "per_node_extra_scalars": {
+        "radius": 0,
+        "bennett": 1,
+        "bennett_covariance": 4096,
+        "peel_1": 130,
+        "peel_2": 194,
+        "peel_4": 322,
+        "peel_8": 578,
+        "peel_covariance_4": 4418
+      },
+      "seconds": 1.8307457420014543,
+      "radius_violations": 0,
+      "max_radius_deficit_log": 0.0,
+      "radius_excess_log_median": 34.044838305727176,
+      "bennett_violations": 0,
+      "max_bennett_deficit_log": 0.0,
+      "bennett_excess_log_median": 33.420374610375816,
+      "bennett_covariance_violations": 0,
+      "max_bennett_covariance_deficit_log": 0.0,
+      "bennett_covariance_excess_log_median": 28.030642369203644,
+      "peel_1_violations": 0,
+      "max_peel_1_deficit_log": 0.0,
+      "peel_1_excess_log_median": 29.83468659186193,
+      "peel_2_violations": 0,
+      "max_peel_2_deficit_log": 0.0,
+      "peel_2_excess_log_median": 29.32793216350528,
+      "peel_4_violations": 0,
+      "max_peel_4_deficit_log": 0.0,
+      "peel_4_excess_log_median": 28.801222584647558,
+      "peel_8_violations": 0,
+      "max_peel_8_deficit_log": 0.0,
+      "peel_8_excess_log_median": 27.92033692503994,
+      "peel_covariance_4_violations": 0,
+      "max_peel_covariance_4_deficit_log": 0.0,
+      "peel_covariance_4_excess_log_median": 23.391070610769198,
+      "bennett_strictly_tighter_fraction": 1.0,
+      "bennett_cap_reduction_log_median": 0.7299865579700331,
+      "bennett_cap_reduction_log_p90": 1.3830012145864785,
+      "bennett_cap_reduction_log_max": 2.096536726013312,
+      "bennett_covariance_strictly_tighter_fraction": 1.0,
+      "bennett_covariance_cap_reduction_log_median": 6.056880276849395,
+      "bennett_covariance_cap_reduction_log_p90": 6.958455910394251,
+      "bennett_covariance_cap_reduction_log_max": 8.311683717270142,
+      "peel_1_strictly_tighter_fraction": 0.9998774509803922,
+      "peel_1_cap_reduction_log_median": 4.799706550876767,
+      "peel_1_cap_reduction_log_p90": 21.151700012727897,
+      "peel_1_cap_reduction_log_max": 59.474895701998506,
+      "peel_2_strictly_tighter_fraction": 1.0,
+      "peel_2_cap_reduction_log_median": 5.576307061338754,
+      "peel_2_cap_reduction_log_p90": 21.787864008348834,
+      "peel_2_cap_reduction_log_max": 59.82328238820921,
+      "peel_4_strictly_tighter_fraction": 1.0,
+      "peel_4_cap_reduction_log_median": 6.797839607788392,
+      "peel_4_cap_reduction_log_p90": 22.403133783184916,
+      "peel_4_cap_reduction_log_max": 60.43899260417607,
+      "peel_8_strictly_tighter_fraction": 1.0,
+      "peel_8_cap_reduction_log_median": 7.52119266427872,
+      "peel_8_cap_reduction_log_p90": 23.07134726025538,
+      "peel_8_cap_reduction_log_max": 61.01252068184302,
+      "peel_covariance_4_strictly_tighter_fraction": 1.0,
+      "peel_covariance_4_cap_reduction_log_median": 11.963713993788648,
+      "peel_covariance_4_cap_reduction_log_p90": 27.71497913236762,
+      "peel_covariance_4_cap_reduction_log_max": 65.9400784271619
+    },
+    "traversal": {
+      "build_seconds": {
+        "radius": 0.009787942995899357,
+        "bennett": 0.010549555998295546,
+        "bennett_covariance": 0.018715520003752317,
+        "peel_1": 0.028732257000228856,
+        "peel_2": 0.027676885001710616,
+        "peel_4": 0.027393434997065924,
+        "peel_8": 0.029219788004411384,
+        "peel_covariance_4": 0.05144292199838674
+      },
+      "fixed_budget": {
+        "0.010": {
+          "radius": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 105.375,
+            "mean_mass_upper": 0.9999999999999867,
+            "mean_actual_omitted_mass": 0.8925904708625156,
+            "median_mass_upper": 1.0,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 103.9375,
+            "mean_mass_upper": 0.9999999999999788,
+            "mean_actual_omitted_mass": 0.8925904708625156,
+            "median_mass_upper": 0.9999999999999999,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 103.5,
+            "mean_mass_upper": 0.9999999999967384,
+            "mean_actual_omitted_mass": 0.8925904708625156,
+            "median_mass_upper": 0.9999999999999326,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_1": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 38.1875,
+            "mean_mass_upper": 0.9999999999999782,
+            "mean_actual_omitted_mass": 0.8968263059649123,
+            "median_mass_upper": 0.9999999999999997,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 40.3125,
+            "mean_mass_upper": 0.9999999999999614,
+            "mean_actual_omitted_mass": 0.915420780701435,
+            "median_mass_upper": 0.9999999999999994,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 41.6875,
+            "mean_mass_upper": 0.9999999999999182,
+            "mean_actual_omitted_mass": 0.8990339339581379,
+            "median_mass_upper": 0.9999999999999983,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 48.25,
+            "mean_mass_upper": 0.9999999999997038,
+            "mean_actual_omitted_mass": 0.8755927787608118,
+            "median_mass_upper": 0.9999999999999896,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 1.5,
+            "mean_bounds_evaluated": 40.75,
+            "mean_mass_upper": 0.9999999999864356,
+            "mean_actual_omitted_mass": 0.8962821981367122,
+            "median_mass_upper": 0.9999999999992952,
+            "max_soundness_deficit": 0.0
+          }
+        },
+        "0.050": {
+          "radius": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 190.125,
+            "mean_mass_upper": 0.9999999999992761,
+            "mean_actual_omitted_mass": 0.7677307523744116,
+            "median_mass_upper": 0.9999999999999388,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 190.0625,
+            "mean_mass_upper": 0.9999999999988048,
+            "mean_actual_omitted_mass": 0.763641120784304,
+            "median_mass_upper": 0.9999999999998958,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 190.0,
+            "mean_mass_upper": 0.9999999998206845,
+            "mean_actual_omitted_mass": 0.7580693330169035,
+            "median_mass_upper": 0.9999999999792497,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_1": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 110.1875,
+            "mean_mass_upper": 0.9999999999988096,
+            "mean_actual_omitted_mass": 0.7654898129624144,
+            "median_mass_upper": 0.9999999999998701,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 113.9375,
+            "mean_mass_upper": 0.9999999999976598,
+            "mean_actual_omitted_mass": 0.7556300009412368,
+            "median_mass_upper": 0.9999999999997996,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 112.4375,
+            "mean_mass_upper": 0.9999999999961036,
+            "mean_actual_omitted_mass": 0.749877087293034,
+            "median_mass_upper": 0.9999999999995397,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 116.125,
+            "mean_mass_upper": 0.9999999999901155,
+            "mean_actual_omitted_mass": 0.7547313669779442,
+            "median_mass_upper": 0.9999999999989453,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 5.375,
+            "mean_bounds_evaluated": 112.875,
+            "mean_mass_upper": 0.9999999994170105,
+            "mean_actual_omitted_mass": 0.7478464702115033,
+            "median_mass_upper": 0.9999999999153117,
+            "max_soundness_deficit": 0.0
+          }
+        },
+        "0.100": {
+          "radius": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.9999999999984338,
+            "mean_actual_omitted_mass": 0.713021901977104,
+            "median_mass_upper": 0.9999999999998064,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.9999999999974686,
+            "mean_actual_omitted_mass": 0.7125593305103023,
+            "median_mass_upper": 0.9999999999996878,
+            "max_soundness_deficit": 0.0
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.999999999639938,
+            "mean_actual_omitted_mass": 0.7031966630724216,
+            "median_mass_upper": 0.9999999999459664,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_1": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 133.5625,
+            "mean_mass_upper": 0.9999999999958737,
+            "mean_actual_omitted_mass": 0.6937105797474016,
+            "median_mass_upper": 0.999999999999488,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_2": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 136.8125,
+            "mean_mass_upper": 0.9999999999934014,
+            "mean_actual_omitted_mass": 0.6908863556120912,
+            "median_mass_upper": 0.9999999999991933,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_4": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 134.25,
+            "mean_mass_upper": 0.9999999999908823,
+            "mean_actual_omitted_mass": 0.6968908590366607,
+            "median_mass_upper": 0.999999999998524,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_8": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 136.75,
+            "mean_mass_upper": 0.9999999999759244,
+            "mean_actual_omitted_mass": 0.6950997168719073,
+            "median_mass_upper": 0.9999999999967824,
+            "max_soundness_deficit": 0.0
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 10.21875,
+            "mean_bounds_evaluated": 134.9375,
+            "mean_mass_upper": 0.9999999985524273,
+            "mean_actual_omitted_mass": 0.6894475431740994,
+            "median_mass_upper": 0.999999999692087,
+            "max_soundness_deficit": 0.0
+          }
+        }
+      },
+      "stopping": {
+        "0.1": {
+          "radius": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "bennett": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 7.979727989493313e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 8.673617379884035e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_1": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 6.938893903907228e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 3.3306690738754696e-16
+          },
+          "peel_2": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 7.632783294297951e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 3.3306690738754696e-16
+          },
+          "peel_4": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 8.673617379884035e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_8": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          }
+        },
+        "0.01": {
+          "radius": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "bennett": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 7.979727989493313e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "bennett_covariance": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 8.673617379884035e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_1": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 6.938893903907228e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 3.3306690738754696e-16
+          },
+          "peel_2": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 7.632783294297951e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 3.3306690738754696e-16
+          },
+          "peel_4": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 8.673617379884035e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_8": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "peel_covariance_4": {
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 190.625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "certified_fraction": 1.0,
+            "max_soundness_deficit": 5.551115123125783e-16
+          }
+        }
+      },
+      "force_kept_stopping": {
+        "0.1": {
+          "peel_1": {
+            "mean_forced_seed_blocks": 3.6875,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 177.46875,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 8.326672684688674e-17,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_2": {
+            "mean_forced_seed_blocks": 4.5,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 177.40625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 7.979727989493313e-17,
+            "max_soundness_deficit": 3.3306690738754696e-16
+          },
+          "peel_4": {
+            "mean_forced_seed_blocks": 8.34375,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 166.78125,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_8": {
+            "mean_forced_seed_blocks": 12.625,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 161.5,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 6.591949208711867e-17,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "peel_covariance_4": {
+            "mean_forced_seed_blocks": 8.34375,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 166.78125,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 1.0408340855860843e-16,
+            "max_soundness_deficit": 5.551115123125783e-16
+          }
+        },
+        "0.01": {
+          "peel_1": {
+            "mean_forced_seed_blocks": 3.6875,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 177.46875,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 8.326672684688674e-17,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_2": {
+            "mean_forced_seed_blocks": 4.5,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 177.40625,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 7.979727989493313e-17,
+            "max_soundness_deficit": 3.3306690738754696e-16
+          },
+          "peel_4": {
+            "mean_forced_seed_blocks": 8.34375,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 166.78125,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 9.020562075079397e-17,
+            "max_soundness_deficit": 4.440892098500626e-16
+          },
+          "peel_8": {
+            "mean_forced_seed_blocks": 12.625,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 161.5,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 6.591949208711867e-17,
+            "max_soundness_deficit": 5.551115123125783e-16
+          },
+          "peel_covariance_4": {
+            "mean_forced_seed_blocks": 8.34375,
+            "mean_blocks_opened": 98.15625,
+            "mean_keys_scored": 6247.25,
+            "mean_bounds_evaluated": 166.78125,
+            "mean_mass_upper": 0.0,
+            "mean_actual_omitted_mass": 1.0408340855860843e-16,
+            "max_soundness_deficit": 5.551115123125783e-16
+          }
+        }
+      }
+    }
+  }
+}

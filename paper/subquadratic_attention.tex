@@ -802,7 +802,58 @@ and value-bound evaluations number $63,321,63$, respectively. The full-scan resi
 roundoff. Equal values permit exact output even when almost all attention mass is omitted;
 conversely, a small omitted weight can matter when its value is sufficiently distinct.
 These are controlled mechanism measurements, reproducible with
-\texttt{python -m ssa.certified\_attention}. Six additional checks compare the certificates against
+\texttt{python -m ssa.certified\_attention}.
+
+\paragraph{Variance-sensitive mass refinement.}
+The worst-radius mass cap can be sharpened without changing the target attention distribution. Let a node
+contain $m$ keys, let $x_i=\inner{q}{k_i-\mu}$, suppose $x_i\le R$, and write
+$\sigma^2=m^{-1}\sum_i x_i^2$. For $R>0$ and $\beta\ge0$,
+\begin{equation}\label{eq:bennettmass}
+\sum_i e^{\beta\inner{q}{k_i}}
+\le m e^{\beta\inner{q}{\mu}}
+\left[1+\frac{\sigma^2}{R^2}
+  \left(e^{\beta R}-1-\beta R\right)\right].
+\end{equation}
+If $R=0$, equality holds. To prove~\eqref{eq:bennettmass}, apply
+$e^{\beta x}\le1+\beta x+(x^2/R^2)(e^{\beta R}-1-\beta R)$ for $x\le R$, sum, and use
+$\sum_i x_i=0$. For vector keys, $R=\lVert q\rVert R_c$ and
+$\sigma^2\le\lVert q\rVert^2s_c^2$, where
+$s_c^2=m^{-1}\sum_i\lVert k_i-\mu_c\rVert^2$. This trace lift is universally safe; diagonal coordinate
+variances alone do not determine covariance, so the assumption-free diagonal alternative pays a dimension
+factor. If the node instead stores its full covariance $C_c$, then
+$\sigma^2=q^TC_cq$ exactly: expanding the quadratic form gives
+$\sum_i\inner{q}{k_i-\mu_c}^2=mq^TC_cq$. This removes the dimension factor at the explicit cost of
+$O(d^2)$ storage per node and a quadratic-form evaluation per query/node.
+
+The \texttt{bennett} and \texttt{bennett\_covariance} modes store these two summaries recursively, evaluate
+\eqref{eq:bennettmass} stably in log space, and take its minimum with the radius cap. On an 8,192-key
+concentrated synthetic control, median excess above exact node log mass fell from 0.816 to 0.0081 (trace) and
+0.000026 (covariance); either mode cut a 10\% omitted-mass certificate from 3,884 to 556 scored keys. The real
+Qwen control is negative: across 8,160 query/node pairs from 32 causal queries in an 8K post-RoPE layer-18
+head, trace cut the cap by a median 0.730 log units and covariance by 6.057, with no observed float64-oracle
+underestimate. Yet median excess remained 33.42 and 28.03 log units respectively, and all modes opened every
+visible block to certify either 10\% or 1\% omitted mass. Full covariance therefore isolates the remaining
+obstruction as the worst-radius exponential tail, not the trace lift's dimension loss. Variance-sensitive mass
+is a real benign-geometry improvement, not the missing sparse exact certificate on this raw model geometry.
+The record is \texttt{runs/bennett\_mass\_tree.json}; reproduce it with
+\texttt{python -m ssa.bennett\_mass\_experiment} on a CUDA host with cached Qwen weights.
+
+A deterministic outlier peel attacks that tail directly: expose the $t$ largest
+$\lVert k_i-\mu\rVert^2$ values with ordered tie-breaking, score their mass exactly, and apply
+\eqref{eq:bennettmass} to the recentred core. If the original trace spread is $s^2$, every unexposed residual
+has squared norm at most $ms^2/(t+1)$, and its distance from the new core mean is at most
+$2\sqrt{ms^2/(t+1)}$. Exact exposed mass plus any valid core cap is valid; a running minimum over peel depths
+is valid and monotone even though the raw caps need not be. On the same Qwen fixture, trace peels
+$t=1,2,4,8$ leave median slack 29.83, 29.33, 28.80, and 27.92 log units. Four peeled vectors plus core
+covariance reaches 23.39, but every variant still opens every visible block. At $d=64$, the latter stores
+4,418 extra scalars per node. Small peeling is therefore a large tightening, but not a sparse exact
+certificate; large peeling converges toward storing and scoring the keys.
+Force-keeping the exposed vectors through their containing leaf blocks does not change that conclusion: at
+$t=4$ it seeds 8.34 blocks and reduces mean bound evaluations from 190.63 to 166.78, but still reads all 98.16
+blocks and 6,247.25 keys at both tested stopping tolerances. This is a block-kernel realization, not an
+individual-key outlier side channel.
+
+Six additional checks compare the certificates against
 float64 CUDA SDPA on an RTX 4080, using concentrated logits, flat logits, and equal values at
 $n=1024$, $d=32$, $d_v=8$, $b=32$, with visible prefixes of $1024$ and $997$ keys.
 These validate numerical agreement with an independent attention implementation, including partial
@@ -1277,7 +1328,7 @@ frontier-model validation remain open. (vi)~The complete implementation is not f
 Appendix~\ref{app:invariants} gives self-contained statements and proofs of the supporting exact-arithmetic
 invariants; access to the separate formalization is not required to inspect them. As corroborating provenance,
 private Substrate commits from the potential-store precursor \texttt{88a4c7012} through
-\texttt{77cd1b8c6} machine-check the corresponding results for
+\texttt{fad55ff82} machine-check the corresponding results for
 recursive real-valued ball containment and monotone drop sets, causal prefix-cut selection, conditional
 9-vote retention by a 128-slot highest-count reservoir at the 14-selector/70-item route bounds, and survival
 with a uniform cardinality cap under union with a fixed carrier. It also checks the structural two-pass
@@ -1311,6 +1362,18 @@ claim and is invariant under one common isometry, defines the distribution-weigh
 finite certified-partition choice, and extends the single-spike read ceiling to finite-state indexed and
 finite-randomized readers. None of these results constructs a cheap summary, learns a partition, supplies the
 required Lipschitz constants, proves route quality, or turns finite state count into an implementation cost.
+
+The variance-sensitive extension proves~\eqref{eq:bennettmass}, lifts it through trace spread, arbitrary tree
+frontiers, causal cuts, and the omitted-mass/output certificate, and gives conditional node/key work counts.
+Its later full-covariance identity makes $q^TCq$ the exact directional variance with no dimension factor. The
+resulting subquadratic statement still assumes a bounded active frontier and the arithmetic work inequality;
+the Qwen measurement above shows neither trace nor full covariance establishes that premise on the tested
+tree. The outlier-peel extension proves the order-statistic and recentring radii,
+exact-exposed-plus-core cap, running-minimum/frontier/causal/output transport, and conditional $O(td)$
+work/storage accounting. It does not prove that any fixed peel depth makes the active frontier bounded. Its
+Inference consumer re-exports these facts without weakening their premises: residual moments and radii are
+supplied, while subquadraticity still requires bounded active width, the stated certificate charge, and the
+explicit total-work inequality.
 
 The production tree inflates every recursive norm-plus-child-radius result by
 $8(d+4)\varepsilon_{32}$ and rounds the candidate and selected maximum toward $+\infty$; query/node score
@@ -1370,7 +1433,8 @@ This appendix contains the mathematical content used to justify the 10M router's
 bounded top selection, adaptive read-budget boundary, causal selected reads, cross-head reservoir, fixed
 cross-layer carrier, finite potential and append laws, cumulant intervals, sequential error composition,
 query-group transport, distribution-weighted safe partitions, finite index capacity, and the
-factorized-attention and strictly-causal comparisons used to delimit the claims.
+variance-sensitive mass tree, plus the factorized-attention and strictly-causal comparisons used to delimit
+the claims.
 The restricted-read/output proof is already self-contained in Section~\ref{sec:output-cert}. It is included so
 the public artifact does not depend on access to the separate Lean repository. The formal audit is useful
 corroboration, but the definitions,

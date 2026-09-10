@@ -154,6 +154,10 @@ the evidence that the geometry is benign in practice, not just in synthetic beni
   TinyLlama) at much longer context. `extract_qk_hf`, `target_distance_stats`.
 - **`longctx_probe.py`** — disentangles "the geometry fails" from "the selector was naive" by ordering on
   relevance + the cumulant score and scaling the cluster count.
+- **`bennett_mass_experiment.py`** — tests trace, full-covariance, and deterministic outlier-peeled Bennett
+  exponential-mass caps inside the certified tree against exact descendant masses and fixed-budget/stopping
+  traversals, including the force-kept peeled-core formulation on a real post-RoPE Qwen head. The real-head
+  result is negative for sparse exact certification.
 - **`gemma_keys.py`** — the frontier-scale, deep-head check (Gemma, head_dim 256): re-runs centroid-vs-cumulant
   routing and the temperature sweep on a 256-dimensional head.
 

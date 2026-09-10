@@ -1560,3 +1560,62 @@ Samuelson proposition), and `min_isAdmissible` (**licensing the implementation's
 the two"**, which had no warrant before). `at_the_floor_a_maximal_threshold_drops_every_part`
 predicts result 1 above: at the floor, a maximal threshold drops everything, so a search still
 reading parts is paying for bounds above the floor and improving the incumbent cannot help it.
+
+---
+
+## Variance-sensitive mass tree — large synthetic win, no real-Qwen pruning (2026-09-09)
+
+**Module:** `ssa/bennett_mass_experiment.py` · **Record:** `runs/bennett_mass_tree.json` · **Formal
+sources:** Substrate `6b3da713a` (trace), `da13ebeba` (full covariance), `9c6b1ad35` (outlier peel), and
+`fad55ff82` (Inference consumer) · **Hardware:** RTX 4080 for
+the Qwen forward; float64 CPU tree/oracle.
+
+The certified tree now optionally stores the mean squared key radius $s^2$ and evaluates the deterministic
+Bennett mass cap using either the safe trace lift $v=\lVert q\rVert^2s^2$ or the exact directional variance
+$v=q^TCq$ from a stored full covariance. Evaluation is stable in log space, including a series for
+`exp(x)-1-x` near zero, and returns the minimum of Bennett and the existing worst-radius cap. The trace mode
+adds one scalar per node; full covariance adds $d^2$ (4,096 at $d=64$) and makes each bound evaluation a
+quadratic form. The default reader remains the radius mode. Tests cover zero temperature/query, exact-zero
+spread, large temperature, random geometry, causal prefixes, dense-output agreement, and the fact that each
+minimum never exceeds the radius cap.
+
+On a deliberately concentrated 8,192-key geometry with rare radius-setting extremes, both Bennett variants
+were strictly tighter on all 8,160 sampled query/node pairs. Median excess over exact node log mass fell from
+**0.816** to **0.0081** with trace and **0.000026** with covariance. At a certified 10% omitted-mass target,
+both reduced mean work from **61.2 to 9.2 blocks** and from **3,884 to 556 keys**; at the much stricter 1%
+target the improvement nearly vanished (96.4 to 95.0 blocks).
+
+The real-model control is the important result. For 32 causal queries from the latter half of an 8,192-token
+Qwen2.5-0.5B layer-18 head, both Bennett variants again tightened every one of 8,160 node caps and none of the
+three caps had an observed float64-oracle underestimate. Trace reduced the cap by a median **0.730 log
+units** and full covariance by **6.057**, but median excess above exact node log mass still remained **33.42**
+and **28.03**, respectively (radius: 34.04). At fixed 5% block budget every certified omitted-mass upper bound
+remained numerically 1. To certify either 10% or 1% omitted mass, all three modes opened **all 98.2 visible
+blocks on average** (6,247 keys, including partial causal blocks). Thus even exact within-node covariance does
+**not** make exact mass certification sparse on the tested raw post-RoPE Qwen geometry.
+
+This is not a failure of the Bennett inequality or its implementation. Full covariance confirms the active
+obstruction is the exponential worst-radius term, not merely the dimension factor in the trace lift. The next
+credible exact route needs a substantially better partition or a richer tail summary than two moments plus a
+single maximum; approximate routing remains the practical route used by the 10M demo. The 8,160-pair audit is empirical floating-point
+verification with a $2\times10^{-11}$ log-space comparison tolerance, not an interval proof, and one
+layer/head is not a population claim about all transformers.
+
+The outlier-peel follow-up directly tested that tail hypothesis. Each node deterministically exposes the
+$t$ largest Euclidean residuals, scores their mass exactly, recentres the remaining core, and applies its
+Bennett cap. On the same Qwen pairs, median log-cap slack was **29.83, 29.33, 28.80, and 27.92** for
+$t=1,2,4,8$ with trace moments. Combining $t=4$ with core covariance reached **23.39**, a **11.96-log-unit**
+median tightening versus radius. All variants had zero observed node-cap underestimates. Nevertheless every
+variant still opened all 98.2 visible blocks for both stopping tolerances, and even the fixed-5% budget's mass
+certificate remained numerically 1. The $t=8$ trace summary adds 578 scalars per node at $d=64$; $t=4$ plus
+covariance adds 4,418. These are fixed-depth comparisons, not a claim that raw peel caps are monotone; a
+running minimum is the safe monotone construction. Small query-independent peeling therefore helps
+substantially but does not cure the real-tree certificate, and larger peels approach storing/scoring the
+underlying keys rather than a useful sparse summary.
+
+The theorem's force-kept formulation was tested separately at the active causal frontier by promoting each
+exposed key's containing leaf block before traversing the certified core. It seeded **3.69, 4.50, 8.34, and
+12.63 blocks on average** for $t=1,2,4,8$. At $t=4$, bound evaluations fell from 190.63 to 166.78 on average,
+but both 10% and 1% stopping targets still read all **98.16 blocks / 6,247.25 keys**. This block-level
+realization preserves the existing attention kernel; it is not the finer individual-key side channel that
+the theorem also permits.

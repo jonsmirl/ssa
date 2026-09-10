@@ -60,6 +60,72 @@ def test_tree_prefix_cannot_observe_future_nodes():
     assert a.output_error_upper == b.output_error_upper
 
 
+def test_bennett_node_mass_caps_are_sound_and_no_worse_than_radius():
+    rng = np.random.default_rng(17)
+    geometries = [
+        rng.normal(size=(256, 9)),
+        1e-4 * rng.normal(size=(256, 9)),
+        np.repeat(rng.normal(size=(8, 9)), 32, axis=0),
+    ]
+    for K in geometries:
+        radius = CertifiedTreeAttention(K, np.zeros((len(K), 1)), 8, mass_bound="radius")
+        bennett = CertifiedTreeAttention(K, np.zeros((len(K), 1)), 8, mass_bound="bennett")
+        covariance = CertifiedTreeAttention(
+            K, np.zeros((len(K), 1)), 8, mass_bound="bennett_covariance")
+        peeled = CertifiedTreeAttention(
+            K, np.zeros((len(K), 1)), 8, mass_bound="bennett_peel", peel_count=2)
+        peeled_covariance = CertifiedTreeAttention(
+            K, np.zeros((len(K), 1)), 8,
+            mass_bound="bennett_peel_covariance", peel_count=2)
+        for beta in (0.0, 0.125, 2.0, 30.0):
+            for q in (np.zeros(9), rng.normal(size=9)):
+                qnorm = float(np.linalg.norm(q))
+                for rn, bn, cn, pn, pcn in zip(
+                        radius._nodes, bennett._nodes, covariance._nodes,
+                        peeled._nodes, peeled_covariance._nodes):
+                    ids = slice(bn.start * 8, bn.end * 8)
+                    logits = beta * (K[ids] @ q)
+                    top = float(logits.max())
+                    exact = top + float(np.log(np.exp(logits - top).sum()))
+                    radius_cap = radius._node_log_upper(rn, q, beta, qnorm)
+                    bennett_cap = bennett._node_log_upper(bn, q, beta, qnorm)
+                    covariance_cap = covariance._node_log_upper(cn, q, beta, qnorm)
+                    peeled_cap = peeled._node_log_upper(pn, q, beta, qnorm)
+                    peeled_covariance_cap = peeled_covariance._node_log_upper(
+                        pcn, q, beta, qnorm)
+                    assert exact <= bennett_cap + 2e-11
+                    assert exact <= covariance_cap + 2e-11
+                    assert exact <= peeled_cap + 2e-11
+                    assert exact <= peeled_covariance_cap + 2e-11
+                    assert bennett_cap <= radius_cap + 2e-11
+                    assert covariance_cap <= radius_cap + 2e-11
+                    assert peeled_cap <= radius_cap + 2e-11
+                    assert peeled_covariance_cap <= radius_cap + 2e-11
+
+
+def test_bennett_tree_certificate_matches_dense_and_can_reduce_mass_bound():
+    rng = np.random.default_rng(29)
+    K = 0.02 * rng.normal(size=(1024, 12))
+    K[:16, 0] += 4
+    V = rng.normal(size=(1024, 3))
+    q = np.eye(12)[0]
+    radius = CertifiedTreeAttention(K, V, 16, mass_bound="radius").read(
+        q, beta=4, mass_tol=0, max_blocks=1)
+    index = CertifiedTreeAttention(K, V, 16, mass_bound="bennett")
+    bennett = index.read(q, beta=4, mass_tol=0, max_blocks=1)
+    check_against_dense(index, q, 4, bennett)
+    assert bennett.mass_upper < radius.mass_upper
+
+
+def test_bennett_rejects_unknown_bound_mode():
+    with np.testing.assert_raises(ValueError):
+        CertifiedTreeAttention(np.zeros((8, 2)), np.zeros((8, 1)), 2,
+                               mass_bound="unproved")
+    with np.testing.assert_raises(ValueError):
+        CertifiedTreeAttention(np.zeros((8, 2)), np.zeros((8, 1)), 2,
+                               mass_bound="bennett_peel", peel_count=0)
+
+
 def test_descendant_caps_tighten_and_drop_at_least_the_parent_cap():
     """At one threshold, every region pruned by a parent cap is pruned by each child cap."""
     rng = np.random.default_rng(23)

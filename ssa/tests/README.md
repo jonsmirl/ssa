@@ -30,8 +30,8 @@ GPU routing speed. Validated on an RTX 4080; skips without CUDA.
 
 **`test_hierarchical_certified_attention.py`** — dense-oracle validation of the tree-frontier version
 of the adaptive certificate. Exercises causal prefixes, hard caps, seed blocks, future-token isolation,
-and the equal-value shortcut; a high-margin fixture locks in logarithmic rather than flat leaf-summary
-evaluation for that geometry.
+the equal-value shortcut, and trace/full-covariance Bennett mass caps against exact descendant log masses;
+a high-margin fixture locks in logarithmic rather than flat leaf-summary evaluation for that geometry.
 
 **`test_core.py`** — the theory predictions and the baseline selector (paper §3).
 - `test_recovery_weight_is_exact_target_mass`, `test_recovery_threshold_at_half` — the recovery-weight law

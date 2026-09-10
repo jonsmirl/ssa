@@ -114,8 +114,9 @@ the tightest upper bound available from `(μ_c, Σ_c, b)` alone. On real transfo
 bound can cost at least a full key scan, which is why the scalable implementation uses budgeted lossy routing.
 
 Related algebraic results are machine-checked in the separate Substrate Lean development; the relevant audit
-is through Substrate commit `77cd1b8c6`, including the potential-store precursor `88a4c7012` and the six
-subsequent SSA commits through that point. The broader mapping between Substrate results and this code is
+is through Substrate commit `fad55ff82`, including the potential-store precursor `88a4c7012`, the six
+subsequent SSA commits through `77cd1b8c6`, the trace/covariance/outlier-peeled mass-tree results through
+`9c6b1ad35`, and their Inference-facing consumer. The broader mapping between Substrate results and this code is
 documented in [`docs/substrate_math_imports.md`](docs/substrate_math_imports.md). The checked results now
 include recursive real-valued ball containment and its pairing cap, monotone expansion of the certified drop
 set as a tree bound tightens, causal selection by cutting every routed set at the query's original position,
@@ -205,6 +206,11 @@ the premise that the measured 10M target received nine pre-consensus base-route 
   attending to about 38% of keys. This constant fraction is still asymptotically quadratic.
 - The Certified Causal Cascade's per-query routing certificate has zero observed violations in its clustered
   and random tests; it certifies top-`κ` under the routing metric, not omitted attention mass.
+- Trace, full covariance, and deterministic outlier peeling make Bennett mass trees dramatically tighter on
+  a concentrated synthetic control (3,884 to 556 keys at a 10% mass certificate). On the measured Qwen-8K
+  layer-18 head, even four peeled vectors plus covariance leaves 23.39 log units of median cap slack and opens
+  every visible block. Force-keeping the peeled vectors' containing blocks likewise ends in a full read; it
+  only reduces bound evaluations. The exact certificate remains a diagnostic, not a production router.
 - Cross-layer route sharing from a middle donor layer reduces measured routing overhead from about 59% to 6%
   while preserving the single-needle probe. Sharing from layer 0 does not.
 
@@ -249,6 +255,7 @@ datasets; see [`kaggle_10m/README.md`](kaggle_10m/README.md).
 | [`ssa/ivf_kernel.py`](ssa/ivf_kernel.py) | FAISS-GPU IVF routed FlexAttention benchmark |
 | [`ssa/cascade_router.py`](ssa/cascade_router.py) | Certified Causal Cascade selector |
 | [`ssa/float_tree_verification.py`](ssa/float_tree_verification.py) | CUDA float32 tree-bound stress test against float64 oracles |
+| [`ssa/bennett_mass_experiment.py`](ssa/bennett_mass_experiment.py) | Variance-sensitive mass-cap verification on synthetic and Qwen geometry |
 | [`ssa/certified_attention.py`](ssa/certified_attention.py) | Adaptive mass/KL/output certificate |
 | [`ssa/hierarchical_certified_attention.py`](ssa/hierarchical_certified_attention.py) | Hierarchical certificate reference |
 | [`ssa/train.py`](ssa/train.py), [`ssa/co_train.py`](ssa/co_train.py) | Routability training experiments |
