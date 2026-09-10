@@ -33,6 +33,16 @@ of the adaptive certificate. Exercises causal prefixes, hard caps, seed blocks, 
 the equal-value shortcut, and trace/full-covariance Bennett mass caps against exact descendant log masses;
 a high-margin fixture locks in logarithmic rather than flat leaf-summary evaluation for that geometry.
 
+**`test_score_tail_certificate.py`** — dense-oracle validation of disjoint score-tail bands and the
+geometry-seeded certified reader. Covers one-threshold and exact-histogram specializations, repeated and
+empty bands, refinement, hard stopping-margin algebra, deterministic ties, arbitrary causal prefixes and
+partial boundary blocks, full refinement, value-output bounds, and a centroid-hidden extreme key. CCC's
+routing certificate and the independent attention-logit cap remain visibly separate.
+
+**`test_score_tail_training.py`** — checks that the differentiable hard-summary margin backpropagates and
+that its sign is exactly the hard mass stopping condition. Because `softplus(M)` is strictly positive, its
+equivalent decision threshold is `log(2)`, not zero.
+
 **`test_core.py`** — the theory predictions and the baseline selector (paper §3).
 - `test_recovery_weight_is_exact_target_mass`, `test_recovery_threshold_at_half` — the recovery-weight law
   `σ(βΔ − log μ)` and its `½` crossing.

@@ -23,13 +23,27 @@ import torch.nn.functional as F
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
 
 
+def non_target_variance_penalty(blocks, q, target):
+    """Mean ``q^T Sigma_b q`` over non-target blocks.
+
+    ``blocks`` is ``(clusters, members, d)``, ``q`` is ``(batch, d)``, and
+    ``target`` names one excluded block per query.  This is the original Route-F
+    regularizer factored out so certificate-aware training can compare against
+    exactly the same objective rather than a reimplementation.
+    """
+    means = blocks.mean(1)
+    projections = torch.einsum("bd,cmd->bcm", q, blocks)
+    centered = projections - (q @ means.T)[:, :, None]
+    variance = centered.square().mean(-1)
+    keep = torch.arange(blocks.shape[0], device=blocks.device)[None, :] != target[:, None]
+    return variance.masked_select(keep).view(len(q), -1).sum(1).mean()
+
+
 def train(n_clusters, cs, d, lam, steps=1500, bs=128, noise=0.15, lr=3e-3, temp=0.05, seed=0):
     torch.manual_seed(seed)
     n = n_clusters * cs
     K = torch.nn.Parameter(torch.randn(n, d, device=DEV))
     cid = torch.arange(n, device=DEV) // cs                          # block cluster ids
-    onehot = F.one_hot(cid, n_clusters).float()                      # (n, C)
-    cnt = onehot.sum(0)                                              # (C,)
     opt = torch.optim.AdamW([K], lr=lr)
     g = torch.Generator(device=DEV).manual_seed(seed)
     for _ in range(steps):
@@ -39,15 +53,9 @@ def train(n_clusters, cs, d, lam, steps=1500, bs=128, noise=0.15, lr=3e-3, temp=
         logits = q @ Kn.T / temp
         loss = F.cross_entropy(logits, idx)
         if lam > 0:
-            # per cluster, per query: qᵀΣ_c q = mean_k (⟨q,k−μ_c⟩)²  (vectorized over all clusters)
-            mu = (onehot.T @ Kn) / cnt[:, None]                     # (C, d) cluster means
-            proj = q @ Kn.T                                         # (bs, n)  ⟨q, k⟩
-            cmean = q @ mu.T                                        # (bs, C)  ⟨q, μ_c⟩
-            sq = proj ** 2 @ onehot                                 # (bs, C)  Σ_k ⟨q,k⟩²
-            var = sq / cnt[None, :] - cmean ** 2                    # (bs, C)  qᵀΣ_c q
             tgt = cid[idx]                                          # each query's target cluster
-            nontarget = (torch.arange(n_clusters, device=DEV)[None, :] != tgt[:, None]).float()
-            loss = loss + lam * (var.clamp(min=0) * nontarget).sum(1).mean()
+            loss = loss + lam * non_target_variance_penalty(
+                Kn.view(n_clusters, cs, d), q, tgt)
         opt.zero_grad(); loss.backward(); opt.step()
     return F.normalize(K, dim=-1).detach().cpu().numpy(), cid.cpu().numpy()
 

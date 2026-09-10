@@ -9,6 +9,13 @@ restricted-read identities and value geometry. Its abstract mass, divergence, ex
 arms are now machine-checked; the Python instantiation remains a tested implementation rather than extracted
 Lean code.
 
+`ssa/score_tail_certificate.py` now supplies a new concrete admissible mass cap to that same reader: exact
+unopened block counts are grouped under separately certified attention-logit upper edges and their
+exponential band sums are added. The restricted-read/output transport and “minimum of admissible caps” step
+reuse the audited Substrate results. The finite disjoint-band inequality itself is proved in public paper
+§5.7 and Appendix B.20 but is **not currently a Substrate theorem**. CCC remains only a routing-metric seed;
+the Python reader derives a distinct mean-plus-radius attention-logit cap before invoking the mass algebra.
+
 The focused source review covers `PartialScore`, `AdmissibleBound`, `LogSumExpBound`, `SelectionGeometry`,
 `ValueAwareSelection`, `RestrictedReadBound`, `RestrictedReadOutputBound`, `BoundedTopSelection`,
 `BoundedReadMiss`, `ComposedSelectionPlan`, `StorePotentialRead`, `PotentialStoreProcess`,

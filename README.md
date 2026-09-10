@@ -26,6 +26,7 @@ Detailed experiment records live in [RESULTS.md](RESULTS.md).
 | Dense equivalence | **Validated at small scale** | 4K dense-equivalence gate and dense/streamed 128K NIAH gates passed |
 | Kernel scaling | **Measured to 12M** | Single-head synthetic IVF kernel: 139.5 ms, 6.55 GB, 2.9× the `n·κ` floor |
 | Output-error certification | **Reference implementation** | CPU adaptive selectors bound omitted mass, KL, and attention-output error; no production GPU kernel claim |
+| Geometry-routed score-tail certificate | **Sound reference; negative Qwen sparsity result** | Separate attention-logit block caps feed a 16-level tail profile; zero oracle violations, but the tested Qwen-8K head still requires a full read |
 | Lean-checked supporting invariants | **Verified abstractly** | Recursive balls, exact restricted-read/output identities, strict or index-tie-broken top selection, grounded read-budget limits, and the composed causal reservoir plan |
 | Float32 tree bounds | **Guarded and stress-tested** | RTX 4080 comparison with float64 descendant oracles: zero guarded misses in 90,105 balls and 1,081,260 score caps; empirical, not an IEEE-arithmetic proof |
 | Worst-case cheap losslessness | **Ruled out in the grounded-probe model** | A budget-`b` adaptive read returning only probed positions has uniform-spike recall at most `b/n`; arbitrary preprocessing is outside this theorem |
@@ -100,6 +101,9 @@ The repository contains two distinct guarantee levels:
   omitted-mass and/or attention-output tolerance, with a full-scan fallback.
 - [`ssa/hierarchical_certified_attention.py`](ssa/hierarchical_certified_attention.py) applies the same target
   through a tree and can evaluate `O(log B)` summaries on concentrated geometry. Its worst case is `O(B)`.
+- [`ssa/score_tail_certificate.py`](ssa/score_tail_certificate.py) accepts CCC/IVF blocks only as routing
+  seeds, derives separate admissible attention-logit caps, and sends a multi-level unopened-score profile
+  through the same mass, KL, and value-output certificate. It is a float64 CPU reference.
 - The fast budgeted routes in `streaming_qwen.py`, `ivf_kernel.py`, and the FlexAttention path are empirical;
   exact softmax over their selected set does not imply equality with dense attention.
 
@@ -211,6 +215,11 @@ the premise that the measured 10M target received nine pre-consensus base-route 
   layer-18 head, even four peeled vectors plus covariance leaves 23.39 log units of median cap slack and opens
   every visible block. Force-keeping the peeled vectors' containing blocks likewise ends in a full read; it
   only reduces bound evaluations. The exact certificate remains a diagnostic, not a production router.
+- A 16-level score-tail profile improves the Qwen-8K fixed-10%-block certificate margin from 34.54 (one
+  residual threshold) to 31.81, with zero mass/output oracle violations, but certifies none of the queries
+  and still opens all 6,247 visible keys at $\eta=0.10$ and $0.01$. The oracle contrast is sharp: the median
+  largest 3.38% of visible keys holds 90% of true mass, while exact top keys plus one residual maximum need
+  19.82%. Sparse mass exists; the current block partition and caps do not expose it cheaply.
 - Cross-layer route sharing from a middle donor layer reduces measured routing overhead from about 59% to 6%
   while preserving the single-needle probe. Sharing from layer 0 does not.
 
@@ -256,6 +265,9 @@ datasets; see [`kaggle_10m/README.md`](kaggle_10m/README.md).
 | [`ssa/cascade_router.py`](ssa/cascade_router.py) | Certified Causal Cascade selector |
 | [`ssa/float_tree_verification.py`](ssa/float_tree_verification.py) | CUDA float32 tree-bound stress test against float64 oracles |
 | [`ssa/bennett_mass_experiment.py`](ssa/bennett_mass_experiment.py) | Variance-sensitive mass-cap verification on synthetic and Qwen geometry |
+| [`ssa/score_tail_certificate.py`](ssa/score_tail_certificate.py) | Geometry-seeded deterministic score-tail mass/KL/output reader |
+| [`ssa/score_tail_experiment.py`](ssa/score_tail_experiment.py) | Synthetic/Qwen cap and oracle comparison |
+| [`ssa/score_tail_training.py`](ssa/score_tail_training.py) | Controlled hard-margin training comparison |
 | [`ssa/certified_attention.py`](ssa/certified_attention.py) | Adaptive mass/KL/output certificate |
 | [`ssa/hierarchical_certified_attention.py`](ssa/hierarchical_certified_attention.py) | Hierarchical certificate reference |
 | [`ssa/train.py`](ssa/train.py), [`ssa/co_train.py`](ssa/co_train.py) | Routability training experiments |

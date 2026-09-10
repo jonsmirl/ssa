@@ -78,6 +78,7 @@ Subquadratic router and sparse kernel at 10M & demonstrated & bounded fixed-beam
 Semantic retrieval at 10M & narrow evidence & one NIAH ranking; no broad task suite or dense 10M baseline\\
 Near-floor kernel scaling to 12M & demonstrated & single-head synthetic IVF benchmark\\
 Omitted-mass and output-error certificates & reference implementation & CPU, adaptive, worst-case full scan\\
+Geometry-routed score-tail certificate & sound reference, negative sparsity result & 16-level attention-score tail; Qwen-8K still reads every visible key\\
 Supporting routing invariants & proved in this paper & self-contained statements and proofs in Appendix~\ref{app:invariants}; private Lean audit is corroborating provenance\\
 Cheap worst-case losslessness & impossible under the stated models & grounded probes have a $b/n$ ceiling; a $K$-state index with unread-output width $a$ has a $K(b+a)/n$ ceiling\\
 \bottomrule
@@ -852,6 +853,85 @@ Force-keeping the exposed vectors through their containing leaf blocks does not 
 $t=4$ it seeds 8.34 blocks and reduces mean bound evaluations from 190.63 to 166.78, but still reads all 98.16
 blocks and 6,247.25 keys at both tested stopping tolerances. This is a block-kernel realization, not an
 individual-key outlier side channel.
+
+\paragraph{Geometry-routed score-tail certificate.}
+A single residual maximum treats every unopened key as if it attained the worst remaining score. The new
+reference reader instead keeps routing and attention certification as distinct objects. CCC or IVF supplies
+seed blocks under its own routing metric. For each still-unopened attention block $c$, an independent
+admissible logit cap is required. The reference implementation uses
+\begin{equation}\label{eq:attention-block-cap}
+u_c(q)=\beta\left(\inner{q}{\mu_c}+\lVert q\rVert R_c\right),
+\qquad
+\inner{q}{k}\le \inner{q}{\mu_c}+\lVert q\rVert R_c,
+\end{equation}
+where $R_c\ge\max_{k\in c}\lVert k-\mu_c\rVert$. Thus CCC's exact top-block certificate is never
+relabelled as an attention-score or attention-mass certificate.
+
+Let $u_0\le\cdots\le u_{L-1}$ be score-band upper edges and let $B_j$ be a certified upper count for the
+unopened keys assigned to band $j$, every one of which has score at most $u_j$. Then
+\begin{equation}\label{eq:score-tail-mass}
+A_{\rm tail}=\sum_{j=0}^{L-1} B_j e^{u_j}
+\end{equation}
+is an admissible omitted exponential-mass bound: apply $e^{s_i}\le e^{u_j}$ to each key in a band and sum
+the disjoint bands. Reversing the edges gives the equivalent descending cumulative-count convention. Splitting
+a band at a lower edge cannot increase the bound, since
+$B_{\rm lo}e^{u_{\rm lo}}+B_{\rm hi}e^u\le(B_{\rm lo}+B_{\rm hi})e^u$; lowering valid band counts has the
+same monotonicity. Taking the minimum with any other admissible radius, Bennett, covariance, peeled, parent,
+or child-sum cap remains admissible. With one band, the bound is the familiar
+$N e^{\max u_c}$ bound. With one edge at every exact score and exact multiplicities, it equals the true
+residual mass.
+
+If selected keys have exact mass $Z_S$, the stopping test is exactly
+\begin{equation}\label{eq:tail-margin}
+\frac{A_{\rm tail}}{Z_S+A_{\rm tail}}\le\eta
+\quad\Longleftrightarrow\quad
+M_\eta:=\log A_{\rm tail}-\log Z_S-\log\frac{\eta}{1-\eta}\le0,
+\qquad 0<\eta<1.
+\end{equation}
+The left side feeds the existing exact total-variation, selected-to-dense KL, and value-output bounds. The
+margin is therefore the requested certificate itself, not a routing proxy. The CPU float64 implementation
+preserves causal prefixes by scoring a partial boundary block exactly and falls back to the dense read.
+
+The measured Qwen result is again negative, but more diagnostic. On the same 32 layer-18/head-0 causal
+queries, opening 10.43\% of blocks with the existing contiguous tree leaves 71.30\% mean actual mass. Seeding
+with block-mean geometry improves the actual omitted mass to 59.08\% at 683.25 keys / 11.22 blocks, while the
+16-level profile improves the mean hard margin from 34.54 for one residual threshold to 31.81. It still
+certifies 0/32 queries: its mean mass upper bound is $0.99999999999885$. At both $\eta=0.10$ and $0.01$, all
+six compared modes---radius, trace Bennett, covariance Bennett, four-vector peeled covariance, one threshold,
+and 16 levels---score all 6,247.25 visible keys / 98.16 blocks. The score-tail modes evaluate 97.16 block caps
+on average versus 173.81 tree nodes, but save no keys. Across every synthetic and Qwen row there are zero
+mass or value-output violations at tolerance $2\times10^{-11}$; the largest output deficit is floating-point
+noise below $4.6\times10^{-15}$.
+
+The oracle explains the gap. For the median Qwen query, the largest 3.384\% of visible keys contain 90\% of
+the true mass; exact top keys plus one exact residual maximum require 19.825\%. Sparse mass exists, but the
+present contiguous blocks and mean-plus-radius attention caps do not expose its individual-key tail. The
+16-level index stores 16,672 scalar summary/count entries for this 8K fixture and charges about 50,744 scalar
+query work units at the fixed budget; these accounting units are not measured GPU latency. The complete
+record, including concentrated, random, and centroid-hidden-extreme synthetic controls, is
+\texttt{runs/score\_tail\_certificate.json}; reproduce it with
+\texttt{python -m ssa.score\_tail\_experiment --cache /tmp/ssa\_bennett\_qwen\_8192.npz --out
+runs/score\_tail\_certificate.json}.
+
+An experimental objective uses the same hard-summary margin,
+$\mathcal L_{\rm cert}=\operatorname{softplus}(M_\eta)$, and compares it with the existing non-target
+$q^T\Sigma_bq$ penalty and their hybrid. Softplus is strictly positive, so the requested ``loss nonpositive''
+test is mathematically impossible as written: the exact equivalent boundary is
+$\operatorname{softplus}(M_\eta)\le\log2$ iff $M_\eta\le0$. On a controlled 384-key retrieval task, hard
+held-out evaluation at $\eta=0.10$ scored 384, 369, 384, and 247.5 keys on average for baseline, variance,
+certificate-only, and hybrid objectives; dense-argmax retrieval was 1.000 for all four. The hybrid still made
+a full read on 29.69\% of queries. Under a forced 25\%-block budget, only 1.56\% of hybrid queries certified,
+although retrieval remained 1.000; baseline retrieval fell to 0.602. This is one controlled optimization
+outcome, not evidence that the surrogate generally learns a favorable partition. Hard evaluation recomputes
+means, radii, counts, and margins and found zero soundness deficits. The record is
+\texttt{runs/score\_tail\_training.json}; reproduce it with
+\texttt{python -m ssa.score\_tail\_training --steps 600 --out runs/score\_tail\_training.json} on CUDA.
+
+No real model is assumed to have a favorable score-tail profile. Determinism requires admissible per-block
+attention caps and certified band counts. Conditional subquadraticity additionally requires the evaluated
+nodes, opened keys, and number of levels to remain subquadratic. The tail implementation is intentionally not
+wired into FlexAttention: the dense-oracle gate passed, but the required Qwen checkpoint still produced a
+full read, so a GPU path would add machinery without a demonstrated sparse certified operating point.
 
 Six additional checks compare the certificates against
 float64 CUDA SDPA on an RTX 4080, using concentrated logits, flat logits, and equal values at
@@ -2082,6 +2162,36 @@ miss equals one.
 The dependence on $K$ cannot be removed: the identity index takes $C=\{0,\ldots,n-1\}$, stores $j$, and
 selects a depth-zero leaf returning $\{j\}$. It recalls every spike. State count is not a storage-bit or
 runtime cost, and the theorem does not cover scored, approximate, or multiple-target retrieval.
+
+\subsection{Deterministic score-tail mass}
+Let the omitted finite carrier be the disjoint union $T=\bigsqcup_{j<L}T_j$. Suppose every $i\in T_j$ has
+score $s_i\le u_j$ and $|T_j|\le B_j$. Define $A=\sum_{j<L}B_je^{u_j}$.
+
+\begin{proposition}[Score-tail certificate]\label{prop:app-score-tail}
+The true omitted exponential mass is at most $A$. Splitting a band into sub-bands with no larger upper edges,
+lowering valid disjoint-band upper counts, or taking the minimum with another admissible mass cap cannot
+increase the best admissible bound. One band specializes to the residual-maximum bound; singleton exact-score
+bands give equality. If the retained exact mass is $Z_S>0$ and $0<\eta<1$, then
+\begin{equation}\label{eq:app-score-tail-margin}
+\frac{A}{Z_S+A}\le\eta
+\quad\Longleftrightarrow\quad
+\log A-\log Z_S\le\log\eta-\log(1-\eta).
+\end{equation}
+\end{proposition}
+\begin{proof}
+For each band,
+$\sum_{i\in T_j}e^{s_i}\le |T_j|e^{u_j}\le B_je^{u_j}$; sum over the disjoint union. Replacing a band of
+count $B=B_1+B_2$ and edge $u$ by edges $u_1,u_2\le u$ gives
+$B_1e^{u_1}+B_2e^{u_2}\le Be^u$. Count reduction and the minimum of two upper bounds are immediate. A
+single band yields $|T|e^u$; exact-score bands make every termwise inequality an equality. Finally multiply
+the stopping inequality by the positive $Z_S+A$, collect $(1-\eta)A\le\eta Z_S$, and take logarithms (with
+$A=0$ handled directly).
+\end{proof}
+
+This proposition assumes the score bounds and counts; it does not derive them from a routing metric. In the
+reference implementation, Cauchy--Schwarz supplies the separate block attention cap
+\eqref{eq:attention-block-cap}, while CCC only supplies initially opened blocks. Floating-point construction
+is dense-oracle tested, not formally verified.
 
 \begin{thebibliography}{17}
 \bibitem{vaswani2017} A.~Vaswani et al. \emph{Attention Is All You Need.} NeurIPS, 2017.

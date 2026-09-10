@@ -158,6 +158,16 @@ the evidence that the geometry is benign in practice, not just in synthetic beni
   exponential-mass caps inside the certified tree against exact descendant masses and fixed-budget/stopping
   traversals, including the force-kept peeled-core formulation on a real post-RoPE Qwen head. The real-head
   result is negative for sparse exact certification.
+- **`score_tail_certificate.py`** — CPU/float64 reference bridge from geometry-routed block seeds to a
+  deterministic attention-score tail profile. CCC certification remains scoped to its routing metric;
+  direct block mean-plus-radius bounds separately certify attention logits before the profile is composed
+  with omitted-mass, KL, and value-output guarantees.
+- **`score_tail_experiment.py`** — identical-query comparison of radius, Bennett trace/covariance, peeled,
+  one-threshold, and 16-level tail bounds on synthetic controls and the cached Qwen-8K layer-18 fixture.
+  The Qwen result remains a full read despite a 2.73-unit margin improvement over one threshold.
+- **`score_tail_training.py`** — controlled comparison of the original non-target variance regularizer,
+  the exact hard certificate-margin surrogate, and their hybrid. Evaluation always rebuilds hard summaries;
+  the smooth loss is not itself a certificate.
 - **`gemma_keys.py`** — the frontier-scale, deep-head check (Gemma, head_dim 256): re-runs centroid-vs-cumulant
   routing and the temperature sweep on a 256-dimensional head.
 

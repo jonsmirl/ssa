@@ -1,0 +1,182 @@
+{
+  "method": "certificate-margin training comparison",
+  "command": "python -m ssa.score_tail_training --steps 600 --out runs/score_tail_training.json",
+  "device": "cuda",
+  "hardware": "NVIDIA GeForce RTX 4080",
+  "parameters": {
+    "steps": 600,
+    "seed": 0,
+    "variance_weight": 16.0,
+    "certificate_weight": 0.05,
+    "eta": 0.1,
+    "tail_levels": 16
+  },
+  "scope": "controlled learned-key task; hard held-out summaries rebuilt after training",
+  "objectives": {
+    "baseline": {
+      "final_training": {
+        "total": 0.04595743119716644,
+        "retrieval": 0.04595743119716644,
+        "variance": 0.7603504657745361,
+        "certificate_softplus": 13.716629981994629,
+        "mean_margin": 13.71662712097168,
+        "hard_margin_nonpositive_fraction": 0.0
+      },
+      "hard_evaluation_to_certificate": {
+        "source_retrieval_accuracy": 1.0,
+        "dense_argmax_retrieval_accuracy": 1.0,
+        "certified_fraction": 1.0,
+        "mean_keys_scored": 384.0,
+        "mean_blocks_opened": 24.0,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.0,
+        "mean_actual_omitted_mass": 0.0,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 1.0,
+        "mean_finite_final_margin": null,
+        "max_block_fraction": null,
+        "tail_levels": 16
+      },
+      "hard_evaluation_at_25pct_block_cap": {
+        "source_retrieval_accuracy": 0.6015625,
+        "dense_argmax_retrieval_accuracy": 0.6015625,
+        "certified_fraction": 0.0,
+        "mean_keys_scored": 96.0,
+        "mean_blocks_opened": 6.0,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.9999772712924928,
+        "mean_actual_omitted_mass": 0.4015453572631656,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 0.0,
+        "mean_finite_final_margin": 15.115880392797065,
+        "max_block_fraction": 0.25,
+        "tail_levels": 16
+      }
+    },
+    "variance": {
+      "final_training": {
+        "total": 2.941983699798584,
+        "retrieval": 0.9055217504501343,
+        "variance": 0.1272788643836975,
+        "certificate_softplus": 8.493815422058105,
+        "mean_margin": 8.49313735961914,
+        "hard_margin_nonpositive_fraction": 0.0
+      },
+      "hard_evaluation_to_certificate": {
+        "source_retrieval_accuracy": 1.0,
+        "dense_argmax_retrieval_accuracy": 1.0,
+        "certified_fraction": 1.0,
+        "mean_keys_scored": 369.0,
+        "mean_blocks_opened": 23.0625,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.004451291751395291,
+        "mean_actual_omitted_mass": 8.279804502414396e-08,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 0.921875,
+        "mean_finite_final_margin": -0.7779350945326724,
+        "max_block_fraction": null,
+        "tail_levels": 16
+      },
+      "hard_evaluation_at_25pct_block_cap": {
+        "source_retrieval_accuracy": 1.0,
+        "dense_argmax_retrieval_accuracy": 1.0,
+        "certified_fraction": 0.0,
+        "mean_keys_scored": 96.0,
+        "mean_blocks_opened": 6.0,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.8914242454931908,
+        "mean_actual_omitted_mass": 0.00047200629059396905,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 0.0,
+        "mean_finite_final_margin": 4.937028464931124,
+        "max_block_fraction": 0.25,
+        "tail_levels": 16
+      }
+    },
+    "certificate": {
+      "final_training": {
+        "total": 0.654395580291748,
+        "retrieval": 0.048843204975128174,
+        "variance": 0.7553941011428833,
+        "certificate_softplus": 12.111047744750977,
+        "mean_margin": 12.111037254333496,
+        "hard_margin_nonpositive_fraction": 0.0
+      },
+      "hard_evaluation_to_certificate": {
+        "source_retrieval_accuracy": 1.0,
+        "dense_argmax_retrieval_accuracy": 1.0,
+        "certified_fraction": 1.0,
+        "mean_keys_scored": 384.0,
+        "mean_blocks_opened": 24.0,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.0,
+        "mean_actual_omitted_mass": 0.0,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 1.0,
+        "mean_finite_final_margin": null,
+        "max_block_fraction": null,
+        "tail_levels": 16
+      },
+      "hard_evaluation_at_25pct_block_cap": {
+        "source_retrieval_accuracy": 0.6640625,
+        "dense_argmax_retrieval_accuracy": 0.6640625,
+        "certified_fraction": 0.0,
+        "mean_keys_scored": 96.0,
+        "mean_blocks_opened": 6.0,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.9998783854182218,
+        "mean_actual_omitted_mass": 0.3406561495740138,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 0.0,
+        "mean_finite_final_margin": 13.18968850880108,
+        "max_block_fraction": 0.25,
+        "tail_levels": 16
+      }
+    },
+    "hybrid": {
+      "final_training": {
+        "total": 3.1129050254821777,
+        "retrieval": 0.9345237016677856,
+        "variance": 0.11952531337738037,
+        "certificate_softplus": 5.319528579711914,
+        "mean_margin": 5.301949501037598,
+        "hard_margin_nonpositive_fraction": 0.0
+      },
+      "hard_evaluation_to_certificate": {
+        "source_retrieval_accuracy": 1.0,
+        "dense_argmax_retrieval_accuracy": 1.0,
+        "certified_fraction": 1.0,
+        "mean_keys_scored": 247.5,
+        "mean_blocks_opened": 15.46875,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.031204306351862696,
+        "mean_actual_omitted_mass": 3.8249082679508055e-06,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 0.296875,
+        "mean_finite_final_margin": -1.129990505814528,
+        "max_block_fraction": null,
+        "tail_levels": 16
+      },
+      "hard_evaluation_at_25pct_block_cap": {
+        "source_retrieval_accuracy": 1.0,
+        "dense_argmax_retrieval_accuracy": 1.0,
+        "certified_fraction": 0.015625,
+        "mean_keys_scored": 96.0,
+        "mean_blocks_opened": 6.0,
+        "mean_bound_evaluations": 24.0,
+        "mean_certified_omitted_mass": 0.49768956703190015,
+        "mean_actual_omitted_mass": 0.0002648709245951418,
+        "maximum_soundness_deficit": 0.0,
+        "full_read_fraction": 0.0,
+        "mean_finite_final_margin": 2.225350051268929,
+        "max_block_fraction": 0.25,
+        "tail_levels": 16
+      }
+    }
+  },
+  "fences": [
+    "softplus training loss is not a certificate",
+    "hard evaluation recomputes partitions, radii, counts, and margins",
+    "optimization and held-out generalization are not proved"
+  ]
+}

@@ -1,8 +1,24 @@
 """Fast assertions for Route F: the Samuelson bound is admissible (validating samuelson_centered) and
 the Samuelson B&B is lossless."""
 import numpy as np
+import torch
 from ssa.core import clustered_keys
-from ssa.prune_regularizer import samuelson_bnb
+from ssa.prune_regularizer import non_target_variance_penalty, samuelson_bnb
+
+
+def test_factored_non_target_variance_matches_q_cov_q_formula():
+    g = torch.Generator().manual_seed(7)
+    blocks = torch.randn(5, 4, 3, generator=g)
+    q = torch.randn(2, 3, generator=g)
+    target = torch.tensor([1, 4])
+    got = non_target_variance_penalty(blocks, q, target)
+    means = blocks.mean(1)
+    centered = blocks - means[:, None]
+    cov = torch.einsum("cmd,cme->cde", centered, centered) / blocks.shape[1]
+    directional = torch.einsum("bd,cde,be->bc", q, cov, q)
+    keep = torch.arange(len(blocks))[None] != target[:, None]
+    expected = directional.masked_select(keep).view(len(q), -1).sum(1).mean()
+    torch.testing.assert_close(got, expected)
 
 
 def test_samuelson_bound_is_admissible():

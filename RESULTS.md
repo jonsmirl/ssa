@@ -1619,3 +1619,110 @@ exposed key's containing leaf block before traversing the certified core. It see
 but both 10% and 1% stopping targets still read all **98.16 blocks / 6,247.25 keys**. This block-level
 realization preserves the existing attention kernel; it is not the finer individual-key side channel that
 the theorem also permits.
+
+---
+
+## Geometry-routed score-tail certificate (2026-09-09)
+
+**Modules:** `ssa/score_tail_certificate.py`, `ssa/score_tail_experiment.py` · **Record:**
+`runs/score_tail_certificate.json` · **Fixture:** `/tmp/ssa_bennett_qwen_8192.npz` · **Execution:** CPU
+float64 · **Command:**
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+python -m ssa.score_tail_experiment \
+  --cache /tmp/ssa_bennett_qwen_8192.npz \
+  --out runs/score_tail_certificate.json
+```
+
+The reference reader uses CCC/IVF-style geometry selection only to seed exact blocks. It independently
+certifies every unopened block's attention logits with the direct mean-plus-Euclidean-radius cap, bins exact
+unopened key counts under 16 score thresholds, and transports the resulting exponential-mass bound through
+the existing TV, selected-to-dense KL, and value-output certificate. Routing-score certification is not
+attention-score certification. The implementation preserves arbitrary causal prefixes, reads a partial
+boundary block exactly, and falls back to a dense read.
+
+### Qwen-8K checkpoint
+
+The cached Qwen2.5-0.5B layer-18, KV-head-0 geometry uses 32 identical causal query/prefix pairs in every
+mode, $\beta=1/\sqrt{64}$, 64-key blocks, and 16 tail levels. The cache has no values; output-bound checks use
+the declared deterministic proxy `tanh(K[:,:8])`, while every mass result uses the real cached post-RoPE Q/K.
+
+The original contiguous radius tree at a nominal 10% block budget opens **10.43%** of visible blocks and
+leaves **71.30% mean / 74.50% median** actual attention mass, reproducing the reported roughly-70% finding.
+For the side-by-side fixed-budget comparison, block-mean routing seeds improve actual omitted mass to
+**59.08%** at **683.25 keys / 11.22 blocks** in every mode:
+
+| bound | certified mass upper | hard margin | bound evals | stored scalars | scalar work units | certified |
+|---|---:|---:|---:|---:|---:|---:|
+| radius tree | 1.000000000000 | — | 20.50 | 33,150 | 45,040 | 0/32 |
+| Bennett trace | 1.000000000000 | — | 20.50 | 33,405 | 45,040 | 0/32 |
+| Bennett covariance | 1.000000000000 | — | 20.50 | 1,077,630 | 127,696 | 0/32 |
+| peeled covariance, $t=4$ | 0.999999999995 | — | 20.50 | 1,160,760 | 132,944 | 0/32 |
+| one residual threshold | 0.99999999999988 | 34.54 | 97.16 | 16,642 | 50,729 | 0/32 |
+| 16-level tail profile | **0.99999999999885** | **31.81** | 97.16 | 16,672 | 50,744 | 0/32 |
+
+The profile gains **2.73 log units** over a single threshold, but remains nowhere near the required
+nonpositive margin. When allowed to continue to a certificate, every mode opens **6,247.25 visible keys /
+98.16 blocks** on average at both $\eta=0.10$ and $0.01$. Tail profiles reduce bound evaluations relative to
+the tree (97.16 vs 173.81) but do not reduce key reads.
+
+The oracle contrast is the main diagnosis:
+
+- Exact top keys need a median **3.384%** of visible keys to retain 90% of true mass (249.72 mean keys).
+- Exact top keys plus one exact residual maximum need a median **19.825%** (1,175.91 mean keys).
+- Constructing either oracle scores all 6,247.25 keys, so neither is an implemented router.
+
+Thus the mass is sparse, and several thresholds are genuinely better than one, but the contiguous block
+partition plus its admissible mean/radius caps hides the individual-key score tail. On the concentrated
+synthetic control all six methods certify $\eta=0.10$ after **214.5 keys / 3.84 blocks**; on the random and
+centroid-hidden-extreme controls they revert to the full visible prefix (**1,536.5 keys / 24.5 blocks**).
+Across all synthetic and Qwen rows there were **zero mass violations and zero output violations** at the
+$2\times10^{-11}$ audit tolerance. Maximum positive mass deficit was $5.6\times10^{-16}$ and maximum output
+deficit was below $4.6\times10^{-15}$. These are empirical floating-point checks, not interval proofs.
+
+### Certificate-margin training
+
+**Module:** `ssa/score_tail_training.py` · **Record:** `runs/score_tail_training.json` · **Hardware:** local
+RTX 4080 · **Command:**
+
+```bash
+python -m ssa.score_tail_training --steps 600 \
+  --out runs/score_tail_training.json
+```
+
+The controlled 384-key task compares baseline retrieval, the existing non-target $q^T\Sigma_bq$
+regularizer, `softplus(M_eta)`, and a hybrid. Evaluation discards the smooth training summaries and rebuilds
+hard block means, radii, bands, counts, and margins on held-out noisy queries.
+
+| objective | keys to hard certificate | full-read queries | dense-argmax retrieval | 25%-cap certification | 25%-cap retrieval |
+|---|---:|---:|---:|---:|---:|
+| baseline | 384.0 | 100.00% | 1.000 | 0.00% | 0.602 |
+| variance | 369.0 | 92.19% | 1.000 | 0.00% | 1.000 |
+| certificate only | 384.0 | 100.00% | 1.000 | 0.00% | 0.664 |
+| hybrid | **247.5** | **29.69%** | 1.000 | **1.56%** | 1.000 |
+
+The hybrid is the only substantial certified-work improvement in this seed, but it still fails the desired
+25% operating point on 98.44% of queries. Certificate-only training is worse than the established variance
+regularizer here. All hard evaluations had zero mass-bound deficits. No claim is made that optimization finds
+a good partition or that held-out geometry generalizes.
+
+There is one correction to the requested test: `softplus(M_eta)` is strictly positive, so it can never be
+zero or nonpositive. The implementation tests and reports the exact equivalent boundary
+`softplus(M_eta) <= log(2)` iff `M_eta <= 0`; only the latter is the hard deterministic certificate.
+
+The GPU/FlexAttention path remains unchanged. Its integration gate (dense-oracle soundness) passed, but the
+Qwen checkpoint offers no sparse certified operating point, so wiring this reference into the GPU kernel
+would not yet improve measured execution. Conditional subquadraticity still requires subquadratic evaluated
+bounds, opened keys, and tail levels. No real model is assumed to satisfy a favorable profile, and a
+probabilistic calibrated bound has not been substituted for the deterministic guarantee.
+
+Verification for the landed prefix:
+
+```text
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest ssa/tests -q
+240 passed, 41 skipped, 14 warnings in 21.34s
+
+cd paper && latexmk -pdf -interaction=nonstopmode -halt-on-error subquadratic_attention.tex
+Output written on subquadratic_attention.pdf (50 pages).
+```
