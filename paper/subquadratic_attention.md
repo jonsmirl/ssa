@@ -46,6 +46,8 @@ tolerance cannot be certified sparsely (see §5.7).
 | Near-floor kernel scaling to 12M | demonstrated | single-head synthetic IVF benchmark |
 | Omitted-mass and output-error certificates | reference implementation | CPU, adaptive, worst-case full scan |
 | Geometry-routed score-tail certificate | sound reference, negative sparsity result | 16-level attention-score tail; Qwen-8K still reads every visible key |
+| Bounded-state recurrent repair | trained controlled result | hard token-tree GRU reads reach 99.935% on fresh 4K address tasks with supplied clues |
+| Fixed-state tail correction | complete-model quality improvement | frozen Qwen, 336 CE-trained gains; held-out 512-token PPL 35.79 sparse → 20.36 corrected, versus 17.94 dense |
 | Supporting routing invariants | proved in this paper | self-contained statements and proofs in Appendix B; private Lean audit is corroborating provenance |
 | Cheap worst-case losslessness | impossible under the stated models | grounded probes have a $b/n$ ceiling; a $K$-state index with unread-output width $a$ has a $K(b+a)/n$ ceiling |
 
@@ -927,6 +929,167 @@ float64 CUDA SDPA on an RTX 4080, using concentrated logits, flat logits, and eq
 $n=1024$, $d=32$, $d_v=8$, $b=32$, with visible prefixes of $1024$ and $997$ keys.
 These validate numerical agreement with an independent attention implementation, including partial
 causal blocks. The selector runs on CPU; GPU routing speed and real-model quality remain unmeasured.
+
+### 5.8 Bounded-state recurrent repair
+
+A state that observes only selected outputs cannot reconstruct arbitrary unobserved values. This does not
+exclude a state that accumulates information from **every incoming key/value**: that state has additional
+observations, albeit limited capacity. We implement both a bounded controller for another read and an
+append-only summary estimating the unread tail. Neither replaces the raw KV archive. Let
+$q$ be the original attention query and let a possibly changing routing query select disjoint batches
+$S_0,\ldots,S_{R-1}$. All selected keys are still assigned logits $s_i=\beta\langle q,k_i\rangle$ using
+the fixed $q$. Maintain
+
+$$
+m_r=\max_{i\in U_r}s_i,\qquad
+z_r=\sum_{i\in U_r}e^{s_i-m_r},\qquad
+n_r=\sum_{i\in U_r}e^{s_i-m_r}v_i,
+\quad U_r=\bigcup_{j\le r}S_j.
+\tag{5.20}
+$$
+
+For a new batch with corresponding $(m_b,z_b,n_b)$, put $m'=\max(m_r,m_b)$ and
+
+$$
+z'=e^{m_r-m'}z_r+e^{m_b-m'}z_b,
+\qquad
+n'=e^{m_r-m'}n_r+e^{m_b-m'}n_b.
+\tag{5.21}
+$$
+
+Then $n'/z'$ is exactly softmax attention restricted to $U_r\cup S_{r+1}$, independent of batching and
+order. The numerical accumulator has $d_v+2$ scalars. Exact duplicate suppression additionally retains at
+most $R\kappa$ ids when both the round count and per-round budget are fixed. Thus recurrence does not evade
+the read accounting: its total opened-key budget is at most $R\kappa$, and staged reads with a static query
+equal a one-shot read of the same union. A valid score-tail margin may stop the run, but it reports uncertainty;
+it does not identify which unopened address to inspect.
+
+This distinction also prevents a semantic sleight of hand. The controller may change its **routing query**
+using opened values or route diagnostics while (5.20) continues to approximate the one original dense
+attention distribution. If the attention query itself changes, the next operation is a new hop. That can be
+useful, but it is not recovery of the original missed mass and its errors compose through the Lipschitz law of
+Appendix B.16 rather than through one restricted-read certificate.
+
+Substrate's finite read-run and parameter-read-chain results support exactly this conditional architecture:
+boundary maps may update the query, carrier, and parameters while preserving the raw archive, and local read
+energy/displacement costs compose across the finite chain. These are not kernel operation counts;
+the opened-key bound follows independently from finite-union cardinality. Its address-loss witness supplies
+the negative side: held-but-unreached
+content can be indistinguishable from absent content under the sparse observation. Its pairing-compatible
+write-back results show that site scores can be changed without replacing payloads, but do not prove that the
+particular update improves later recall; nonnegative winner write-back actually preserves the old winner at
+the old query. These are architecture and accounting facts, not a convergence theorem.
+
+There is also a training-interface obstruction. Away from ties, exact hard top-$k$ membership is locally
+constant in its routing scores. A downstream loss whose only controller-dependent path is that discrete
+membership therefore has zero derivative with respect to the routing query on a miss. At $k>1$, ordinary
+attention still differentiates scores among selected keys, and a full transformer has residual/shared-parameter
+paths, so raw CE can reshape geometry incidentally. It does not, however, provide a direct gradient saying
+which unopened key should have been selected. Directly training that isolated discrete controller needs an
+additional gradient estimator or objective, such as route supervision. This does not obstruct raw CE
+training a continuous tail contribution, which has its own differentiable path to the output.
+
+The executable reference separates those claims. On a 64-key pointer task, the first opened value explicitly
+encodes the routing direction of a high-attention target. An eight-scalar controller with one-key rounds raises
+retained mass from $8.31\times10^{-7}$ to $0.999948$ on round two. On an isolated 32-address learning task,
+raw CE through the hard selected value gives zero controller gradient on all 300 steps and leaves hard top-1
+recall at 0.0625; explicit route CE and a hard-forward straight-through surrogate both reach 1.000. This is a
+controlled mechanism test, not a claim about a pretrained checkpoint.
+
+On 32 cached Qwen layer-18/head-0 queries, four static block-mean rounds, each admitting 2.5% of visible
+blocks, retain mean mass 0.1952, 0.2844, 0.3492, and 0.4088. Repeating the first round remains at 0.1952;
+the disjoint staged result equals a one-shot read of the same union to $6.7\times10^{-16}$. Exact top keys at
+the same final key count retain 0.9584, so this replay again diagnoses routing rather than accumulation. It
+does not contain the user's high-recall router and must not be read as its evaluation.
+
+The relevant real-checkpoint comparison is state-conditioned $R$-round repair versus both a one-shot
+$R\kappa$ route and $R$ static disjoint routes, with equal total key budget. Evaluation should condition on
+an initial miss and report recovered top-1/top-$k$, actual retained mass, CE/output error, unique keys,
+duplicates, and latency. Top-1 recall and top-$k$ overlap are not attention-mass measurements and should not
+be used as substitutes. Latent repair rounds are sufficient; emitting filler tokens is not required. No
+theorem ensures that a real checkpoint's first read contains a useful clue or that optimization discovers one.
+
+The trainable token-tree experiment uses a 64-scalar GRU, two four-key reads, and beam 32. A first value
+contains a rotated continuous target address; the answer label is freshly randomized and available only
+at the target. Training uses 256-address banks; held-out banks have 256, 1024, or 4096 addresses. Over three
+seeds and 512 queries per seed, supervised routing and routing warmup followed by raw CE both reach
+100% answer accuracy at 256 and 1024, and 1535/1536 (99.935%) at 4096. Equal-eight-key one-shot and static
+retry controls reach 6.315% at 4096; removing the clue reduces learned accuracy to 6.445% at 1024. This
+demonstrates a learned continuous-address policy, not the user's high-recall checkpoint. CE continuation
+preserves the policy; it supplies no new gradient to this isolated hard router. At 4096 the two reads perform
+1020 node-bound evaluations plus 64 final candidate-routing scores and eight exact attention scores per query.
+The tree retains $O(nd)$ routing data; the bounded controller is not the entire memory footprint.
+
+### 5.9 Fixed-state tail correction trained through CE
+
+Partition incoming keys into $m$ fixed cells, with centers $c_a$ selected using only a completed causal
+prefix. Maintain counts $C_a$ and value sums $V_a$. For selected keys $S$, subtract their contributions to
+obtain $C_a^T,V_a^T$ for $T=S^c$. With a learned per-head log gain $g$, define
+
+$$
+\widetilde Z_T=\sum_a C_a^T e^{\beta\langle q,c_a\rangle+g},\qquad
+\widetilde N_T=\sum_a V_a^T e^{\beta\langle q,c_a\rangle+g},\qquad
+\widetilde o=\frac{N_S+\widetilde N_T}{Z_S+\widetilde Z_T}.
+\tag{5.22}
+$$
+
+The selected contribution remains exact; it is not counted twice. The omitted contribution is an
+**approximation, not an upper bound or mass certificate**. Persistent state costs $m(d_v+1)$ scalars plus
+$md$ center scalars per KV head, independent of prefix length. Every arriving value updates this state;
+the state is not inferring hidden content from the sparse read alone. It resets at sequence boundaries,
+while the exact selected accumulator resets whenever the attention query changes. An incremental API
+stores only the final summary; training materializes prefix summaries and therefore has sequence-dependent
+activation storage.
+
+For a cached real Qwen layer-18/head-0 Q/K/V fixture, 32 cells and the same mean 153 exact selected keys
+reduce temporally held-out attention-output MSE from 0.133598 to 0.104541 (21.75%), using one scalar gain
+chosen on validation. A learned query-dependent MLP does not materially improve its initialization; a
+single-head output result is insufficient evidence for language-model quality. In the complete-model pilot,
+the untrained validation-selected tail actually worsens test perplexity from sparse 46.35 to 65.38.
+Training 336 per-layer/per-query-head gains with next-token CE reduces it to 26.12 (dense 21.62), with all
+base weights frozen. These are development windows, not the official test-set result.
+
+An independent run trains on the first 64 official WikiText-2 training windows (512 tokens), selects gains
+and checkpoints on four official validation windows, and evaluates eight official test windows per length.
+One hundred Adam steps train only the 336 gains; no longer-context adaptation occurs. The flat-router
+results are:
+
+| Context | Dense CE / perplexity | Sparse CE / perplexity | Trained tail CE / perplexity |
+|---|---|---|---|
+| 512 | 2.88720 / 17.94 | 3.57777 / 35.79 | 3.01358 / **20.36** |
+| 1024 | 2.83638 / 17.05 | 4.04788 / 57.28 | 3.31427 / **27.50** |
+| 4096 | 2.46816 / 11.80 | 4.30722 / 74.23 | 3.96012 / **52.46** |
+
+The correction recovers 81.7% of the sparse-to-dense CE gap at 512 but only 18.9% at 4096. These are small
+fixed slices, not a whole-corpus benchmark; longer windows overlap the same test stream across lengths.
+The untrained validation-selected scalar gives test perplexity 37.17 at 512, again worse than sparse.
+The mean exact-key counts are 136.5, 148.5, and 157.5 respectively (maximum 192), unchanged by adding the
+tail. The eight-window 4096-token timings are 0.81 s dense, 12.36 s sparse, and 20.82 s corrected; this is
+not a speed improvement. Peak allocation including training is 7.247 GB on the RTX 4080.
+`runs/qwen_tail_final/results.json` records per-window losses, source hashes, base commit
+`3382c0dfffbf6c4d8244902033b08cc1dd5f31c8`, and all 336 portable learned gains. Exact commands and
+earlier negative controls are in `RESULTS.md`.
+
+The implementation in `hybrid_tail_attention.py` executes all 24 Qwen layers and 14 query heads with native
+GQA, 16 cells per KV head, two routed 64-key blocks, and the causal portion of the current block. All queries
+within the first block use exact dense attention; centers depend only on that block. The added aggregate
+state is 49,920 scalars across the model, plus 49,152 center scalars and 336 gains. The tail state processes
+all prefix tokens but does not increase the exact read budget. The optional `tail_tree_router.py` adapter
+uses SSA's existing append-only center/radius hierarchy with independent per-token queries, no future-query
+pooling, fanout four, and beam 32. Its supplied block ids bypass the default flat block scan. Neither route
+is an attention-mass certificate; approximate beam pruning remains approximate.
+
+With that existing hierarchy and the unchanged saved gains, the complete-model test perplexities are
+20.36, 27.51, and 52.41 at 512, 1024, and 4096, versus tree sparse-only 35.74, 57.38, and 74.44. The record
+is `runs/qwen_tail_tree/results.json`. This is an executed hierarchical connection, not just a route-input
+interface. It uses per-token queries over block leaves; the separate GRU experiment uses token leaves.
+The launch-heavy tree adapter takes 131.57 s sparse and 138.83 s corrected for eight 4096-token windows.
+
+Appendix B.22 states the exact error identity for this approximation. A favorable kernel approximation,
+training convergence, dense-equivalent quality, and transfer to arbitrary contexts remain unproved. The
+hard score-tail certificate remains a separate available check; the learned tail must never be passed to
+it as an admissible residual bound. These reference kernels establish quality and correctness tests, not a
+speed improvement or a 10M-context result for the new architecture.
 
 ## 6. The trilemma and the grounded-probe limit
 
@@ -2112,6 +2275,53 @@ $A=0$ handled directly). $\square$
 This proposition assumes the score bounds and counts; it does not derive them from a routing metric. In the
 reference implementation, Cauchy--Schwarz supplies the separate block attention cap (5.17), while CCC only
 supplies initially opened blocks. Floating-point construction is dense-oracle tested, not formally verified.
+
+### B.21 Exact recurrent union and the hard-routing boundary
+
+Let $S_0,\ldots,S_{R-1}$ be pairwise disjoint finite selected sets, let
+$U_r=\bigcup_{j\le r}S_j$, and define $(m_r,z_r,n_r)$ by (5.20).
+
+> **Proposition B.24 (fixed-query recurrent union).** The update (5.21) gives
+> $z'=\sum_{i\in U_r\cup S_{r+1}}e^{s_i-m'}$ and
+> $n'=\sum_{i\in U_r\cup S_{r+1}}e^{s_i-m'}v_i$. Consequently $n'/z'$ is exactly the fixed-query
+> attention read on the union. If every round opens at most $\kappa$ new keys, then $|U_r|\le(r+1)\kappa$.
+> If a hard router's selected set is constant on a neighborhood of its score vector, any downstream function
+> depending on those scores only through the selected payloads is constant there and has derivative zero.
+
+**Proof.** Split each union sum into the old union and the new disjoint batch, and factor
+$e^{s_i-m'}=e^{m_r-m'}e^{s_i-m_r}$ on the first part and
+$e^{s_i-m'}=e^{m_b-m'}e^{s_i-m_b}$ on the second. This is exactly (5.21). The cardinality bound follows by
+finite-union subadditivity and induction. The last claim is the derivative of a locally constant composite.
+$\square$
+
+Disjointness is operationally load-bearing: rereading a key must be ignored rather than counted as a second
+copy of its exponential mass. Hard top-$k$ is locally constant only away from selection boundaries; this
+elementary statement supplies neither a useful surrogate nor a claim about gradients through the rest of a
+transformer.
+
+### B.22 Exact replacement with an approximate tail
+
+Let $w_i=e^{s_i}>0$, let $\widetilde w_i\ge0$ be approximate weights on $T=S^c$, and use exact $w_i$ on
+$S$. Write $Z=\sum_i w_i>0$, $o=\sum_i w_iv_i/Z$, and let $\widetilde o$ be the normalized mixed read,
+with a positive mixed denominator. Then
+
+$$
+o-\widetilde o=\frac1Z\sum_{i\in T}(w_i-\widetilde w_i)(v_i-\widetilde o),\qquad
+\|o-\widetilde o\|\le\frac{D}{Z}\sum_{i\in T}|w_i-\widetilde w_i|,
+\tag{B.25}
+$$
+
+where $D\ge\max_{i\in T}\|v_i-\widetilde o\|$. In particular $D=2V_{\max}$ suffices if every value has
+norm at most $V_{\max}$, because the mixed read is a convex combination. **Proof:** subtract the mixed
+numerator identity from $Z(o-\widetilde o)$; selected terms cancel, leaving precisely the displayed sum.
+Apply the triangle inequality. An empty tail or exact approximate weights makes the error zero. Cell
+counts and sums implement this identity with $\widetilde w_i=e^{\beta\langle q,c_{a(i)}\rangle+g}$.
+
+This is a public algebraic derivation with floating-point oracle tests, not a newly Lean-checked theorem.
+The unknown absolute kernel-error sum is the missing hypothesis for a useful deterministic certificate.
+The mixed read can improve output while its estimated mass remains inaccurate; neither low CE nor a
+positive tail weight supplies that missing bound. Finite-dimensional real state alone is also not a finite
+state-count assumption: finite-capacity lower bounds require their stated precision/cardinality conditions.
 
 ---
 

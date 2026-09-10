@@ -1726,3 +1726,215 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest ssa/tests -q
 cd paper && latexmk -pdf -interaction=nonstopmode -halt-on-error subquadratic_attention.tex
 Output written on subquadratic_attention.pdf (50 pages).
 ```
+
+## Bounded-state recurrent repair (2026-09-10)
+
+**Modules:** `ssa/recurrent_repair.py`, `ssa/recurrent_repair_experiment.py` · **Record:**
+`runs/recurrent_repair.json` · **Hardware:** local RTX 4080 · **Command:**
+
+```bash
+python -m ssa.recurrent_repair_experiment \
+  --cache /tmp/ssa_bennett_qwen_8192.npz \
+  --out runs/recurrent_repair.json
+```
+
+The architecture keeps the raw KV archive and uses a bounded recurrent state only as a read controller.
+Every newly selected key is scored with the **original attention query**. A streaming state containing the
+maximum logit, scaled partition sum, and scaled value numerator—`d_v + 2` scalars—merges disjoint batches
+exactly into softmax attention on their union. A separate bounded retained-id list prevents duplicate mass;
+at fixed round count $R$ and per-round budget $\kappa$, its capacity is at most $R\kappa$. Changing the
+routing query is allowed, but changing the attention query would define a new hop rather than recover mass
+from the original dense distribution.
+
+The controlled pointer task gives the positive condition the hypothesis needs. One initial routed value is
+an address clue for a high-attention target. An 8-scalar controller and one-key reads select ids 0 then 47;
+actual retained mass rises from **0.0000008315** after round one to **0.99994845** after round two, and proxy
+output error falls from **1.41418** to **0.00005155**. This is not magic reconstruction: when two worlds give
+the controller the same first observation but hide the target at different unread addresses, its deterministic
+second query is identical in both worlds and cannot solve both at unit budget.
+
+The isolated training test exposes a harder boundary for raw CE. A linear controller maps a one-hot clue to
+one of 32 hard-routed addresses; only the selected archive value reaches the downstream classifier. Results
+after 300 steps, evaluated with the same exact hard argmax router:
+
+| training path | initial hard top-1 | final hard top-1 | zero controller-gradient steps |
+|---|---:|---:|---:|
+| raw downstream CE through hard selected value | 0.0625 | 0.0625 | **300/300** |
+| explicit route CE | 0.0625 | **1.0000** | 0/300 |
+| hard-forward straight-through routing surrogate | 0.0625 | **1.0000** | 0/300 |
+
+This does **not** prove that raw CE cannot improve a full transformer: selected-token attention logits,
+residual paths, and shared representations still carry gradients and can reshape routing incidentally. It
+does establish that an exact hard selection index supplies no derivative telling a routed-only repair
+controller which unopened address should have won. At top-$k$, CE can train scores among already selected
+items, but a missed item still supplies no direct routing gradient. A router loss, smooth/straight-through
+surrogate, exploration estimator, or teacher residual can directly train that isolated controller. This
+does not prevent raw CE from training the continuous tail contribution described below.
+
+On 32 identical causal queries from the cached Qwen2.5-0.5B layer-18/head-0 Q/K fixture, four static
+block-mean rounds at 2.5% of visible blocks per round retain mean actual mass **0.1952, 0.2844, 0.3492,
+0.4088**. Repeating the first read four times remains at **0.1952**. The disjoint four-round output agrees
+with one static read of the same union to **6.7e-16**, so static recurrence buys only the summed budget.
+At the same final key count, the exact-top-key oracle retains **0.9584** mean mass, again locating the gap in
+routing rather than in the accumulator. The Qwen values are a declared deterministic proxy and this cache
+does not contain the user's trained router; these numbers must not be substituted for its reported top-1 or
+top-$k$ recall.
+
+The practical experiment for the user's checkpoint is therefore a three-arm, equal-total-budget comparison:
+one-shot $R\kappa$ routing, $R$ static disjoint retries, and $R$ state-conditioned retries. Report recovery
+conditioned on an initial miss, retained mass, output error/CE, unique keys, duplicate rate, and latency. Train
+the controller first with the base and router frozen, comparing raw CE against route supervision or the hard
+certificate-margin surrogate, and always evaluate with hard routing. Visible filler tokens are unnecessary;
+the repair rounds can be latent. No theorem guarantees a useful first-read clue or training convergence;
+the trainable experiment below supplies a clue explicitly and tests fresh held-out address banks.
+
+Verification:
+
+```text
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest ssa/tests -q
+292 passed, 14 warnings in 36.58s
+
+cd paper && latexmk -pdf -interaction=nonstopmode -halt-on-error subquadratic_attention.tex
+Output written on subquadratic_attention.pdf (52 pages).
+```
+
+## Trainable repair and fixed-state tail correction
+
+**Status:** a trained hard-token-tree controller works on the controlled address task, and fixed-state
+tail correction improves actual next-token CE in complete frozen Qwen. These are distinct experiments:
+there is no claim that a Qwen GRU discovers address repair, nor that this reproduces the user's router.
+
+### Learned individual-token retries
+
+`runs/trainable_repair/results.json`: three seeds, 600 training steps, 256 training addresses, fresh held-out
+banks and fresh random answer labels, 512 queries per seed/length. A first value contains the target's
+rotated routing address; its label is stored only at that target. The controller has 64 GRU scalars,
+the attention accumulator 42, and duplicate suppression eight ids. It sees no target id or dense scores
+at evaluation. Route-supervision logits are dense during training and are charged separately.
+
+| Held-out addresses | Learned answer accuracy | Equal-eight-key one-shot/static control |
+|---|---:|---:|
+| 256 | 100% | near 16-class chance |
+| 1024 | 100% | near 16-class chance |
+| 4096 | **1535/1536 = 99.935%** | **6.315%** |
+
+Route CE and 300-step route warmup followed by 300 steps raw CE have the same final success counts.
+The continuation preserves the router but cannot improve this isolated discrete policy by CE gradient.
+With the clue removed, learned 1024-address accuracy is 6.445%. Raw CE alone stays near chance. The
+state-only linear head also stays near chance; it is a control, not a universal limit on state models.
+Two four-key reads at 4096 use 1020 node-bound evaluations, **plus 64 final routing candidate scores**
+and eight original-query attention scores. `node_evaluations` excludes those final routing rescoring
+operations. The immutable tree/archive is O(nd), not fixed-size. Maximum selected-union output difference
+against the float32 oracle was 1.43e-6. This is measured numerical agreement, not an IEEE proof.
+
+### Real Qwen head: fixed-state output correction
+
+`runs/tail_state_calibrated/results.json` uses `/tmp/ssa_qwen_qkv_8192.npz`, real Q/K/V from Qwen2.5-0.5B
+layer 18, KV head 0. Q and K match the existing Bennett fixture exactly. Centers are fitted on the first
+512 keys only; queries 512–3071 train, 3072–4095 validate, and 4096–8191 test, sampled every 16 positions.
+All variants share the same 256 final queries and mean 153 exact selected keys (actual selected mass 0.21197).
+The append-only state holds 32 counts and 32 value sums, 2080 scalars plus centers.
+
+| Output variant | Test MSE |
+|---|---:|
+| Sparse only | 0.133598 |
+| Centroid tail | 0.110316 |
+| Learned query-dependent MLP tail | 0.110164 |
+| Validation-calibrated centroid tail (log gain 0.5) | **0.104541** |
+| Unweighted omitted-value mean only | 0.110000 |
+| Oracle per-cell mass, still unweighted within-cell values | 0.099372 |
+
+Calibration reduces MSE 21.75% and improves L2 error on 98.83% of queries. The MLP's best validation
+checkpoint is its first update; it does not substantively improve initialization. Learned mass MAE is
+0.6017: useful output correction does **not** imply accurate mass estimation. Oracle cell mass is a
+diagnostic, not a proven output-error floor.
+
+### Complete-model raw CE training
+
+`runs/qwen_tail_final/results.json`: frozen bf16 Qwen2.5-0.5B, all 24 layers, 14 query heads and two KV
+heads; only 336 per-head log-mass gains train. Two past 64-key blocks plus the causal current block are
+exact. Sixteen fixed cells per KV head collect every incoming key/value; selected approximate contributions
+are removed before exact substitution. The state is additional information beyond sparse observations.
+First-block queries remain dense and later centers use only that completed block.
+
+Train: first 64 nonoverlapping 512-token windows of official WikiText-2 train, 100 Adam steps at 0.05.
+Validation: first four official validation windows; select initialization from log gains -2,0,2,4,6 and
+best checkpoint every ten steps. Test: first eight official test windows at each length, used only after
+selection. Longer-length windows overlap the same document stream across lengths and are not independent
+datasets. The protocol is a small fixed slice, not whole-corpus perplexity. Training peak allocation is
+7.247 GB on the RTX 4080 with attention activation checkpointing.
+
+| Context | Dense CE / PPL | Sparse CE / PPL | Trained tail CE / PPL |
+|---|---|---|---|
+| 512 | 2.88720 / 17.94 | 3.57777 / 35.79 | **3.01358 / 20.36** |
+| 1024 | 2.83638 / 17.05 | 4.04788 / 57.28 | **3.31427 / 27.50** |
+| 4096 | 2.46816 / 11.80 | 4.30722 / 74.23 | **3.96012 / 52.46** |
+
+The 512-token correction recovers 81.7% of the sparse-to-dense CE gap. Transfer at 4096 recovers only
+18.9%: length robustness is unresolved. The untrained validation-selected scalar gives test PPL 37.17,
+worse than sparse. Earlier disjoint development windows likewise gave sparse 46.35, untrained tail 65.38,
+and trained tail 26.12 (dense 21.62), preserved in `runs/qwen_tail_pilot` and `runs/qwen_tail_ce_pilot`.
+These negative controls explain why single-head MSE and untuned summaries are insufficient.
+
+Exact scored-key means, derived from the fixed causal budget, are 136.5, 148.5, and 157.5 at the three
+lengths (max 192). The persistent aggregate state is 49,920 float scalars across the model, plus 49,152
+center scalars and 336 gains. Training materializes prefix states; this is not a constant-memory trainer.
+The default flat routing costs O(n²/block). Reference eight-window evaluation seconds at 4096 are dense
+0.81, sparse 12.36, and trained tail 20.82: **no speedup is claimed**. The optional existing-tree adapter
+bypasses the flat scan; fixed-beam work is conditional and does not certify attention mass.
+
+The saved gains were then evaluated unchanged with SSA's **existing append-only center/radius tree**
+(`runs/qwen_tail_tree/results.json`), fanout four, beam 32, individual query tokens, two past blocks:
+
+| Context | Tree sparse CE / PPL | Tree + trained tail CE / PPL |
+|---|---|---|
+| 512 | 3.57640 / 35.74 | **3.01358 / 20.36** |
+| 1024 | 4.04965 / 57.38 | **3.31460 / 27.51** |
+| 4096 | 4.31005 / 74.44 | **3.95901 / 52.41** |
+
+This connects the state to hierarchical routing in a complete model, rather than merely accepting an
+untested external route format. Routing is over blocks with per-token queries; individual-token **leaves**
+are tested in the separate recurrent controller experiment. No gains were tuned against these test runs.
+Eight-window 4096 evaluation takes 131.57 s tree sparse and 138.83 s tree with tail. This launch-heavy
+adapter is a correctness/quality reference, not the optimized 10M streaming kernel or a speed result.
+
+### Reproduction and limits
+
+```bash
+python -m ssa.trainable_repair_experiment --steps 600 --seeds 0,1,2 \
+  --lengths 256,1024,4096 --queries 512 --out runs/trainable_repair
+python -m ssa.tail_state_experiment --cache /tmp/ssa_qwen_qkv_8192.npz \
+  --steps 1000 --cells 32 --seed 0 --out runs/tail_state_calibrated
+python -m ssa.qwen_tail_demo --context 512 --steps 100 --test-examples 8 \
+  --official-splits --eval-contexts 1024,4096 --out runs/qwen_tail_final
+python -m ssa.qwen_tail_demo --context 512 --test-examples 8 --official-splits \
+  --eval-contexts 1024,4096 --router tree \
+  --load-gains runs/qwen_tail_final/results.json --out runs/qwen_tail_tree
+```
+
+Qwen uses cached model/tokenizer and WikiText-2, with runtime downloads disabled. The real-head extraction
+fixture is local; its SHA256 is recorded in the result. Base commit for these uncommitted-source runs is
+`3382c0dfffbf6c4d8244902033b08cc1dd5f31c8`; each JSON records experiment source hashes. Later changes add
+checkpoint loading and the tree adapter without overwriting the original measurements. The public final
+JSON contains all 336 trained gains; `.pt` checkpoints are local regenerable artifacts excluded by git.
+
+The paper gives a self-contained signed kernel-error identity and bound. No new Substrate theorem is
+claimed: its read-chain accounting is energy/displacement accounting, not a node-operation bound.
+The learned tail is not an admissible mass cap and never enters the deterministic reader as one. Causal,
+full-selection, gradient, and dense-oracle tests validate implementation invariants, not learned generalization.
+There is no guarantee of useful clues, convergent training, dense-equivalent output, or 10M quality for
+this architecture, and no benchmark on the user's 0.998-recall checkpoint.
+
+Verification of the delivered implementation:
+
+```text
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest ssa/tests -q
+310 passed, 14 warnings in 34.66s  (RTX 4080 / CUDA enabled)
+269 passed, 41 skipped, 14 warnings in 21.59s  (CPU-only sandbox)
+
+cd paper && latexmk -pdf -interaction=nonstopmode -halt-on-error subquadratic_attention.tex
+Output written on subquadratic_attention.pdf (55 pages).
+
+git diff --check
+PASS
+```

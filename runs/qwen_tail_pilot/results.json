@@ -1,0 +1,123 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "config": {
+    "out": "runs/qwen_tail_pilot",
+    "context": 512,
+    "steps": 0,
+    "test_examples": 4
+  },
+  "attention": {
+    "block": 64,
+    "top_blocks": 2,
+    "cells": 16
+  },
+  "base_commit": "3382c0dfffbf6c4d8244902033b08cc1dd5f31c8",
+  "source_sha256": {
+    "hybrid_tail_attention.py": "6473352c09eeced2f25ff66deb98c8fd65951ee5efc7698007d31b25fa9dbe60",
+    "qwen_tail_demo.py": "2b1874c50f597a968f6f2f78b18fc8cea4b230cce86d89379d325bb1bb75d835"
+  },
+  "test_token_sha256": "387c12756871996a20e256c7b98d5f274c7ba692bd18f0a63cd93b3ec6718bdd",
+  "hardware": "NVIDIA GeForce RTX 4080",
+  "validation": {
+    "dense": {
+      "ce_nats": 2.84516179561615,
+      "perplexity": 17.204342030870826,
+      "per_example_ce": [
+        2.9669792652130127,
+        2.723344326019287
+      ],
+      "seconds": 0.28655806099413894
+    },
+    "sparse": {
+      "ce_nats": 3.5326287746429443,
+      "perplexity": 34.21378984501128,
+      "per_example_ce": [
+        3.7630345821380615,
+        3.302222967147827
+      ],
+      "seconds": 0.6196111289900728
+    },
+    "-2.0": {
+      "ce_nats": 3.489113450050354,
+      "perplexity": 32.75689420653611,
+      "per_example_ce": [
+        3.5928804874420166,
+        3.3853464126586914
+      ],
+      "seconds": 0.7252593920129584
+    },
+    "0.0": {
+      "ce_nats": 3.8812544345855713,
+      "perplexity": 48.48499819776709,
+      "per_example_ce": [
+        3.8976404666900635,
+        3.864868402481079
+      ],
+      "seconds": 0.6939708410063758
+    },
+    "2.0": {
+      "ce_nats": 4.335293292999268,
+      "perplexity": 76.3473477489668,
+      "per_example_ce": [
+        4.278334617614746,
+        4.392251968383789
+      ],
+      "seconds": 0.6860587789997226
+    },
+    "4.0": {
+      "ce_nats": 4.984278440475464,
+      "perplexity": 146.09811849523345,
+      "per_example_ce": [
+        4.957544326782227,
+        5.011012554168701
+      ],
+      "seconds": 0.68734123800823
+    },
+    "6.0": {
+      "ce_nats": 5.440984010696411,
+      "perplexity": 230.6690526366136,
+      "per_example_ce": [
+        5.53886604309082,
+        5.343101978302002
+      ],
+      "seconds": 0.6976410689967452
+    }
+  },
+  "test": {
+    "dense": {
+      "ce_nats": 3.0736451148986816,
+      "perplexity": 21.620568671585094,
+      "per_example_ce": [
+        3.0335021018981934,
+        3.147092819213867,
+        3.3450021743774414,
+        2.7689833641052246
+      ],
+      "seconds": 0.06962802899943199
+    },
+    "sparse": {
+      "ce_nats": 3.8361364006996155,
+      "perplexity": 46.346065454683995,
+      "per_example_ce": [
+        3.944331169128418,
+        3.743053674697876,
+        4.1328125,
+        3.524348258972168
+      ],
+      "seconds": 0.8487805089971516
+    },
+    "tail": {
+      "ce_nats": 4.180159330368042,
+      "perplexity": 65.37626880919815,
+      "per_example_ce": [
+        4.128250598907471,
+        4.26111364364624,
+        4.416764736175537,
+        3.91450834274292
+      ],
+      "seconds": 1.3540357789897826
+    }
+  },
+  "scope": "complete 24-layer 14-query-head frozen model; flat routing; quality experiment",
+  "selected_gain": -2.0
+}

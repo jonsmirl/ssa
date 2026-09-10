@@ -18,6 +18,15 @@ tests self-skip on CPU.
 
 ## What each file checks
 
+**`test_recurrent_repair.py`**, **`test_trainable_repair.py`** — streaming fixed-query union against dense
+oracles; duplicate/exhaustion handling; differentiable selected K/V gradients; deterministic token-tree
+ties and causal prefix isolation; reset across changing queries; exact positive-feature replacement;
+incremental fixed-size summaries; the signed tail-kernel error identity and its norm bound.
+
+**`test_hybrid_tail_attention.py`** — complete-selection dense GQA equivalence, no future-key/value/query
+leakage, head-group equivalence, nonzero finite CE-path gain gradients, checkpoint recomputation gradients,
+causal/unique supplied routes, and the existing SSA tree adapter against a flat oracle at exhaustive beam.
+
 **`test_certified_attention.py`** — dense-oracle validation of mass, KL and value-aware output bounds.
 Exercises random geometries, temperatures, block sizes, causal prefixes and work caps; equal-logit
 support restriction, redundant values, tiny weights with large values, log-space extremes, zero

@@ -1,0 +1,2737 @@
+{
+  "config": {
+    "out": "runs/trainable_repair",
+    "steps": 600,
+    "seeds": "0,1,2",
+    "lengths": "256,1024,4096",
+    "queries": 512
+  },
+  "device": "cuda",
+  "base_commit": "3382c0dfffbf6c4d8244902033b08cc1dd5f31c8",
+  "source_sha256": {
+    "trainable_repair.py": "b9b8f3abda90d2929a12a0ea8ef2bc9ffea9ee22cc7bb3c2e1d594e45f3259c7",
+    "trainable_repair_experiment.py": "8fa1e65744ff770e679e7964b83618db16de9616ee33db02c0c3febad6953810"
+  },
+  "scope": "controlled rotated-address task; fresh banks and random labels; hard token-tree reads",
+  "training_teacher": "target address supervised only for route_ce; no teacher at evaluation",
+  "runs": [
+    {
+      "seed": 0,
+      "objective": "raw_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.6857757568359375,
+          "target_recall": 0.03125,
+          "teacher_on": false
+        },
+        {
+          "step": 100,
+          "ce": 2.6424574851989746,
+          "target_recall": 0.046875,
+          "teacher_on": false
+        },
+        {
+          "step": 200,
+          "ce": 2.7289319038391113,
+          "target_recall": 0.015625,
+          "teacher_on": false
+        },
+        {
+          "step": 300,
+          "ce": 2.7292919158935547,
+          "target_recall": 0.015625,
+          "teacher_on": false
+        },
+        {
+          "step": 400,
+          "ce": 2.7727138996124268,
+          "target_recall": 0.0,
+          "teacher_on": false
+        },
+        {
+          "step": 500,
+          "ce": 2.772420883178711,
+          "target_recall": 0.0,
+          "teacher_on": false
+        },
+        {
+          "step": 599,
+          "ce": 2.6859853267669678,
+          "target_recall": 0.03125,
+          "teacher_on": false
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0234375,
+              "answer_accuracy": 0.08984375,
+              "ce": 2.707560662080766,
+              "retained_mass": 0.023443500886947355,
+              "output_error": 1.3808047422207892,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.15030065426913097,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.007936507936507936
+            },
+            "static_retry": {
+              "target_recall": 0.0234375,
+              "answer_accuracy": 0.08984375,
+              "ce": 2.7075606597524597,
+              "retained_mass": 0.023443500886947355,
+              "output_error": 1.3808048500213772,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.27119423623389594,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.007936507936507936
+            },
+            "learned_retry": {
+              "target_recall": 0.02734375,
+              "answer_accuracy": 0.091796875,
+              "ce": 2.6967215737099366,
+              "retained_mass": 0.027349726348743886,
+              "output_error": 1.3753166820388305,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.28491531642771406,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.011904761904761904
+            },
+            "state_only": {
+              "target_recall": 0.015625,
+              "answer_accuracy": 0.060546875,
+              "ce": 2.7734024208039045,
+              "retained_mass": 0.015631049095784277,
+              "output_error": 1.391884751501495,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.1461315116841888,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.06640625,
+              "ce": 2.7509390259761517,
+              "retained_mass": 0.007818602406676867,
+              "output_error": 1.4023350885836485,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.17203133785415048,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.005870841487279843
+            },
+            "static_retry": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.06640625,
+              "ce": 2.750939024579168,
+              "retained_mass": 0.007818602406676867,
+              "output_error": 1.40233516145964,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.3172504296742318,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.005870841487279843
+            },
+            "learned_retry": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.064453125,
+              "ce": 2.7509482092823987,
+              "retained_mass": 0.007818601355208621,
+              "output_error": 1.4024647566257182,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.33967583206617746,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.005870841487279843
+            },
+            "state_only": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.05859375,
+              "ce": 2.773546111304313,
+              "retained_mass": 0.0019592626997271267,
+              "output_error": 1.4107515942305342,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.17697120316029213,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.044921875,
+              "ce": 2.7729205754585564,
+              "retained_mass": 6.161178692565272e-06,
+              "output_error": 1.412161051761359,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.21622675981802786,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "static_retry": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.044921875,
+              "ce": 2.772920579649508,
+              "retained_mass": 6.161178692565272e-06,
+              "output_error": 1.4121610803995281,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.38120449997336436,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "learned_retry": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.05078125,
+              "ce": 2.767506147028044,
+              "retained_mass": 0.0019592709529066,
+              "output_error": 1.4097771258094056,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.4237800137332215,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.001953125
+            },
+            "state_only": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.064453125,
+              "ce": 2.7736252075992525,
+              "retained_mass": 6.158044223880665e-06,
+              "output_error": 1.4125422376673669,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.20206114450616042,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.7509390259761517,
+            "retained_mass": 0.007818602406676867,
+            "output_error": 0.9921149270376268,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.20030503517887155,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.005870841487279843
+          },
+          "static_retry": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.750939024579168,
+            "retained_mass": 0.007818602406676867,
+            "output_error": 0.9921149270376268,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.37631715036923197,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.005870841487279843
+          },
+          "learned_retry": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.0625,
+            "ce": 2.756362318269268,
+            "retained_mass": 0.005865488474370295,
+            "output_error": 0.9940793465357316,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.38308298437073063,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "state_only": {
+            "target_recall": 0.001953125,
+            "answer_accuracy": 0.07421875,
+            "ce": 2.7722816737368703,
+            "retained_mass": 0.0019592626997271267,
+            "output_error": 0.9979857653379456,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.19073339842634596,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 0,
+      "objective": "route_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.6857757568359375,
+          "target_recall": 0.03125,
+          "teacher_on": true
+        },
+        {
+          "step": 100,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 200,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 300,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 400,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 500,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 599,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0234375,
+              "answer_accuracy": 0.08984375,
+              "ce": 2.707560662080766,
+              "retained_mass": 0.023443500886947355,
+              "output_error": 1.3808047422207892,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.14437243547149592,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.007936507936507936
+            },
+            "static_retry": {
+              "target_recall": 0.0234375,
+              "answer_accuracy": 0.08984375,
+              "ce": 2.7075606597524597,
+              "retained_mass": 0.023443500886947355,
+              "output_error": 1.3808048500213772,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.28636858388608744,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.007936507936507936
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999403953552,
+              "output_error": 1.1057127787816867e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.27958456249166375,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.015625,
+              "answer_accuracy": 0.072265625,
+              "ce": 2.7720573586411774,
+              "retained_mass": 0.015631049095784277,
+              "output_error": 1.391884751501495,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.15404189255718848,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.06640625,
+              "ce": 2.7509390259761517,
+              "retained_mass": 0.007818602406676867,
+              "output_error": 1.4023350885836485,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.17332519917090394,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.005870841487279843
+            },
+            "static_retry": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.06640625,
+              "ce": 2.750939024579168,
+              "retained_mass": 0.007818602406676867,
+              "output_error": 1.40233516145964,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.35609966207061916,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.005870841487279843
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999407446012,
+              "output_error": 1.1336577551146476e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.3750429862634519,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.05859375,
+              "ce": 2.775460219476372,
+              "retained_mass": 0.0019592626997271267,
+              "output_error": 1.4107515942305342,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.18839643169599185,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.044921875,
+              "ce": 2.7729205754585564,
+              "retained_mass": 6.161178692565272e-06,
+              "output_error": 1.412161051761359,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.21255064456227046,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "static_retry": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.044921875,
+              "ce": 2.772920579649508,
+              "retained_mass": 6.161178692565272e-06,
+              "output_error": 1.4121610803995281,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.3965980351949838,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "learned_retry": {
+              "target_recall": 0.998046875,
+              "answer_accuracy": 0.998046875,
+              "ce": 0.005512623772219172,
+              "retained_mass": 0.9980468289536057,
+              "output_error": 0.0027591629075424118,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.4198516016344911,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.998046875
+            },
+            "state_only": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.0703125,
+              "ce": 2.7725971015170217,
+              "retained_mass": 6.158044223880665e-06,
+              "output_error": 1.4125422376673669,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.2164958769697023,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.7509390259761517,
+            "retained_mass": 0.007818602406676867,
+            "output_error": 0.9921149270376268,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.18975856440306416,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.005870841487279843
+          },
+          "static_retry": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.750939024579168,
+            "retained_mass": 0.007818602406676867,
+            "output_error": 0.9921149270376268,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.3612496503819784,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.005870841487279843
+          },
+          "learned_retry": {
+            "target_recall": 0.00390625,
+            "answer_accuracy": 0.060546875,
+            "ce": 2.761780139973581,
+            "retained_mass": 0.003912375603971618,
+            "output_error": 0.9960325545398554,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.38259983602983993,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0019569471624266144
+          },
+          "state_only": {
+            "target_recall": 0.001953125,
+            "answer_accuracy": 0.083984375,
+            "ce": 2.7729829754680395,
+            "retained_mass": 0.0019592626997271267,
+            "output_error": 0.9979857653379456,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.2110837343707317,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 0,
+      "objective": "warmup_then_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.6857757568359375,
+          "target_recall": 0.03125,
+          "teacher_on": true
+        },
+        {
+          "step": 100,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 200,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 300,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 400,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 500,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 599,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0234375,
+              "answer_accuracy": 0.08984375,
+              "ce": 2.707560662080766,
+              "retained_mass": 0.023443500886947355,
+              "output_error": 1.3808047422207892,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.13548781453209813,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.007936507936507936
+            },
+            "static_retry": {
+              "target_recall": 0.0234375,
+              "answer_accuracy": 0.08984375,
+              "ce": 2.7075606597524597,
+              "retained_mass": 0.023443500886947355,
+              "output_error": 1.3808048500213772,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.2866434726627176,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.007936507936507936
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999403953552,
+              "output_error": 1.105712778892709e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.27290784569800053,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.015625,
+              "answer_accuracy": 0.076171875,
+              "ce": 2.77205559425056,
+              "retained_mass": 0.015631049095784277,
+              "output_error": 1.391884751501495,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.984375,
+              "milliseconds_per_query": 0.14800929486114,
+              "initial_miss_count": 504,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.06640625,
+              "ce": 2.7509390259761517,
+              "retained_mass": 0.007818602406676867,
+              "output_error": 1.4023350885836485,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.1754753710940804,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.005870841487279843
+            },
+            "static_retry": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.06640625,
+              "ce": 2.750939024579168,
+              "retained_mass": 0.007818602406676867,
+              "output_error": 1.40233516145964,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.3468146308023279,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.005870841487279843
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999407446012,
+              "output_error": 1.1336577554477145e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.33272355858571245,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.05859375,
+              "ce": 2.7755023050121963,
+              "retained_mass": 0.0019592626997271267,
+              "output_error": 1.4107515942305342,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.1792019277502277,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.044921875,
+              "ce": 2.7729205754585564,
+              "retained_mass": 6.161178692565272e-06,
+              "output_error": 1.412161051761359,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.20867635936383522,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "static_retry": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.044921875,
+              "ce": 2.772920579649508,
+              "retained_mass": 6.161178692565272e-06,
+              "output_error": 1.4121610803995281,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.41460499215872915,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "learned_retry": {
+              "target_recall": 0.998046875,
+              "answer_accuracy": 0.998046875,
+              "ce": 0.0055126233065578845,
+              "retained_mass": 0.9980468289536049,
+              "output_error": 0.0027591629075454094,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.42862131448373475,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.998046875
+            },
+            "state_only": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.0703125,
+              "ce": 2.772666869685054,
+              "retained_mass": 6.158044223880665e-06,
+              "output_error": 1.4125422376673669,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.21830849991033574,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.7509390259761517,
+            "retained_mass": 0.007818602406676867,
+            "output_error": 0.9921149270376268,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.1939462734128483,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.005870841487279843
+          },
+          "static_retry": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.750939024579168,
+            "retained_mass": 0.007818602406676867,
+            "output_error": 0.9921149270376268,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.32760198638470683,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.005870841487279843
+          },
+          "learned_retry": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.060546875,
+            "ce": 2.7563738671348545,
+            "retained_mass": 0.0058654884605333635,
+            "output_error": 0.9940804464276924,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.3759188066396746,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "state_only": {
+            "target_recall": 0.001953125,
+            "answer_accuracy": 0.080078125,
+            "ce": 2.7730156537145376,
+            "retained_mass": 0.0019592626997271267,
+            "output_error": 0.9979857653379456,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.1848677577811486,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 1,
+      "objective": "raw_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.7292702198028564,
+          "target_recall": 0.015625,
+          "teacher_on": false
+        },
+        {
+          "step": 100,
+          "ce": 2.6426279544830322,
+          "target_recall": 0.046875,
+          "teacher_on": false
+        },
+        {
+          "step": 200,
+          "ce": 2.6426737308502197,
+          "target_recall": 0.046875,
+          "teacher_on": false
+        },
+        {
+          "step": 300,
+          "ce": 2.729466199874878,
+          "target_recall": 0.015625,
+          "teacher_on": false
+        },
+        {
+          "step": 400,
+          "ce": 2.642781972885132,
+          "target_recall": 0.046875,
+          "teacher_on": false
+        },
+        {
+          "step": 500,
+          "ce": 2.729388475418091,
+          "target_recall": 0.015625,
+          "teacher_on": false
+        },
+        {
+          "step": 599,
+          "ce": 2.6858816146850586,
+          "target_recall": 0.03125,
+          "teacher_on": false
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.033203125,
+              "answer_accuracy": 0.099609375,
+              "ce": 2.680440713743465,
+              "retained_mass": 0.03320906566457893,
+              "output_error": 1.3669420436490332,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.13807878133320628,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0275049115913556
+            },
+            "static_retry": {
+              "target_recall": 0.033203125,
+              "answer_accuracy": 0.099609375,
+              "ce": 2.6804407142091264,
+              "retained_mass": 0.03320906566457893,
+              "output_error": 1.3669420643709604,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.27874609955347296,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0275049115913556
+            },
+            "learned_retry": {
+              "target_recall": 0.02734375,
+              "answer_accuracy": 0.08984375,
+              "ce": 2.696709784563126,
+              "retained_mass": 0.02734972678684322,
+              "output_error": 1.3752577136037878,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.28624326557746826,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.021611001964636542
+            },
+            "state_only": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.064453125,
+              "ce": 2.7730319146066904,
+              "retained_mass": 0.005865485117316993,
+              "output_error": 1.4056350170867522,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.168300830125645,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.009765625,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7456771845049417,
+              "retained_mass": 0.009771715641661238,
+              "output_error": 1.3995340999681845,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.16096214454819346,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.001968503937007874
+            },
+            "static_retry": {
+              "target_recall": 0.009765625,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7456771840392804,
+              "retained_mass": 0.009771715641661238,
+              "output_error": 1.3995341174304827,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.33319417386223904,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.001968503937007874
+            },
+            "learned_retry": {
+              "target_recall": 0.013671875,
+              "answer_accuracy": 0.0703125,
+              "ce": 2.7348426815008082,
+              "retained_mass": 0.013677940349142936,
+              "output_error": 1.3941388860112571,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.33975694339005713,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.005905511811023622
+            },
+            "state_only": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7728257114067674,
+              "retained_mass": 0.007818601705317008,
+              "output_error": 1.40242482768376,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.17993424603446329,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7560548239604685,
+              "retained_mass": 0.005865498927282609,
+              "output_error": 1.4039666155587003,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.21122304889331645,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.00196078431372549
+            },
+            "static_retry": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7560548290827427,
+              "retained_mass": 0.005865498927282609,
+              "output_error": 1.4039666167228535,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.39670059774721267,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.00196078431372549
+            },
+            "learned_retry": {
+              "target_recall": 0.00390625,
+              "answer_accuracy": 0.0703125,
+              "ce": 2.7614420177249315,
+              "retained_mass": 0.003912383000289843,
+              "output_error": 1.4070968901506682,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.4378668124900287,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.0
+            },
+            "state_only": {
+              "target_recall": 0.00390625,
+              "answer_accuracy": 0.060546875,
+              "ce": 2.770828957669437,
+              "retained_mass": 0.003912382971365425,
+              "output_error": 1.407100380049186,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.22402159379453224,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.7456771845049417,
+            "retained_mass": 0.009771715641661238,
+            "output_error": 0.9901712707942694,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.17899525002462724,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "static_retry": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.7456771840392804,
+            "retained_mass": 0.009771715641661238,
+            "output_error": 0.9901712707942694,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.3574124492331521,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "learned_retry": {
+            "target_recall": 0.01171875,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.740252413737238,
+            "retained_mass": 0.011724827421513595,
+            "output_error": 0.9882284987252685,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.38360296096584534,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.003937007874015748
+          },
+          "state_only": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.0703125,
+            "ce": 2.7721480429172516,
+            "retained_mass": 0.007818601705317008,
+            "output_error": 0.9921348731732427,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.20736444727731396,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 1,
+      "objective": "route_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.7292702198028564,
+          "target_recall": 0.015625,
+          "teacher_on": true
+        },
+        {
+          "step": 100,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 200,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 300,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 400,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 500,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 599,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.033203125,
+              "answer_accuracy": 0.099609375,
+              "ce": 2.680440713743465,
+              "retained_mass": 0.03320906566457893,
+              "output_error": 1.3669420436490332,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.14478405080353696,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0275049115913556
+            },
+            "static_retry": {
+              "target_recall": 0.033203125,
+              "answer_accuracy": 0.099609375,
+              "ce": 2.6804407142091264,
+              "retained_mass": 0.03320906566457893,
+              "output_error": 1.3669420643709604,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.26638343362606065,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0275049115913556
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999403953552,
+              "output_error": 1.0969816192085702e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.2831383691273004,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.060546875,
+              "ce": 2.7734981179237366,
+              "retained_mass": 0.005865485117316993,
+              "output_error": 1.4056350170867522,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.13929039647564423,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.009765625,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7456771845049417,
+              "retained_mass": 0.009771715641661238,
+              "output_error": 1.3995340999681845,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.1693563750109206,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.001968503937007874
+            },
+            "static_retry": {
+              "target_recall": 0.009765625,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7456771840392804,
+              "retained_mass": 0.009771715641661238,
+              "output_error": 1.3995341174304827,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.35712743749627407,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.001968503937007874
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999409774318,
+              "output_error": 1.1179406700367878e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.3299305898565308,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.052734375,
+              "ce": 2.773043859284371,
+              "retained_mass": 0.007818601705317008,
+              "output_error": 1.40242482768376,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.1923096562563842,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7560548239604685,
+              "retained_mass": 0.005865498927282609,
+              "output_error": 1.4039666155587003,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.21455120898394853,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.00196078431372549
+            },
+            "static_retry": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7560548290827427,
+              "retained_mass": 0.005865498927282609,
+              "output_error": 1.4039666167228535,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.42839270315653266,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.00196078431372549
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999413266778,
+              "output_error": 1.1253166396496539e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.425464591785385,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.00390625,
+              "answer_accuracy": 0.048828125,
+              "ce": 2.7721071392297745,
+              "retained_mass": 0.003912382971365425,
+              "output_error": 1.407100380049186,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.22109549024662556,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.7456771845049417,
+            "retained_mass": 0.009771715641661238,
+            "output_error": 0.9901712707942694,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.18418138861875377,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "static_retry": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.7456771840392804,
+            "retained_mass": 0.009771715641661238,
+            "output_error": 0.9901712707942694,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.3233658848955656,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "learned_retry": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.745674055261091,
+            "retained_mass": 0.009771714611070514,
+            "output_error": 0.990181440254723,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.3537112519893526,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "state_only": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.0859375,
+            "ce": 2.7711745356209576,
+            "retained_mass": 0.007818601705317008,
+            "output_error": 0.9921348731732427,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.1797165468815365,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 1,
+      "objective": "warmup_then_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.7292702198028564,
+          "target_recall": 0.015625,
+          "teacher_on": true
+        },
+        {
+          "step": 100,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 200,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 300,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 400,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 500,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 599,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.033203125,
+              "answer_accuracy": 0.099609375,
+              "ce": 2.680440713743465,
+              "retained_mass": 0.03320906566457893,
+              "output_error": 1.3669420436490332,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.19165988479130647,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0275049115913556
+            },
+            "static_retry": {
+              "target_recall": 0.033203125,
+              "answer_accuracy": 0.099609375,
+              "ce": 2.6804407142091264,
+              "retained_mass": 0.03320906566457893,
+              "output_error": 1.3669420643709604,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.35994873238109903,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0275049115913556
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999403953552,
+              "output_error": 1.0969816189865256e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.4009548456451739,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.0625,
+              "ce": 2.77349671209231,
+              "retained_mass": 0.005865485117316993,
+              "output_error": 1.4056350170867522,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.994140625,
+              "milliseconds_per_query": 0.21942002740615862,
+              "initial_miss_count": 509,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.009765625,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7456771845049417,
+              "retained_mass": 0.009771715641661238,
+              "output_error": 1.3995340999681845,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.22009897074326545,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.001968503937007874
+            },
+            "static_retry": {
+              "target_recall": 0.009765625,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7456771840392804,
+              "retained_mass": 0.009771715641661238,
+              "output_error": 1.3995341174304827,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.41753116207132734,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.001968503937007874
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999409774318,
+              "output_error": 1.1179406579353568e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.4066210019573191,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.0078125,
+              "answer_accuracy": 0.056640625,
+              "ce": 2.7731667580083013,
+              "retained_mass": 0.007818601705317008,
+              "output_error": 1.40242482768376,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.9921875,
+              "milliseconds_per_query": 0.20255276567127112,
+              "initial_miss_count": 508,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7560548239604685,
+              "retained_mass": 0.005865498927282609,
+              "output_error": 1.4039666155587003,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.23336297070386536,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.00196078431372549
+            },
+            "static_retry": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.7560548290827427,
+              "retained_mass": 0.005865498927282609,
+              "output_error": 1.4039666167228535,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.45273855474192715,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.00196078431372549
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999413266778,
+              "output_error": 1.12531664042681e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.4753580390968182,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.00390625,
+              "answer_accuracy": 0.048828125,
+              "ce": 2.772089187055826,
+              "retained_mass": 0.003912382971365425,
+              "output_error": 1.407100380049186,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 0.99609375,
+              "milliseconds_per_query": 0.22658642967599008,
+              "initial_miss_count": 510,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.7456771845049417,
+            "retained_mass": 0.009771715641661238,
+            "output_error": 0.9901712707942694,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.19932901952302018,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "static_retry": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.7456771840392804,
+            "retained_mass": 0.009771715641661238,
+            "output_error": 0.9901712707942694,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.39345808207258415,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "learned_retry": {
+            "target_recall": 0.009765625,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.745678506051675,
+            "retained_mass": 0.009771714608431736,
+            "output_error": 0.9901818380458777,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.3975424101554381,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.001968503937007874
+          },
+          "state_only": {
+            "target_recall": 0.0078125,
+            "answer_accuracy": 0.0859375,
+            "ce": 2.771176479756832,
+            "retained_mass": 0.007818601705317008,
+            "output_error": 0.9921348731732427,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.9921875,
+            "milliseconds_per_query": 0.2081438515517675,
+            "initial_miss_count": 508,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 2,
+      "objective": "raw_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.7725231647491455,
+          "target_recall": 0.0,
+          "teacher_on": false
+        },
+        {
+          "step": 100,
+          "ce": 2.7293701171875,
+          "target_recall": 0.015625,
+          "teacher_on": false
+        },
+        {
+          "step": 200,
+          "ce": 2.7730696201324463,
+          "target_recall": 0.0,
+          "teacher_on": false
+        },
+        {
+          "step": 300,
+          "ce": 2.6862711906433105,
+          "target_recall": 0.03125,
+          "teacher_on": false
+        },
+        {
+          "step": 400,
+          "ce": 2.642627239227295,
+          "target_recall": 0.046875,
+          "teacher_on": false
+        },
+        {
+          "step": 500,
+          "ce": 2.7294511795043945,
+          "target_recall": 0.015625,
+          "teacher_on": false
+        },
+        {
+          "step": 599,
+          "ce": 2.7727255821228027,
+          "target_recall": 0.0,
+          "teacher_on": false
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.01953125,
+              "answer_accuracy": 0.080078125,
+              "ce": 2.7184408092042815,
+              "retained_mass": 0.019537275122814002,
+              "output_error": 1.3863229197449982,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.198848365187132,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.007905138339920948
+            },
+            "static_retry": {
+              "target_recall": 0.01953125,
+              "answer_accuracy": 0.080078125,
+              "ce": 2.7184408087386203,
+              "retained_mass": 0.019537275122814002,
+              "output_error": 1.3863228934351355,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.34905439062526966,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.007905138339920948
+            },
+            "learned_retry": {
+              "target_recall": 0.0390625,
+              "answer_accuracy": 0.1015625,
+              "ce": 2.6642931218464696,
+              "retained_mass": 0.03906840367386266,
+              "output_error": 1.358736379770563,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.37781377736223476,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.02766798418972332
+            },
+            "state_only": {
+              "target_recall": 0.01171875,
+              "answer_accuracy": 0.046875,
+              "ce": 2.7762756068259478,
+              "retained_mass": 0.011724823335102386,
+              "output_error": 1.3974028730299328,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.1807737421586353,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.07421875,
+              "ce": 2.756448595061258,
+              "retained_mass": 0.005865490952452035,
+              "output_error": 1.4049523294670587,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.20964972659953673,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.003913894324853229
+            },
+            "static_retry": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.07421875,
+              "ce": 2.7564485964582417,
+              "retained_mass": 0.005865490952452035,
+              "output_error": 1.404952397919268,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.4580180136599665,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.003913894324853229
+            },
+            "learned_retry": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.06640625,
+              "ce": 2.7672664218033702,
+              "retained_mass": 0.001959264104831604,
+              "output_error": 1.41060698917136,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.470151021431775,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.0
+            },
+            "state_only": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.05859375,
+              "ce": 2.7725363499484956,
+              "retained_mass": 0.001959264090802826,
+              "output_error": 1.4106087512336711,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.22728481638978337,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.076171875,
+              "ce": 2.7731667128391564,
+              "retained_mass": 6.163192910690896e-06,
+              "output_error": 1.41190189239569,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.265083521469478,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "static_retry": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.076171875,
+              "ce": 2.7731667109765112,
+              "retained_mass": 6.163192910690896e-06,
+              "output_error": 1.4119019345380366,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.5246737539437163,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "learned_retry": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.773173334542662,
+              "retained_mass": 6.159860234333792e-06,
+              "output_error": 1.412302743177861,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.5454399453412861,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "state_only": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.044921875,
+              "ce": 2.773714311886579,
+              "retained_mass": 6.159833288776895e-06,
+              "output_error": 1.4123059553094208,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.25435568946363674,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.0728836059570312e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.07421875,
+            "ce": 2.756448595061258,
+            "retained_mass": 0.005865490952452035,
+            "output_error": 0.9940633487422099,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.20729561714460942,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "static_retry": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.07421875,
+            "ce": 2.7564485964582417,
+            "retained_mass": 0.005865490952452035,
+            "output_error": 0.9940633487422099,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.39763758394428805,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "learned_retry": {
+            "target_recall": 0.001953125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.767268297952697,
+            "retained_mass": 0.001959264107321168,
+            "output_error": 0.9979796155821572,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.4361964120960238,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0
+          },
+          "state_only": {
+            "target_recall": 0.001953125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.7724655168130994,
+            "retained_mass": 0.001959264090802826,
+            "output_error": 0.9979796523693989,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.2155385196260795,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 2,
+      "objective": "route_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.7725231647491455,
+          "target_recall": 0.0,
+          "teacher_on": true
+        },
+        {
+          "step": 100,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 200,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 300,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 400,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 500,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 599,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.01953125,
+              "answer_accuracy": 0.080078125,
+              "ce": 2.7184408092042815,
+              "retained_mass": 0.019537275122814002,
+              "output_error": 1.3863229197449982,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.1478213925736327,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.007905138339920948
+            },
+            "static_retry": {
+              "target_recall": 0.01953125,
+              "answer_accuracy": 0.080078125,
+              "ce": 2.7184408087386203,
+              "retained_mass": 0.019537275122814002,
+              "output_error": 1.3863228934351355,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.2817754375428194,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.007905138339920948
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999403953552,
+              "output_error": 1.1546071999601892e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.3050705977045709,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.01171875,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.77679649181664,
+              "retained_mass": 0.011724823335102386,
+              "output_error": 1.3974028730299328,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.15272492186113595,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.07421875,
+              "ce": 2.756448595061258,
+              "retained_mass": 0.005865490952452035,
+              "output_error": 1.4049523294670587,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.1752536641390634,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.003913894324853229
+            },
+            "static_retry": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.07421875,
+              "ce": 2.7564485964582417,
+              "retained_mass": 0.005865490952452035,
+              "output_error": 1.404952397919268,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.357944693320178,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.003913894324853229
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999407446012,
+              "output_error": 1.1459981502648375e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.36755900782736717,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.0546875,
+              "ce": 2.7719109561294317,
+              "retained_mass": 0.001959264090802826,
+              "output_error": 1.4106087512336711,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.19170030853388198,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.076171875,
+              "ce": 2.7731667128391564,
+              "retained_mass": 6.163192910690896e-06,
+              "output_error": 1.41190189239569,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.2134217851619269,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "static_retry": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.076171875,
+              "ce": 2.7731667109765112,
+              "retained_mass": 6.163192910690896e-06,
+              "output_error": 1.4119019345380366,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.4551508613133137,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999402789399,
+              "output_error": 1.1564863761082123e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.5107386250529089,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.05859375,
+              "ce": 2.775216999463737,
+              "retained_mass": 6.159833288776895e-06,
+              "output_error": 1.4123059553094208,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.23774370311002713,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.07421875,
+            "ce": 2.756448595061258,
+            "retained_mass": 0.005865490952452035,
+            "output_error": 0.9940633487422099,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.21537790235015564,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "static_retry": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.07421875,
+            "ce": 2.7564485964582417,
+            "retained_mass": 0.005865490952452035,
+            "output_error": 0.9940633487422099,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.4083709375208855,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "learned_retry": {
+            "target_recall": 0.00390625,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.7618588371967974,
+            "retained_mass": 0.00391237698496294,
+            "output_error": 0.996027025743395,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.4218270898093124,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0019569471624266144
+          },
+          "state_only": {
+            "target_recall": 0.001953125,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.7721106223762035,
+            "retained_mass": 0.001959264090802826,
+            "output_error": 0.9979796523693989,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.20320431843856568,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    },
+    {
+      "seed": 2,
+      "objective": "warmup_then_ce",
+      "history": [
+        {
+          "step": 0,
+          "ce": 2.7725231647491455,
+          "target_recall": 0.0,
+          "teacher_on": true
+        },
+        {
+          "step": 100,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 200,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": true
+        },
+        {
+          "step": 300,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 400,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 500,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        },
+        {
+          "step": 599,
+          "ce": 9.214453893946484e-05,
+          "target_recall": 1.0,
+          "teacher_on": false
+        }
+      ],
+      "evaluation": [
+        {
+          "n": 256,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.01953125,
+              "answer_accuracy": 0.080078125,
+              "ce": 2.7184408092042815,
+              "retained_mass": 0.019537275122814002,
+              "output_error": 1.3863229197449982,
+              "keys_scored": 8.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.1563643769202372,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.007905138339920948
+            },
+            "static_retry": {
+              "target_recall": 0.01953125,
+              "answer_accuracy": 0.080078125,
+              "ce": 2.7184408087386203,
+              "retained_mass": 0.019537275122814002,
+              "output_error": 1.3863228934351355,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.2978716308064122,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.007905138339920948
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999403953552,
+              "output_error": 1.1546071999601892e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 508.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.3110703397624093,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.01171875,
+              "answer_accuracy": 0.068359375,
+              "ce": 2.776880688033998,
+              "retained_mass": 0.011724823335102386,
+              "output_error": 1.3974028730299328,
+              "keys_scored": 4.0,
+              "node_evaluations": 254.0,
+              "initial_miss": 0.98828125,
+              "milliseconds_per_query": 0.16240473823359025,
+              "initial_miss_count": 506,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 1024,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.07421875,
+              "ce": 2.756448595061258,
+              "retained_mass": 0.005865490952452035,
+              "output_error": 1.4049523294670587,
+              "keys_scored": 8.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.19389693753169013,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.003913894324853229
+            },
+            "static_retry": {
+              "target_recall": 0.005859375,
+              "answer_accuracy": 0.07421875,
+              "ce": 2.7564485964582417,
+              "retained_mass": 0.005865490952452035,
+              "output_error": 1.404952397919268,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.3867192734503533,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.003913894324853229
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999407446012,
+              "output_error": 1.1459981499317706e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 764.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.395453376995647,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.001953125,
+              "answer_accuracy": 0.0546875,
+              "ce": 2.7719168178737164,
+              "retained_mass": 0.001959264090802826,
+              "output_error": 1.4106087512336711,
+              "keys_scored": 4.0,
+              "node_evaluations": 382.0,
+              "initial_miss": 0.998046875,
+              "milliseconds_per_query": 0.21109147266429318,
+              "initial_miss_count": 511,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        },
+        {
+          "n": 4096,
+          "queries": 512,
+          "no_clue": false,
+          "modes": {
+            "one_shot": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.076171875,
+              "ce": 2.7731667128391564,
+              "retained_mass": 6.163192910690896e-06,
+              "output_error": 1.41190189239569,
+              "keys_scored": 8.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.2369929804046933,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "static_retry": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.076171875,
+              "ce": 2.7731667109765112,
+              "retained_mass": 6.163192910690896e-06,
+              "output_error": 1.4119019345380366,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.4529763105551865,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            },
+            "learned_retry": {
+              "target_recall": 1.0,
+              "answer_accuracy": 1.0,
+              "ce": 9.214453893946484e-05,
+              "retained_mass": 0.9999999402789399,
+              "output_error": 1.1564863732216324e-06,
+              "keys_scored": 8.0,
+              "node_evaluations": 1020.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.47248712692748995,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 1.0
+            },
+            "state_only": {
+              "target_recall": 0.0,
+              "answer_accuracy": 0.0625,
+              "ce": 2.7752094441093504,
+              "retained_mass": 6.159833288776895e-06,
+              "output_error": 1.4123059553094208,
+              "keys_scored": 4.0,
+              "node_evaluations": 510.0,
+              "initial_miss": 1.0,
+              "milliseconds_per_query": 0.24940432805919954,
+              "initial_miss_count": 512,
+              "recovery_given_initial_miss": 0.0
+            }
+          },
+          "maximum_union_output_difference": 1.430511474609375e-06,
+          "controller_state_scalars": 64,
+          "accumulator_scalars": 42,
+          "retained_id_capacity": 8
+        }
+      ],
+      "no_clue": {
+        "n": 1024,
+        "queries": 512,
+        "no_clue": true,
+        "modes": {
+          "one_shot": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.07421875,
+            "ce": 2.756448595061258,
+            "retained_mass": 0.005865490952452035,
+            "output_error": 0.9940633487422099,
+            "keys_scored": 8.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.19713407226618074,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "static_retry": {
+            "target_recall": 0.005859375,
+            "answer_accuracy": 0.07421875,
+            "ce": 2.7564485964582417,
+            "retained_mass": 0.005865490952452035,
+            "output_error": 0.9940633487422099,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.40844178519705565,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.003913894324853229
+          },
+          "learned_retry": {
+            "target_recall": 0.00390625,
+            "answer_accuracy": 0.06640625,
+            "ce": 2.761858646741331,
+            "retained_mass": 0.003912376990679256,
+            "output_error": 0.9960269522853269,
+            "keys_scored": 8.0,
+            "node_evaluations": 764.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.4174609649112426,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0019569471624266144
+          },
+          "state_only": {
+            "target_recall": 0.001953125,
+            "answer_accuracy": 0.068359375,
+            "ce": 2.772044121287763,
+            "retained_mass": 0.001959264090802826,
+            "output_error": 0.9979796523693989,
+            "keys_scored": 4.0,
+            "node_evaluations": 382.0,
+            "initial_miss": 0.998046875,
+            "milliseconds_per_query": 0.22242126567562082,
+            "initial_miss_count": 511,
+            "recovery_given_initial_miss": 0.0
+          }
+        },
+        "maximum_union_output_difference": 1.430511474609375e-06,
+        "controller_state_scalars": 64,
+        "accumulator_scalars": 42,
+        "retained_id_capacity": 8
+      }
+    }
+  ]
+}

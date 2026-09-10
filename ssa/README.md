@@ -168,6 +168,26 @@ the evidence that the geometry is benign in practice, not just in synthetic beni
 - **`score_tail_training.py`** — controlled comparison of the original non-target variance regularizer,
   the exact hard certificate-margin surrogate, and their hybrid. Evaluation always rebuilds hard summaries;
   the smooth loss is not itself a certificate.
+- **`recurrent_repair.py`** — bounded-state reference for multi-round sparse reads. It scores every newly
+  routed key with one fixed attention query and merges disjoint batches with an exact streaming softmax
+  state of `d_v + 2` scalars. Routing queries may change without silently changing the target distribution.
+- **`recurrent_repair_experiment.py`** — tests the proposed “observe a miss, repair the next query” mechanism.
+  A controlled address clue enables a successful second read; an isolated hard-top-1 task shows that raw
+  downstream CE supplies zero gradient through the selection index, while route CE and a straight-through
+  surrogate train successfully. The cached-Qwen arm is a static block-mean replay, not a trained-router test.
+- **`trainable_repair.py`** — hard individual-token geometric tree, trainable 64-state GRU, exact selected
+  union, and an incremental fixed-size tail summary. Routing and attention queries remain separate;
+  exact accumulators reset across attention queries. Fixed-beam routing and estimated tails are not certificates.
+- **`trainable_repair_experiment.py`** — three-seed fresh-address/answer task, matched-eight-key static and
+  one-shot controls, no-clue ablation, route supervision versus raw CE and warmup-then-CE. Train at 256
+  addresses, test through 4096. The positive result depends on the supplied clue, not a learned Qwen router.
+- **`tail_state_experiment.py`** — temporally held-out real Qwen Q/K/V output correction at unchanged read
+  budget, comparing sparse, centroid, calibrated, learned MLP, and oracle-cell-mass variants.
+- **`hybrid_tail_attention.py`**, **`tail_tree_router.py`**, **`qwen_tail_demo.py`** — complete causal GQA
+  transformer with fixed cell counts/value sums, exact selected replacement, and per-head CE-trained gains.
+  Flat routing or SSA's append-only tree supplies two past blocks; current-block attention is token-causal.
+  `python -m ssa.qwen_tail_demo --help` lists training and portable-JSON checkpoint evaluation commands.
+  Positive small held-out perplexity results do not imply dense equivalence or long-context quality.
 - **`gemma_keys.py`** — the frontier-scale, deep-head check (Gemma, head_dim 256): re-runs centroid-vs-cumulant
   routing and the temperature sweep on a 256-dimensional head.
 

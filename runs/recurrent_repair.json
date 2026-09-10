@@ -1,0 +1,110 @@
+{
+  "experiment": "bounded-state recurrent repair for fixed-budget sparse attention",
+  "command": "python -m ssa.recurrent_repair_experiment --cache /tmp/ssa_bennett_qwen_8192.npz --out runs/recurrent_repair.json",
+  "device": "cuda",
+  "seed": 0,
+  "pointer_demo": {
+    "context_keys": 64,
+    "controller_state_scalars": 8,
+    "per_round_budget": 1,
+    "selected_ids": [
+      [
+        0
+      ],
+      [
+        47
+      ]
+    ],
+    "retained_mass_by_round": [
+      8.314851606647598e-07,
+      0.9999484479200385
+    ],
+    "output_error_by_round": [
+      1.4141759341199962,
+      5.15520370944112e-05
+    ],
+    "interpretation": "the first opened value is an explicit address clue for the second read"
+  },
+  "hard_router_training": {
+    "raw_ce": {
+      "initial_hard_top1_recall": 0.0625,
+      "final_hard_top1_recall": 0.0625,
+      "zero_controller_gradient_steps": 300,
+      "steps": 300,
+      "final_training_loss": 7.479095458984375,
+      "hard_evaluation": true
+    },
+    "route_ce": {
+      "initial_hard_top1_recall": 0.0625,
+      "final_hard_top1_recall": 1.0,
+      "zero_controller_gradient_steps": 0,
+      "steps": 300,
+      "final_training_loss": 0.03653796762228012,
+      "hard_evaluation": true
+    },
+    "straight_through": {
+      "initial_hard_top1_recall": 0.0625,
+      "final_hard_top1_recall": 1.0,
+      "zero_controller_gradient_steps": 0,
+      "steps": 300,
+      "final_training_loss": 0.01034564059227705,
+      "hard_evaluation": true
+    }
+  },
+  "qwen_static_replay": {
+    "available": true,
+    "path": "/tmp/ssa_bennett_qwen_8192.npz",
+    "geometry": "Qwen2.5-0.5B layer 18 KV head 0 post-RoPE Q/K",
+    "router": "contiguous block means; static query; disjoint exclusion",
+    "queries": 32,
+    "block": 64,
+    "rounds": 4,
+    "per_round_block_fraction": 0.025,
+    "mean_keys_scored_by_round": [
+      154.5,
+      335.78125,
+      518.28125,
+      702.28125
+    ],
+    "mean_actual_retained_mass_by_round": [
+      0.19519286367617386,
+      0.28441276378240093,
+      0.34923825709616035,
+      0.40878522687880015
+    ],
+    "median_actual_retained_mass_by_round": [
+      0.16700637298615034,
+      0.2517071830350549,
+      0.3357780855123368,
+      0.39206010306849226
+    ],
+    "mean_proxy_output_error_by_round": [
+      0.6049254330694792,
+      0.4197424177808552,
+      0.32513339456446005,
+      0.27997369928347327
+    ],
+    "mean_repeated_same_read_final_mass": 0.19519286367617383,
+    "mean_exact_top_key_oracle_mass_at_equal_key_budget": 0.9584405956801068,
+    "max_staged_vs_one_shot_output_difference": 6.661338147750939e-16,
+    "certificate": null,
+    "fence": "dense-oracle measurement; this replay does not contain the user's trained router"
+  },
+  "claims": {
+    "proved_by_construction": [
+      "streaming state equals softmax attention on the selected union",
+      "fixed-query staged disjoint reads equal a one-shot read of the same union"
+    ],
+    "measured_not_proved": [
+      "opened clues can improve a later route on the controlled distribution",
+      "the training modes reach the reported hard-routing recall"
+    ],
+    "not_claimed": [
+      "raw CE discovers useful retry queries in a pretrained transformer",
+      "fixed state reconstructs arbitrary unseen KV content",
+      "the user's router has the block-mean replay's behavior",
+      "conditional subquadraticity without a fixed number of rounds and fixed per-round budget"
+    ]
+  },
+  "elapsed_seconds": 2.010526003999985
+}

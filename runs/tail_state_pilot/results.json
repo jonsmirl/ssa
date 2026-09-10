@@ -1,0 +1,166 @@
+{
+  "config": {
+    "cache": "/tmp/ssa_qwen_qkv_8192.npz",
+    "out": "runs/tail_state_pilot",
+    "steps": 1000,
+    "cells": 32,
+    "seed": 0
+  },
+  "device": "cuda",
+  "best_validation_step": 0,
+  "base_commit": "3382c0dfffbf6c4d8244902033b08cc1dd5f31c8",
+  "fixture_sha256": "5656b2725bbdb29a09c7c13c93126ac3f2cfb44ba0c32e60768ffc49fc54895a",
+  "source_sha256": "2a1815ebb8fa147f314eec97fc121f1704a74e50d6285c2bc41289ec6c2ff4d6",
+  "train": {
+    "sparse": {
+      "mean_l2_error": 2.1437716484069824,
+      "median_l2_error": 2.022353410720825,
+      "mean_squared_error": 0.0879136249423027,
+      "fraction_better_than_sparse": 0.0,
+      "p95_l2_error": 4.012944221496582
+    },
+    "centroid_tail": {
+      "mean_l2_error": 1.78350830078125,
+      "median_l2_error": 1.6649569272994995,
+      "mean_squared_error": 0.06318626552820206,
+      "fraction_better_than_sparse": 0.9750000238418579,
+      "p95_l2_error": 3.525785207748413
+    },
+    "learned_tail": {
+      "mean_l2_error": 1.7821094989776611,
+      "median_l2_error": 1.6629760265350342,
+      "mean_squared_error": 0.06308309733867645,
+      "fraction_better_than_sparse": 0.9750000238418579,
+      "p95_l2_error": 3.523512840270996
+    },
+    "oracle_cell_mass": {
+      "mean_l2_error": 1.9015998840332031,
+      "median_l2_error": 1.7981054782867432,
+      "mean_squared_error": 0.07155021280050278,
+      "fraction_better_than_sparse": 0.7562500238418579,
+      "p95_l2_error": 3.579676866531372
+    },
+    "queries": 160,
+    "mean_keys_scored": 153.0,
+    "mean_actual_selected_mass": 0.2970641255378723,
+    "learned_tail_mass_mae": 0.36765411496162415
+  },
+  "validation": {
+    "sparse": {
+      "mean_l2_error": 2.158572196960449,
+      "median_l2_error": 1.9950921535491943,
+      "mean_squared_error": 0.0941983163356781,
+      "fraction_better_than_sparse": 0.0,
+      "p95_l2_error": 4.069300174713135
+    },
+    "centroid_tail": {
+      "mean_l2_error": 1.6410657167434692,
+      "median_l2_error": 1.4575828313827515,
+      "mean_squared_error": 0.05664030835032463,
+      "fraction_better_than_sparse": 0.9375,
+      "p95_l2_error": 3.5178887844085693
+    },
+    "learned_tail": {
+      "mean_l2_error": 1.6400752067565918,
+      "median_l2_error": 1.4594956636428833,
+      "mean_squared_error": 0.05653165280818939,
+      "fraction_better_than_sparse": 0.9375,
+      "p95_l2_error": 3.5125107765197754
+    },
+    "oracle_cell_mass": {
+      "mean_l2_error": 1.697242021560669,
+      "median_l2_error": 1.6049307584762573,
+      "mean_squared_error": 0.06245899200439453,
+      "fraction_better_than_sparse": 0.953125,
+      "p95_l2_error": 3.638885259628296
+    },
+    "queries": 64,
+    "mean_keys_scored": 153.0,
+    "mean_actual_selected_mass": 0.304624080657959,
+    "learned_tail_mass_mae": 0.2908790111541748
+  },
+  "test": {
+    "sparse": {
+      "mean_l2_error": 2.6843130588531494,
+      "median_l2_error": 2.4787747859954834,
+      "mean_squared_error": 0.13359755277633667,
+      "fraction_better_than_sparse": 0.0,
+      "p95_l2_error": 4.69159460067749
+    },
+    "centroid_tail": {
+      "mean_l2_error": 2.4500694274902344,
+      "median_l2_error": 2.3260891437530518,
+      "mean_squared_error": 0.11031602323055267,
+      "fraction_better_than_sparse": 0.99609375,
+      "p95_l2_error": 4.090440273284912
+    },
+    "learned_tail": {
+      "mean_l2_error": 2.44851016998291,
+      "median_l2_error": 2.324777126312256,
+      "mean_squared_error": 0.11016418039798737,
+      "fraction_better_than_sparse": 0.99609375,
+      "p95_l2_error": 4.088964939117432
+    },
+    "oracle_cell_mass": {
+      "mean_l2_error": 2.325976610183716,
+      "median_l2_error": 2.237203359603882,
+      "mean_squared_error": 0.09937247633934021,
+      "fraction_better_than_sparse": 0.73828125,
+      "p95_l2_error": 3.9592714309692383
+    },
+    "queries": 256,
+    "mean_keys_scored": 153.0,
+    "mean_actual_selected_mass": 0.21196508407592773,
+    "learned_tail_mass_mae": 0.6016809940338135
+  },
+  "history": [
+    {
+      "step": 0,
+      "validation_mse": 0.05653165280818939
+    },
+    {
+      "step": 100,
+      "validation_mse": 0.06263959407806396
+    },
+    {
+      "step": 200,
+      "validation_mse": 0.06043348088860512
+    },
+    {
+      "step": 300,
+      "validation_mse": 0.05948285013437271
+    },
+    {
+      "step": 400,
+      "validation_mse": 0.05905573442578316
+    },
+    {
+      "step": 500,
+      "validation_mse": 0.05893320217728615
+    },
+    {
+      "step": 600,
+      "validation_mse": 0.05897922068834305
+    },
+    {
+      "step": 700,
+      "validation_mse": 0.059026047587394714
+    },
+    {
+      "step": 800,
+      "validation_mse": 0.0591355562210083
+    },
+    {
+      "step": 900,
+      "validation_mse": 0.05948718637228012
+    },
+    {
+      "step": 999,
+      "validation_mse": 0.0595962256193161
+    }
+  ],
+  "serving_state_scalars": 2080,
+  "scope": "one Qwen head/document; temporal split; real values; approximate tail, no certificate",
+  "work": "state append: nearest of cells centers + one count/value-sum update; query: cells summaries + fixed selected keys",
+  "router": "two complete contiguous blocks by mean score plus visible partial block; flat reference"
+}

@@ -27,10 +27,54 @@ Detailed experiment records live in [RESULTS.md](RESULTS.md).
 | Kernel scaling | **Measured to 12M** | Single-head synthetic IVF kernel: 139.5 ms, 6.55 GB, 2.9× the `n·κ` floor |
 | Output-error certification | **Reference implementation** | CPU adaptive selectors bound omitted mass, KL, and attention-output error; no production GPU kernel claim |
 | Geometry-routed score-tail certificate | **Sound reference; negative Qwen sparsity result** | Separate attention-logit block caps feed a 16-level tail profile; zero oracle violations, but the tested Qwen-8K head still requires a full read |
+| Bounded-state recurrent repair | **Trained controlled result** | A GRU with hard individual-token tree reads reaches 99.935% answer accuracy on fresh 4K-address tasks using eight keys; explicit address clues and route supervision are required in this experiment |
+| CE-trained fixed-state tail correction | **Complete-model quality improvement** | Frozen Qwen with 336 learned gains: held-out 512-token perplexity 35.79 sparse → 20.36 corrected (17.94 dense); improvement persists to 4K, with a substantial dense-quality gap |
 | Lean-checked supporting invariants | **Verified abstractly** | Recursive balls, exact restricted-read/output identities, strict or index-tie-broken top selection, grounded read-budget limits, and the composed causal reservoir plan |
 | Float32 tree bounds | **Guarded and stress-tested** | RTX 4080 comparison with float64 descendant oracles: zero guarded misses in 90,105 balls and 1,081,260 score caps; empirical, not an IEEE-arithmetic proof |
 | Worst-case cheap losslessness | **Ruled out in the grounded-probe model** | A budget-`b` adaptive read returning only probed positions has uniform-spike recall at most `b/n`; arbitrary preprocessing is outside this theorem |
-| Broad model quality | **Open** | No dense 10M baseline, long-context training, perplexity suite, or frontier-model evaluation |
+| Broad model quality | **Open** | Small WikiText perplexity slices are measured; no dense 10M baseline, long-context training, broad task suite, or frontier-model evaluation |
+
+## Sparse reads plus bounded tail state
+
+[`hybrid_tail_attention.py`](ssa/hybrid_tail_attention.py) combines exact selected attention with an
+approximate tail computed from **16 cell counts/value sums per KV head**. Selected contributions are
+subtracted from the summary before their exact weights are inserted. All incoming values update the state;
+it is not reconstructing arbitrary unseen values from sparse output alone. Raw next-token CE trains 336
+per-head gains while all base Qwen weights remain frozen. No filler tokens are needed.
+
+On eight windows from WikiText-2's official test split, with training and gain selection confined to the
+official train/validation splits:
+
+| Context | Dense perplexity | Sparse | CE-trained tail |
+|---|---:|---:|---:|
+| 512 | 17.94 | 35.79 | **20.36** |
+| 1,024 | 17.05 | 57.28 | **27.50** |
+| 4,096 | 11.80 | 74.23 | **52.46** |
+
+These are flat-router reference measurements, not a full-corpus perplexity benchmark. Training uses only
+512-token windows. The exact read budget stays at two past 64-key blocks plus the causal current block.
+The summary holds 49,920 scalars across all 24 layers, plus centers; training additionally stores prefix
+activations. The learned estimate is **not a deterministic mass/output certificate**, and the reference is
+slower than dense attention at these lengths. The existing SSA tree can supply routes through
+[`tail_tree_router.py`](ssa/tail_tree_router.py), without pooling future queries.
+With that hierarchy and the same saved gains, corrected perplexities are **20.36 / 27.51 / 52.41** at
+512 / 1024 / 4096, versus tree sparse-only **35.74 / 57.38 / 74.44**. See
+[`hierarchical results`](runs/qwen_tail_tree/results.json); this reference adapter is also slower than dense.
+
+Reproduce training or evaluate the portable learned gains without retraining:
+
+```bash
+python -m ssa.qwen_tail_demo --context 512 --steps 100 --test-examples 8 \
+  --official-splits --eval-contexts 1024,4096 --out runs/qwen_tail_final
+python -m ssa.qwen_tail_demo --context 512 --test-examples 8 --official-splits \
+  --eval-contexts 1024,4096 --router tree \
+  --load-gains runs/qwen_tail_final/results.json --out runs/qwen_tail_tree
+```
+
+The demo requires locally cached Qwen2.5-0.5B weights/tokenizer and WikiText-2, and runs offline on CUDA.
+[`results.json`](runs/qwen_tail_final/results.json) includes all 336 gain values, per-window losses, source
+hashes, and the base commit. [Detailed results](RESULTS.md#trainable-repair-and-fixed-state-tail-correction)
+include the negative untrained and MLP controls. The new tail architecture has not been evaluated at 10M.
 
 ## Complete 10M transformer result
 
