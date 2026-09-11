@@ -1,0 +1,28 @@
+{
+  "substrate_commit": "68968fc7aae0a024172288f090f25c4d61451324",
+  "scope": "Source/specification/request comparison and independent Lean import/axiom audit; no model experiment or floating-point certificate evaluation",
+  "source_matches_commit": true,
+  "independent_command": "lake env lean /tmp/ssa_routed_axiom_audit.lean",
+  "lean_project": "/home/jonsmirl/substrate/lean",
+  "theorem_count": 40,
+  "theorem_counts_by_module": {
+    "RestrictedReadOverlap": 9,
+    "ComparisonTrace": 5,
+    "QuadraticRemainder": 3,
+    "LinearPath": 10,
+    "ComparisonPath": 8,
+    "ComparisonPathWitness": 2,
+    "RoutedCorrectionRecognition": 3
+  },
+  "every_theorem_axioms": ["propext", "Classical.choice", "Quot.sound"],
+  "result": "PASS; no mathematical defect or scope mismatch found",
+  "existing_substrate_build_logs": {
+    "directory": "/tmp/routed_path_gates_mg5qbz81",
+    "touched_module_jobs": 10987,
+    "whole_tree_jobs": 15209,
+    "status": "successful",
+    "repeated_by_ssa": false
+  },
+  "public_specification": "docs/routed_correction_certificate.md",
+  "implementation_status": "Abstract certificate only. SSA has not instantiated uniform bounds, full state/trace identification, floating-point verification, or an acceptance policy on Qwen."
+}

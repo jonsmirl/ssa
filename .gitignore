@@ -27,5 +27,11 @@ venv/
 .DS_Store
 .env
 
+# Generated private Kaggle inputs (rebuild from cached public data)
+kaggle_tail/ssa_tail_fullscale.ipynb
+runs/kaggle_tail_bundle/tokens.npz
+runs/kaggle_tail_v1/tail_bundle/tokens.npz
+runs/kaggle_tail_v2/tail_bundle/tokens.npz
+
 # Local audit artifacts — named third-party evaluations kept local; force-add to publish
 audit/

@@ -1,0 +1,78 @@
+{
+  "status": "passed",
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "source_state": "Uncommitted additions on base; source hashes identify the executed implementation",
+  "sha256": {
+    "ssa/partial_coordinate_gpu.py": "10436e280c403c53f2d34f29ccce41b58a7926c67f2782b0292640d1c9b10108",
+    "ssa/partial_coordinate_gpu_experiment.py": "e0e7fe9e596d11910339a7e9a797be6f9f6007e139cdeaaf6fcc7cbd16574425",
+    "ssa/partial_coordinate_fixture.py": "7aab03af041fcd3827d905bcfccf7fae00be63c3f262001af8b0cdcd415a9dac",
+    "ssa/tests/test_partial_coordinate_gpu.py": "239fa64631eb736dd75ece0938fbb782ba7b292ede5452b21def2dc0d9588200",
+    "ssa/tests/test_partial_coordinate_gpu_experiment.py": "cdec62d2c5adc6bb40377a1f35928f1e205984f796cb872273b052de120cd51e",
+    "ssa/tests/test_partial_coordinate_fixture.py": "3f560090ac7ba4fb75470cec7b5a61ead2f3c61b2dab6016d943d9e43bbea080",
+    "runs/partial_coordinate_gpu.json": "134bd3d9d92f09a02589ee5e818f731bd569ac11ad4a386e4e01f0f3fa95f326",
+    "runs/partial_coordinate_gpu_uncached.json": "02a76fb937c2eea0a498bf7a369c3322d0e5fa2036a5e07507c6eafd5b50b2bb",
+    "docs/partial_coordinate_gpu.md": "a9dd23caf0b01357e29b8cd11286344d4d1d91a491d6328f774f42d03158651b"
+  },
+  "measured_source_hashes_match": {
+    "partial_coordinate_gpu.py": true,
+    "partial_coordinate_gpu_experiment.py": true,
+    "partial_coordinate_fixture.py": true
+  },
+  "fixture_sha256": {
+    "article_0.npz": "ef17f1c7ca3507a482424a03a8b4e7b56cc2759329f8041f192e665bc0925b88",
+    "article_1.npz": "2fe4192c04ac48aedcb94ed72fad017da6c07d9ebf816deb634696cd206c6490"
+  },
+  "device": "NVIDIA GeForce RTX 4080",
+  "main_audit": {
+    "interval_deficit": 0,
+    "mass_deficit": 0,
+    "kl_deficit": 0,
+    "output_deficit": 0,
+    "false_stop": false,
+    "violations_above_1e_6": 0
+  },
+  "uncached_audit": {
+    "interval_deficit": 0,
+    "mass_deficit": 0,
+    "kl_deficit": 0,
+    "output_deficit": 0,
+    "false_stop": false,
+    "violations_above_1e_6": 0
+  },
+  "independent_checks": {
+    "main_head_trials": 384,
+    "main_group_configuration_calls": 192,
+    "unique_key_coordinate_ledger": true,
+    "all_claimed_mass_targets_met": true,
+    "all_fixture_hashes_match": true,
+    "cached_uncached_selected_counts_match": true,
+    "cached_uncached_max_mass_difference": 1.5265566588595902e-16
+  },
+  "tests": [
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests/test_partial_coordinate_gpu.py ssa/tests/test_partial_coordinate_gpu_experiment.py ssa/tests/test_partial_coordinate_fixture.py -q",
+      "output": "48 passed in 2.75s",
+      "exit_code": 0
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q",
+      "output": "700 passed, 14 warnings in 44.64s",
+      "exit_code": 0,
+      "cuda_tests_executed": 35,
+      "warnings": "existing torch.jit.script_method deprecation in test_batched_tail_tree.py"
+    }
+  ],
+  "commands": [
+    "python -m ssa.partial_coordinate_fixture --out-dir /tmp/ssa_partial_fresh",
+    "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.partial_coordinate_gpu_experiment",
+    "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.partial_coordinate_gpu_experiment --limit-groups 4 --repeats 5 --uncached-tail --out runs/partial_coordinate_gpu_uncached.json"
+  ],
+  "limits": [
+    "All192 group/configuration calls slower than dense nativeBF16;191/192 slower than denseFP32",
+    "Guarded floating arithmetic is tested, not formally verified IEEE intervals",
+    "Requested bytes are not measured DRAM traffic; query timings include host adaptive control, build timed separately",
+    "Fresh frozen dense QKV in two-head groups, not all14heads or complete-model serving",
+    "Tail profile unquantized and batchschedule doubles; not pure CPU/GPU implementation equivalence",
+    "No new training, semantic retrieval, perplexity, larger-context or Kaggle experiment"
+  ]
+}

@@ -1,0 +1,3695 @@
+{
+  "config": {
+    "fixtures": "/tmp/ssa_partial_fresh",
+    "out": "runs/partial_coordinate_gpu_uncached.json",
+    "coordinates": "32,64",
+    "repeats": 5,
+    "limit_groups": 4,
+    "uncached_tail": true
+  },
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "device": "NVIDIA GeForce RTX 4080",
+  "torch": "2.10.0+cu128",
+  "fixture_manifest": {
+    "model": "Qwen/Qwen2.5-0.5B",
+    "model_revision": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "split": "test",
+    "dataset": "wikitext/wikitext-2-raw-v1",
+    "arrow_path": "/home/jonsmirl/.cache/huggingface/datasets/wikitext/wikitext-2-raw-v1/0.0.0/b08601e04326c79dfdd32d625aee71d232d685c3/wikitext-test.arrow",
+    "arrow_sha256": "2b8a3efac7b468cbe6432edba5f55c21e435d93873acc6727431f08d5ed328ea",
+    "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+    "extractor_sha256": "7aab03af041fcd3827d905bcfccf7fae00be63c3f262001af8b0cdcd415a9dac",
+    "torch": "2.10.0+cu128",
+    "hardware": "NVIDIA GeForce RTX 4080",
+    "layers_zero_based": [
+      6,
+      12,
+      18
+    ],
+    "query_heads": [
+      0,
+      3,
+      7,
+      10
+    ],
+    "kv_heads_for_queries": [
+      0,
+      0,
+      1,
+      1
+    ],
+    "positions_zero_based": [
+      4096,
+      5461,
+      6826,
+      8191
+    ],
+    "n": 8192,
+    "articles": [
+      {
+        "model": "Qwen/Qwen2.5-0.5B",
+        "model_revision": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+        "split": "test",
+        "dataset": "wikitext/wikitext-2-raw-v1",
+        "arrow_path": "/home/jonsmirl/.cache/huggingface/datasets/wikitext/wikitext-2-raw-v1/0.0.0/b08601e04326c79dfdd32d625aee71d232d685c3/wikitext-test.arrow",
+        "arrow_sha256": "2b8a3efac7b468cbe6432edba5f55c21e435d93873acc6727431f08d5ed328ea",
+        "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+        "extractor_sha256": "7aab03af041fcd3827d905bcfccf7fae00be63c3f262001af8b0cdcd415a9dac",
+        "torch": "2.10.0+cu128",
+        "hardware": "NVIDIA GeForce RTX 4080",
+        "layers_zero_based": [
+          6,
+          12,
+          18
+        ],
+        "query_heads": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "kv_heads_for_queries": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "positions_zero_based": [
+          4096,
+          5461,
+          6826,
+          8191
+        ],
+        "n": 8192,
+        "scope": "Frozen BF16 dense prefill, full 24 layers; saved FP32 casts of post-RoPE QKV. No sparse-model rollout, training, or document tuning.",
+        "title": "Ise @-@ class battleship",
+        "row_start": 177,
+        "row_end_exclusive": 264,
+        "article_text_sha256": "58bbeac7f2e1d7d3c7274f64d8c1fa73654f43dd05e56a4e99a395cccc1436e4",
+        "token_ids_sha256": "98c385acd47fa3a84f5a391b08c0105fd6ff9c6dcce4d3ded68bf740fb863c61",
+        "article_total_tokens": 9482,
+        "sdpa_calls": 24,
+        "sdpa_shapes": [
+          {
+            "layer": 0,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 1,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 2,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 3,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 4,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 5,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 6,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 7,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 8,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 9,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 10,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 11,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 12,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 13,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 14,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 15,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 16,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 17,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 18,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 19,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 20,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 21,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 22,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 23,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          }
+        ],
+        "prefill_capture_seconds": 2.9230535439855885,
+        "peak_allocated_bytes": 1305914368,
+        "path": "/tmp/ssa_partial_fresh/article_0.npz",
+        "sha256": "ef17f1c7ca3507a482424a03a8b4e7b56cc2759329f8041f192e665bc0925b88"
+      },
+      {
+        "model": "Qwen/Qwen2.5-0.5B",
+        "model_revision": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+        "split": "test",
+        "dataset": "wikitext/wikitext-2-raw-v1",
+        "arrow_path": "/home/jonsmirl/.cache/huggingface/datasets/wikitext/wikitext-2-raw-v1/0.0.0/b08601e04326c79dfdd32d625aee71d232d685c3/wikitext-test.arrow",
+        "arrow_sha256": "2b8a3efac7b468cbe6432edba5f55c21e435d93873acc6727431f08d5ed328ea",
+        "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+        "extractor_sha256": "7aab03af041fcd3827d905bcfccf7fae00be63c3f262001af8b0cdcd415a9dac",
+        "torch": "2.10.0+cu128",
+        "hardware": "NVIDIA GeForce RTX 4080",
+        "layers_zero_based": [
+          6,
+          12,
+          18
+        ],
+        "query_heads": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "kv_heads_for_queries": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "positions_zero_based": [
+          4096,
+          5461,
+          6826,
+          8191
+        ],
+        "n": 8192,
+        "scope": "Frozen BF16 dense prefill, full 24 layers; saved FP32 casts of post-RoPE QKV. No sparse-model rollout, training, or document tuning.",
+        "title": "Second Battle of Naktong Bulge",
+        "row_start": 322,
+        "row_end_exclusive": 447,
+        "article_text_sha256": "9a6144a30309957c94d8def46d38c8e9222cd6c468d3d1f1a0a87bbd90c82877",
+        "token_ids_sha256": "5ec4db0502fa50b389dbc568e4c5008fb909904771be037f8a72b5733d35499f",
+        "article_total_tokens": 12444,
+        "sdpa_calls": 24,
+        "sdpa_shapes": [
+          {
+            "layer": 0,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 1,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 2,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 3,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 4,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 5,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 6,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 7,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 8,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 9,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 10,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 11,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 12,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 13,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 14,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 15,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 16,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 17,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 18,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 19,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 20,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 21,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 22,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          },
+          {
+            "layer": 23,
+            "q": [
+              1,
+              14,
+              8192,
+              64
+            ],
+            "k": [
+              1,
+              2,
+              8192,
+              64
+            ]
+          }
+        ],
+        "prefill_capture_seconds": 0.3318025370244868,
+        "peak_allocated_bytes": 1305914368,
+        "path": "/tmp/ssa_partial_fresh/article_1.npz",
+        "sha256": "2fe4192c04ac48aedcb94ed72fad017da6c07d9ebf816deb634696cd206c6490"
+      }
+    ],
+    "scope": "Frozen BF16 dense prefill, full 24 layers; saved FP32 casts of post-RoPE QKV. No sparse-model rollout, training, or document tuning."
+  },
+  "fixture_sha256": {
+    "article_0.npz": "ef17f1c7ca3507a482424a03a8b4e7b56cc2759329f8041f192e665bc0925b88",
+    "article_1.npz": "2fe4192c04ac48aedcb94ed72fad017da6c07d9ebf816deb634696cd206c6490"
+  },
+  "source_sha256": {
+    "partial_coordinate_gpu.py": "10436e280c403c53f2d34f29ccce41b58a7926c67f2782b0292640d1c9b10108",
+    "partial_coordinate_gpu_experiment.py": "e0e7fe9e596d11910339a7e9a797be6f9f6007e139cdeaaf6fcc7cbd16574425",
+    "partial_coordinate_fixture.py": "7aab03af041fcd3827d905bcfccf7fae00be63c3f262001af8b0cdcd415a9dac"
+  },
+  "scope": "Decode-shaped sampled query groups, fresh articles, not complete model inference speed. Warm synchronized wall timings; index build separate, oracle outside timing. Guards empirically checked, not formal IEEE proof.",
+  "rows": [
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 4097,
+      "coordinates": 32,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.12446211769207882,
+          "actual_output_l2": 2.2700188261475402e-07,
+          "restricted_output_numerical_l2": 2.2700188261475402e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4097,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.002494215162970184,
+          "dense_fp32_output_l2": 5.716134482587114e-07
+        },
+        {
+          "mass_upper": 0.09605110934795985,
+          "actual_omitted_mass": 0.02275853501662454,
+          "certified": true,
+          "output_error_upper": 1.28626270613446,
+          "actual_output_l2": 0.03584491726462127,
+          "restricted_output_numerical_l2": 1.3994373902998338e-07,
+          "actual_supported_kl": 0.023021508055704663,
+          "kl_upper": 0.10098245707756685,
+          "kl_upper_from_mass": 0.10098245707756684,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 1032,
+          "value_fraction": 0.2518916280205028,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002217431218959707,
+          "dense_fp32_output_l2": 5.706632799581882e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 8.347868017153814,
+        "minimum_ms": 7.836234988644719,
+        "p90_ms": 10.320179397240281,
+        "samples_ms": [
+          8.801060990663245,
+          11.332925001624972,
+          8.347868017153814,
+          7.836234988644719,
+          8.010432997252792
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.6833960069343448,
+        "minimum_ms": 0.4768779908772558,
+        "p90_ms": 0.969854393042624,
+        "samples_ms": [
+          0.6833960069343448,
+          1.0414689895696938,
+          0.4768779908772558
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.06651500007137656,
+        "minimum_ms": 0.06257800851017237,
+        "p90_ms": 0.07448999676853418,
+        "samples_ms": [
+          0.07881800411269069,
+          0.06799798575229943,
+          0.06431099609471858,
+          0.06651500007137656,
+          0.06257800851017237
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7587580184917897,
+        "minimum_ms": 0.6325299909804016,
+        "p90_ms": 1.078090607188642,
+        "samples_ms": [
+          0.6580380140803754,
+          0.9310120076406747,
+          1.176143006887287,
+          0.7587580184917897,
+          0.6325299909804016
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1048832,
+        "summary_bytes": 33288,
+        "index_build_key_scalars": 262208,
+        "index_build_value_scalars": 262208
+      },
+      "seed_values": 129,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 262208,
+          "value_scalars": 262208,
+          "selected_keys": 4097,
+          "fully_scored_keys": 4097,
+          "key_read_bytes": 524416,
+          "value_read_bytes": 524416,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 6,
+          "tail_item_evaluations": 16486,
+          "tail_reduction_slots": 24582,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 24582,
+          "sort_items": 24582,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.00944972038269043,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 164128,
+          "value_scalars": 66048,
+          "selected_keys": 1032,
+          "fully_scored_keys": 1032,
+          "key_read_bytes": 328256,
+          "value_read_bytes": 132096,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 4,
+          "tail_item_evaluations": 14453,
+          "tail_reduction_slots": 16388,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 16388,
+          "sort_items": 16388,
+          "tail_levels": 3065,
+          "score_roundoff_allowance": 0.006628513336181641,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 9.03126402408816
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 4097,
+      "coordinates": 32,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.12446211769207882,
+          "actual_output_l2": 2.2700188261475402e-07,
+          "restricted_output_numerical_l2": 2.2700188261475402e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4097,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.002494215162970184,
+          "dense_fp32_output_l2": 5.716134482587114e-07
+        },
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.09848583889754431,
+          "actual_output_l2": 1.3574382850156316e-07,
+          "restricted_output_numerical_l2": 1.3574382850156316e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4097,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002217431218959707,
+          "dense_fp32_output_l2": 5.706632799581882e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 10.753965005278587,
+        "minimum_ms": 9.991270984755829,
+        "p90_ms": 11.594551004236564,
+        "samples_ms": [
+          10.200983990216628,
+          10.753965005278587,
+          11.832935007987544,
+          9.991270984755829,
+          11.236974998610094
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.6833960069343448,
+        "minimum_ms": 0.4768779908772558,
+        "p90_ms": 0.969854393042624,
+        "samples_ms": [
+          0.6833960069343448,
+          1.0414689895696938,
+          0.4768779908772558
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.06651500007137656,
+        "minimum_ms": 0.06257800851017237,
+        "p90_ms": 0.07448999676853418,
+        "samples_ms": [
+          0.07881800411269069,
+          0.06799798575229943,
+          0.06431099609471858,
+          0.06651500007137656,
+          0.06257800851017237
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7587580184917897,
+        "minimum_ms": 0.6325299909804016,
+        "p90_ms": 1.078090607188642,
+        "samples_ms": [
+          0.6580380140803754,
+          0.9310120076406747,
+          1.176143006887287,
+          0.7587580184917897,
+          0.6325299909804016
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1048832,
+        "summary_bytes": 33288,
+        "index_build_key_scalars": 262208,
+        "index_build_value_scalars": 262208
+      },
+      "seed_values": 129,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 262208,
+          "value_scalars": 262208,
+          "selected_keys": 4097,
+          "fully_scored_keys": 4097,
+          "key_read_bytes": 524416,
+          "value_read_bytes": 524416,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 6,
+          "tail_item_evaluations": 16486,
+          "tail_reduction_slots": 24582,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 24582,
+          "sort_items": 24582,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.00944972038269043,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 262208,
+          "value_scalars": 262208,
+          "selected_keys": 4097,
+          "fully_scored_keys": 4097,
+          "key_read_bytes": 524416,
+          "value_read_bytes": 524416,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 6,
+          "tail_item_evaluations": 16486,
+          "tail_reduction_slots": 24582,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 24582,
+          "sort_items": 24582,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.007365226745605469,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 11.437361012212932
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 4097,
+      "coordinates": 64,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.09358919763689075,
+          "actual_omitted_mass": 0.09251681301484027,
+          "certified": true,
+          "output_error_upper": 1.283125212158316,
+          "actual_output_l2": 0.11128506618822284,
+          "restricted_output_numerical_l2": 3.4473243309799184e-07,
+          "actual_supported_kl": 0.09708023975286934,
+          "kl_upper": 0.09826265146302367,
+          "kl_upper_from_mass": 0.0982626514630237,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 516,
+          "value_fraction": 0.1259458140102514,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.002494215162970184,
+          "dense_fp32_output_l2": 5.716134482587114e-07
+        },
+        {
+          "mass_upper": 0.08422795135788685,
+          "actual_omitted_mass": 0.0834495009659218,
+          "certified": true,
+          "output_error_upper": 1.138926373358959,
+          "actual_output_l2": 0.12543503759627433,
+          "restricted_output_numerical_l2": 1.866978829923335e-07,
+          "actual_supported_kl": 0.08713811334680276,
+          "kl_upper": 0.08798780047179831,
+          "kl_upper_from_mass": 0.08798780047179831,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 258,
+          "value_fraction": 0.0629729070051257,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002217431218959707,
+          "dense_fp32_output_l2": 5.706632799581882e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 5.850638990523294,
+        "minimum_ms": 5.085899989353493,
+        "p90_ms": 6.0076626017689705,
+        "samples_ms": [
+          5.910261010285467,
+          5.114714003866538,
+          5.085899989353493,
+          6.072596996091306,
+          5.850638990523294
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.6833960069343448,
+        "minimum_ms": 0.4768779908772558,
+        "p90_ms": 0.969854393042624,
+        "samples_ms": [
+          0.6833960069343448,
+          1.0414689895696938,
+          0.4768779908772558
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.06651500007137656,
+        "minimum_ms": 0.06257800851017237,
+        "p90_ms": 0.07448999676853418,
+        "samples_ms": [
+          0.07881800411269069,
+          0.06799798575229943,
+          0.06431099609471858,
+          0.06651500007137656,
+          0.06257800851017237
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7587580184917897,
+        "minimum_ms": 0.6325299909804016,
+        "p90_ms": 1.078090607188642,
+        "samples_ms": [
+          0.6580380140803754,
+          0.9310120076406747,
+          1.176143006887287,
+          0.7587580184917897,
+          0.6325299909804016
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1048832,
+        "summary_bytes": 33288,
+        "index_build_key_scalars": 262208,
+        "index_build_value_scalars": 262208
+      },
+      "seed_values": 129,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 262208,
+          "value_scalars": 33024,
+          "selected_keys": 516,
+          "fully_scored_keys": 4097,
+          "key_read_bytes": 524416,
+          "value_read_bytes": 66048,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 3,
+          "tail_item_evaluations": 11388,
+          "tail_reduction_slots": 12291,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 12291,
+          "sort_items": 12291,
+          "tail_levels": 3581,
+          "score_roundoff_allowance": 0.008838653564453125,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 262208,
+          "value_scalars": 16512,
+          "selected_keys": 258,
+          "fully_scored_keys": 4097,
+          "key_read_bytes": 524416,
+          "value_read_bytes": 33024,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 2,
+          "tail_item_evaluations": 7807,
+          "tail_reduction_slots": 8194,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 8194,
+          "sort_items": 8194,
+          "tail_levels": 3839,
+          "score_roundoff_allowance": 0.006628513336181641,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 6.534034997457638
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 4097,
+      "coordinates": 64,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.12446211769207882,
+          "actual_output_l2": 2.9122571081267295e-07,
+          "restricted_output_numerical_l2": 2.9122571081267295e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4097,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.002494215162970184,
+          "dense_fp32_output_l2": 5.716134482587114e-07
+        },
+        {
+          "mass_upper": 0.006048840340604017,
+          "actual_omitted_mass": 0.005988978817208753,
+          "certified": true,
+          "output_error_upper": 0.1646838294796894,
+          "actual_output_l2": 0.010145212013890589,
+          "restricted_output_numerical_l2": 2.026553639216918e-07,
+          "actual_supported_kl": 0.0060069846779856875,
+          "kl_upper": 0.006067208684247213,
+          "kl_upper_from_mass": 0.006067208684247212,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 2064,
+          "value_fraction": 0.5037832560410056,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002217431218959707,
+          "dense_fp32_output_l2": 5.706632799581882e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 9.677580004790798,
+        "minimum_ms": 9.515614015981555,
+        "p90_ms": 11.210835591191426,
+        "samples_ms": [
+          11.304491985356435,
+          9.580347017617896,
+          9.677580004790798,
+          9.515614015981555,
+          11.070350999943912
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.6833960069343448,
+        "minimum_ms": 0.4768779908772558,
+        "p90_ms": 0.969854393042624,
+        "samples_ms": [
+          0.6833960069343448,
+          1.0414689895696938,
+          0.4768779908772558
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.06651500007137656,
+        "minimum_ms": 0.06257800851017237,
+        "p90_ms": 0.07448999676853418,
+        "samples_ms": [
+          0.07881800411269069,
+          0.06799798575229943,
+          0.06431099609471858,
+          0.06651500007137656,
+          0.06257800851017237
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7587580184917897,
+        "minimum_ms": 0.6325299909804016,
+        "p90_ms": 1.078090607188642,
+        "samples_ms": [
+          0.6580380140803754,
+          0.9310120076406747,
+          1.176143006887287,
+          0.7587580184917897,
+          0.6325299909804016
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1048832,
+        "summary_bytes": 33288,
+        "index_build_key_scalars": 262208,
+        "index_build_value_scalars": 262208
+      },
+      "seed_values": 129,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 262208,
+          "value_scalars": 262208,
+          "selected_keys": 4097,
+          "fully_scored_keys": 4097,
+          "key_read_bytes": 524416,
+          "value_read_bytes": 524416,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 6,
+          "tail_item_evaluations": 16486,
+          "tail_reduction_slots": 24582,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 24582,
+          "sort_items": 24582,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.00944972038269043,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 262208,
+          "value_scalars": 132096,
+          "selected_keys": 2064,
+          "fully_scored_keys": 4097,
+          "key_read_bytes": 524416,
+          "value_read_bytes": 264192,
+          "dense_KV_read_bytes": 1048832,
+          "bound_evaluations": 4097,
+          "summary_scalars_read": 8320,
+          "stages": 5,
+          "tail_item_evaluations": 16486,
+          "tail_reduction_slots": 20485,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 20485,
+          "sort_items": 20485,
+          "tail_levels": 2033,
+          "score_roundoff_allowance": 0.006628513336181641,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 10.360976011725143
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 5462,
+      "coordinates": 32,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.004359271511911729,
+          "actual_omitted_mass": 0.000594049792615672,
+          "certified": true,
+          "output_error_upper": 0.15132058109930213,
+          "actual_output_l2": 0.0011091039039202255,
+          "restricted_output_numerical_l2": 2.088765237866067e-07,
+          "actual_supported_kl": 0.000594226310103972,
+          "kl_upper": 0.004368800840005246,
+          "kl_upper_from_mass": 0.004368800840005246,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4800,
+          "value_fraction": 0.8787989747345294,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0031206309224812772,
+          "dense_fp32_output_l2": 2.0927871268519983e-07
+        },
+        {
+          "mass_upper": 0.05262694483408279,
+          "actual_omitted_mass": 0.009740930467985532,
+          "certified": true,
+          "output_error_upper": 0.7440494165027726,
+          "actual_output_l2": 0.014458868969812237,
+          "restricted_output_numerical_l2": 4.146648595049746e-07,
+          "actual_supported_kl": 0.009788683691439915,
+          "kl_upper": 0.05406232971821571,
+          "kl_upper_from_mass": 0.05406232971821571,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 2400,
+          "value_fraction": 0.4393994873672647,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002559521113467388,
+          "dense_fp32_output_l2": 1.8415478224847555e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 10.304238996468484,
+        "minimum_ms": 9.031925001181662,
+        "p90_ms": 10.522503597894683,
+        "samples_ms": [
+          10.310129990102723,
+          9.336629009339958,
+          10.304238996468484,
+          10.664086003089324,
+          9.031925001181662
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.46469399239867926,
+        "minimum_ms": 0.4341669846326113,
+        "p90_ms": 0.7897380040958524,
+        "samples_ms": [
+          0.46469399239867926,
+          0.8709990070201457,
+          0.4341669846326113
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.09336500079371035,
+        "minimum_ms": 0.08136298856697977,
+        "p90_ms": 0.19465418881736696,
+        "samples_ms": [
+          0.12099699233658612,
+          0.09336500079371035,
+          0.08136298856697977,
+          0.09331601904705167,
+          0.24375898647122085
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7950959843583405,
+        "minimum_ms": 0.7887739920988679,
+        "p90_ms": 0.8079924038611352,
+        "samples_ms": [
+          0.808882003184408,
+          0.7950959843583405,
+          0.8066580048762262,
+          0.7947460107970983,
+          0.7887739920988679
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1398272,
+        "summary_bytes": 44040,
+        "index_build_key_scalars": 349568,
+        "index_build_value_scalars": 349568
+      },
+      "seed_values": 150,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 328384,
+          "value_scalars": 307200,
+          "selected_keys": 4800,
+          "fully_scored_keys": 4800,
+          "key_read_bytes": 656768,
+          "value_read_bytes": 614400,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 6,
+          "tail_item_evaluations": 23322,
+          "tail_reduction_slots": 32772,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 32772,
+          "sort_items": 32772,
+          "tail_levels": 662,
+          "score_roundoff_allowance": 0.007245734333992004,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 251584,
+          "value_scalars": 153600,
+          "selected_keys": 2400,
+          "fully_scored_keys": 2400,
+          "key_read_bytes": 503168,
+          "value_read_bytes": 307200,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 5,
+          "tail_item_evaluations": 22660,
+          "tail_reduction_slots": 27310,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 27310,
+          "sort_items": 27310,
+          "tail_levels": 3062,
+          "score_roundoff_allowance": 0.006542205810546875,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 10.768932988867164
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 5462,
+      "coordinates": 32,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.004359271511911729,
+          "actual_omitted_mass": 0.000594049792615672,
+          "certified": true,
+          "output_error_upper": 0.15132058109930213,
+          "actual_output_l2": 0.0011091039039202255,
+          "restricted_output_numerical_l2": 2.088765237866067e-07,
+          "actual_supported_kl": 0.000594226310103972,
+          "kl_upper": 0.004368800840005246,
+          "kl_upper_from_mass": 0.004368800840005246,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4800,
+          "value_fraction": 0.8787989747345294,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0031206309224812772,
+          "dense_fp32_output_l2": 2.0927871268519983e-07
+        },
+        {
+          "mass_upper": 0.00189872470520444,
+          "actual_omitted_mass": 0.0003541191829466013,
+          "certified": true,
+          "output_error_upper": 0.11189090789680338,
+          "actual_output_l2": 0.0006820673015510247,
+          "restricted_output_numerical_l2": 5.722892749304837e-07,
+          "actual_supported_kl": 0.00035418189795062766,
+          "kl_upper": 0.0019005295679443556,
+          "kl_upper_from_mass": 0.0019005295679443554,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4800,
+          "value_fraction": 0.8787989747345294,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002559521113467388,
+          "dense_fp32_output_l2": 1.8415478224847555e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 10.500598989892751,
+        "minimum_ms": 9.734527004184201,
+        "p90_ms": 11.548094596946612,
+        "samples_ms": [
+          9.734527004184201,
+          9.924715996021405,
+          10.570048994850367,
+          10.500598989892751,
+          12.200124998344108
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.46469399239867926,
+        "minimum_ms": 0.4341669846326113,
+        "p90_ms": 0.7897380040958524,
+        "samples_ms": [
+          0.46469399239867926,
+          0.8709990070201457,
+          0.4341669846326113
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.09336500079371035,
+        "minimum_ms": 0.08136298856697977,
+        "p90_ms": 0.19465418881736696,
+        "samples_ms": [
+          0.12099699233658612,
+          0.09336500079371035,
+          0.08136298856697977,
+          0.09331601904705167,
+          0.24375898647122085
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7950959843583405,
+        "minimum_ms": 0.7887739920988679,
+        "p90_ms": 0.8079924038611352,
+        "samples_ms": [
+          0.808882003184408,
+          0.7950959843583405,
+          0.8066580048762262,
+          0.7947460107970983,
+          0.7887739920988679
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1398272,
+        "summary_bytes": 44040,
+        "index_build_key_scalars": 349568,
+        "index_build_value_scalars": 349568
+      },
+      "seed_values": 150,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 328384,
+          "value_scalars": 307200,
+          "selected_keys": 4800,
+          "fully_scored_keys": 4800,
+          "key_read_bytes": 656768,
+          "value_read_bytes": 614400,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 6,
+          "tail_item_evaluations": 23322,
+          "tail_reduction_slots": 32772,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 32772,
+          "sort_items": 32772,
+          "tail_levels": 662,
+          "score_roundoff_allowance": 0.007245734333992004,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 328384,
+          "value_scalars": 307200,
+          "selected_keys": 4800,
+          "fully_scored_keys": 4800,
+          "key_read_bytes": 656768,
+          "value_read_bytes": 614400,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 6,
+          "tail_item_evaluations": 23322,
+          "tail_reduction_slots": 32772,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 32772,
+          "sort_items": 32772,
+          "tail_levels": 662,
+          "score_roundoff_allowance": 0.006542205810546875,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 10.96529298229143
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 5462,
+      "coordinates": 64,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.09580835724223634,
+          "actual_omitted_mass": 0.09493918725522783,
+          "certified": true,
+          "output_error_upper": 1.290730708897332,
+          "actual_output_l2": 0.14473885576377257,
+          "restricted_output_numerical_l2": 1.5403348183866957e-07,
+          "actual_supported_kl": 0.09975314113672493,
+          "kl_upper": 0.10071394685648992,
+          "kl_upper_from_mass": 0.10071394685648992,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 600,
+          "value_fraction": 0.10984987184181617,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0031206309224812772,
+          "dense_fp32_output_l2": 2.0927871268519983e-07
+        },
+        {
+          "mass_upper": 0.09289185702721174,
+          "actual_omitted_mass": 0.09204650350080244,
+          "certified": true,
+          "output_error_upper": 1.2458175995080434,
+          "actual_output_l2": 0.11315267746392058,
+          "restricted_output_numerical_l2": 2.11586596218047e-07,
+          "actual_supported_kl": 0.09656211700164628,
+          "kl_upper": 0.09749360447198821,
+          "kl_upper_from_mass": 0.09749360447198821,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 300,
+          "value_fraction": 0.05492493592090809,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002559521113467388,
+          "dense_fp32_output_l2": 1.8415478224847555e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 4.669686983106658,
+        "minimum_ms": 4.603021981893107,
+        "p90_ms": 5.676184990443289,
+        "samples_ms": [
+          5.730382981710136,
+          4.636413999833167,
+          4.603021981893107,
+          5.594888003543019,
+          4.669686983106658
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.46469399239867926,
+        "minimum_ms": 0.4341669846326113,
+        "p90_ms": 0.7897380040958524,
+        "samples_ms": [
+          0.46469399239867926,
+          0.8709990070201457,
+          0.4341669846326113
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.09336500079371035,
+        "minimum_ms": 0.08136298856697977,
+        "p90_ms": 0.19465418881736696,
+        "samples_ms": [
+          0.12099699233658612,
+          0.09336500079371035,
+          0.08136298856697977,
+          0.09331601904705167,
+          0.24375898647122085
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7950959843583405,
+        "minimum_ms": 0.7887739920988679,
+        "p90_ms": 0.8079924038611352,
+        "samples_ms": [
+          0.808882003184408,
+          0.7950959843583405,
+          0.8066580048762262,
+          0.7947460107970983,
+          0.7887739920988679
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1398272,
+        "summary_bytes": 44040,
+        "index_build_key_scalars": 349568,
+        "index_build_value_scalars": 349568
+      },
+      "seed_values": 150,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 349568,
+          "value_scalars": 38400,
+          "selected_keys": 600,
+          "fully_scored_keys": 5462,
+          "key_read_bytes": 699136,
+          "value_read_bytes": 76800,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 3,
+          "tail_item_evaluations": 15336,
+          "tail_reduction_slots": 16386,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 16386,
+          "sort_items": 16386,
+          "tail_levels": 4862,
+          "score_roundoff_allowance": 0.007229804992675781,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 349568,
+          "value_scalars": 19200,
+          "selected_keys": 300,
+          "fully_scored_keys": 5462,
+          "key_read_bytes": 699136,
+          "value_read_bytes": 38400,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 2,
+          "tail_item_evaluations": 10474,
+          "tail_reduction_slots": 10924,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 10924,
+          "sort_items": 10924,
+          "tail_levels": 5162,
+          "score_roundoff_allowance": 0.006542205810546875,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 5.134380975505337
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 5462,
+      "coordinates": 64,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.0005663695485057613,
+          "actual_omitted_mass": 0.0005605637065273601,
+          "certified": true,
+          "output_error_upper": 0.10405467580272722,
+          "actual_output_l2": 0.0010427937489649363,
+          "restricted_output_numerical_l2": 4.1145541263752796e-07,
+          "actual_supported_kl": 0.0005607208811022175,
+          "kl_upper": 0.0005665299963231973,
+          "kl_upper_from_mass": 0.0005665299963231973,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4800,
+          "value_fraction": 0.8787989747345294,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0031206309224812772,
+          "dense_fp32_output_l2": 2.0927871268519983e-07
+        },
+        {
+          "mass_upper": 0.009598323376072847,
+          "actual_omitted_mass": 0.009505223825048453,
+          "certified": true,
+          "output_error_upper": 0.2078407914187328,
+          "actual_output_l2": 0.013862791124743474,
+          "restricted_output_numerical_l2": 3.202560491382432e-07,
+          "actual_supported_kl": 0.009550686784796994,
+          "kl_upper": 0.009644684177706045,
+          "kl_upper_from_mass": 0.009644684177706045,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 2400,
+          "value_fraction": 0.4393994873672647,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002559521113467388,
+          "dense_fp32_output_l2": 1.8415478224847555e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 9.26920201163739,
+        "minimum_ms": 8.841877017403021,
+        "p90_ms": 10.216003411915153,
+        "samples_ms": [
+          9.195774007821456,
+          10.686309018637985,
+          8.841877017403021,
+          9.510545001830906,
+          9.26920201163739
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.46469399239867926,
+        "minimum_ms": 0.4341669846326113,
+        "p90_ms": 0.7897380040958524,
+        "samples_ms": [
+          0.46469399239867926,
+          0.8709990070201457,
+          0.4341669846326113
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.09336500079371035,
+        "minimum_ms": 0.08136298856697977,
+        "p90_ms": 0.19465418881736696,
+        "samples_ms": [
+          0.12099699233658612,
+          0.09336500079371035,
+          0.08136298856697977,
+          0.09331601904705167,
+          0.24375898647122085
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.7950959843583405,
+        "minimum_ms": 0.7887739920988679,
+        "p90_ms": 0.8079924038611352,
+        "samples_ms": [
+          0.808882003184408,
+          0.7950959843583405,
+          0.8066580048762262,
+          0.7947460107970983,
+          0.7887739920988679
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1398272,
+        "summary_bytes": 44040,
+        "index_build_key_scalars": 349568,
+        "index_build_value_scalars": 349568
+      },
+      "seed_values": 150,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 349568,
+          "value_scalars": 307200,
+          "selected_keys": 4800,
+          "fully_scored_keys": 5462,
+          "key_read_bytes": 699136,
+          "value_read_bytes": 614400,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 6,
+          "tail_item_evaluations": 23322,
+          "tail_reduction_slots": 32772,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 32772,
+          "sort_items": 32772,
+          "tail_levels": 662,
+          "score_roundoff_allowance": 0.007245734333992004,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 349568,
+          "value_scalars": 153600,
+          "selected_keys": 2400,
+          "fully_scored_keys": 5462,
+          "key_read_bytes": 699136,
+          "value_read_bytes": 307200,
+          "dense_KV_read_bytes": 1398272,
+          "bound_evaluations": 5462,
+          "summary_scalars_read": 11008,
+          "stages": 5,
+          "tail_item_evaluations": 22660,
+          "tail_reduction_slots": 27310,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 27310,
+          "sort_items": 27310,
+          "tail_levels": 3062,
+          "score_roundoff_allowance": 0.006542205810546875,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 9.733896004036069
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 6827,
+      "coordinates": 32,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.013603450317615413,
+          "actual_omitted_mass": 0.0025108027474036697,
+          "certified": true,
+          "output_error_upper": 0.2609126195654528,
+          "actual_output_l2": 0.0024857803156346395,
+          "restricted_output_numerical_l2": 8.885863465531654e-08,
+          "actual_supported_kl": 0.0025139600987200417,
+          "kl_upper": 0.013696825027024653,
+          "kl_upper_from_mass": 0.013696825027024651,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 5472,
+          "value_fraction": 0.8015233631170353,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0021784901072687585,
+          "dense_fp32_output_l2": 2.9337970333183604e-07
+        },
+        {
+          "mass_upper": 0.012988096004360057,
+          "actual_omitted_mass": 0.001796255074124077,
+          "certified": true,
+          "output_error_upper": 0.24961359770194835,
+          "actual_output_l2": 0.0019143717770885055,
+          "restricted_output_numerical_l2": 9.619947990295747e-08,
+          "actual_supported_kl": 0.0017978702747677752,
+          "kl_upper": 0.013073178835530087,
+          "kl_upper_from_mass": 0.013073178835530089,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 5472,
+          "value_fraction": 0.8015233631170353,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.001997656059966386,
+          "dense_fp32_output_l2": 3.5811098941565094e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 9.6540049999021,
+        "minimum_ms": 8.977822988526896,
+        "p90_ms": 9.9762182100676,
+        "samples_ms": [
+          8.977822988526896,
+          9.6540049999021,
+          9.512860007816926,
+          9.92283201776445,
+          10.011809004936367
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.3984200011473149,
+        "minimum_ms": 0.37773101939819753,
+        "p90_ms": 0.8038615982513875,
+        "samples_ms": [
+          0.37773101939819753,
+          0.9052219975274056,
+          0.3984200011473149
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.10260299313813448,
+        "minimum_ms": 0.08948901086114347,
+        "p90_ms": 0.13618278899230063,
+        "samples_ms": [
+          0.0947279913816601,
+          0.08948901086114347,
+          0.10260299313813448,
+          0.14941199333406985,
+          0.1163389824796468
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.9521520114503801,
+        "minimum_ms": 0.941792008234188,
+        "p90_ms": 1.2243256031069905,
+        "samples_ms": [
+          1.3947940024081618,
+          0.9686230041552335,
+          0.9521520114503801,
+          0.9485649934504181,
+          0.941792008234188
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1747712,
+        "summary_bytes": 54792,
+        "index_build_key_scalars": 436928,
+        "index_build_value_scalars": 436928
+      },
+      "seed_values": 171,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 393568,
+          "value_scalars": 350208,
+          "selected_keys": 5472,
+          "fully_scored_keys": 5472,
+          "key_read_bytes": 787136,
+          "value_read_bytes": 700416,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 6,
+          "tail_item_evaluations": 30189,
+          "tail_reduction_slots": 40962,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 40962,
+          "sort_items": 40962,
+          "tail_levels": 1355,
+          "score_roundoff_allowance": 0.0067958831787109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 393568,
+          "value_scalars": 350208,
+          "selected_keys": 5472,
+          "fully_scored_keys": 5472,
+          "key_read_bytes": 787136,
+          "value_read_bytes": 700416,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 6,
+          "tail_item_evaluations": 30189,
+          "tail_reduction_slots": 40962,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 40962,
+          "sort_items": 40962,
+          "tail_levels": 1355,
+          "score_roundoff_allowance": 0.006504535675048828,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 10.052425001049414
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 6827,
+      "coordinates": 32,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.09139086534597753,
+          "actual_output_l2": 1.2960224610219756e-07,
+          "restricted_output_numerical_l2": 1.2960224610219756e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 6827,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0021784901072687585,
+          "dense_fp32_output_l2": 2.9337970333183604e-07
+        },
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.08999742204795205,
+          "actual_output_l2": 1.1748368445864267e-07,
+          "restricted_output_numerical_l2": 1.1748368445864267e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 6827,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.001997656059966386,
+          "dense_fp32_output_l2": 3.5811098941565094e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 10.867098986636847,
+        "minimum_ms": 10.201624972978607,
+        "p90_ms": 11.379070387920365,
+        "samples_ms": [
+          10.867098986636847,
+          10.510588006582111,
+          11.494579986901954,
+          11.205805989447981,
+          10.201624972978607
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.3984200011473149,
+        "minimum_ms": 0.37773101939819753,
+        "p90_ms": 0.8038615982513875,
+        "samples_ms": [
+          0.37773101939819753,
+          0.9052219975274056,
+          0.3984200011473149
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.10260299313813448,
+        "minimum_ms": 0.08948901086114347,
+        "p90_ms": 0.13618278899230063,
+        "samples_ms": [
+          0.0947279913816601,
+          0.08948901086114347,
+          0.10260299313813448,
+          0.14941199333406985,
+          0.1163389824796468
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.9521520114503801,
+        "minimum_ms": 0.941792008234188,
+        "p90_ms": 1.2243256031069905,
+        "samples_ms": [
+          1.3947940024081618,
+          0.9686230041552335,
+          0.9521520114503801,
+          0.9485649934504181,
+          0.941792008234188
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1747712,
+        "summary_bytes": 54792,
+        "index_build_key_scalars": 436928,
+        "index_build_value_scalars": 436928
+      },
+      "seed_values": 171,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 436928,
+          "value_scalars": 436928,
+          "selected_keys": 6827,
+          "fully_scored_keys": 6827,
+          "key_read_bytes": 873856,
+          "value_read_bytes": 873856,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 7,
+          "tail_item_evaluations": 30189,
+          "tail_reduction_slots": 47789,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 47789,
+          "sort_items": 47789,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.0067958831787109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 436928,
+          "value_scalars": 436928,
+          "selected_keys": 6827,
+          "fully_scored_keys": 6827,
+          "key_read_bytes": 873856,
+          "value_read_bytes": 873856,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 7,
+          "tail_item_evaluations": 30189,
+          "tail_reduction_slots": 47789,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 47789,
+          "sort_items": 47789,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.006684064865112305,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 11.265518987784162
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 6827,
+      "coordinates": 64,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.03991323451339442,
+          "actual_omitted_mass": 0.03957168044189694,
+          "certified": true,
+          "output_error_upper": 0.5887765559837619,
+          "actual_output_l2": 0.03267969700425491,
+          "restricted_output_numerical_l2": 3.1356941373971923e-07,
+          "actual_supported_kl": 0.04037592781644427,
+          "kl_upper": 0.04073161788913175,
+          "kl_upper_from_mass": 0.040731617889131745,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 2736,
+          "value_fraction": 0.40076168155851766,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0021784901072687585,
+          "dense_fp32_output_l2": 2.9337970333183604e-07
+        },
+        {
+          "mass_upper": 0.0737417949086479,
+          "actual_omitted_mass": 0.07311728895825843,
+          "certified": true,
+          "output_error_upper": 1.0067063479316596,
+          "actual_output_l2": 0.054766991410119176,
+          "restricted_output_numerical_l2": 1.2068578112452057e-07,
+          "actual_supported_kl": 0.07592824672684825,
+          "kl_upper": 0.0766022440128549,
+          "kl_upper_from_mass": 0.0766022440128549,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 1368,
+          "value_fraction": 0.20038084077925883,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.001997656059966386,
+          "dense_fp32_output_l2": 3.5811098941565094e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 7.777764985803515,
+        "minimum_ms": 7.684698997763917,
+        "p90_ms": 8.386680809780955,
+        "samples_ms": [
+          7.777764985803515,
+          7.684698997763917,
+          8.165975013980642,
+          8.533818006981164,
+          7.735244987998158
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.3984200011473149,
+        "minimum_ms": 0.37773101939819753,
+        "p90_ms": 0.8038615982513875,
+        "samples_ms": [
+          0.37773101939819753,
+          0.9052219975274056,
+          0.3984200011473149
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.10260299313813448,
+        "minimum_ms": 0.08948901086114347,
+        "p90_ms": 0.13618278899230063,
+        "samples_ms": [
+          0.0947279913816601,
+          0.08948901086114347,
+          0.10260299313813448,
+          0.14941199333406985,
+          0.1163389824796468
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.9521520114503801,
+        "minimum_ms": 0.941792008234188,
+        "p90_ms": 1.2243256031069905,
+        "samples_ms": [
+          1.3947940024081618,
+          0.9686230041552335,
+          0.9521520114503801,
+          0.9485649934504181,
+          0.941792008234188
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1747712,
+        "summary_bytes": 54792,
+        "index_build_key_scalars": 436928,
+        "index_build_value_scalars": 436928
+      },
+      "seed_values": 171,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 436928,
+          "value_scalars": 175104,
+          "selected_keys": 2736,
+          "fully_scored_keys": 6827,
+          "key_read_bytes": 873856,
+          "value_read_bytes": 350208,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 5,
+          "tail_item_evaluations": 28834,
+          "tail_reduction_slots": 34135,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 34135,
+          "sort_items": 34135,
+          "tail_levels": 4091,
+          "score_roundoff_allowance": 0.0067958831787109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 436928,
+          "value_scalars": 87552,
+          "selected_keys": 1368,
+          "fully_scored_keys": 6827,
+          "key_read_bytes": 873856,
+          "value_read_bytes": 175104,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 4,
+          "tail_item_evaluations": 24743,
+          "tail_reduction_slots": 27308,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 27308,
+          "sort_items": 27308,
+          "tail_levels": 5459,
+          "score_roundoff_allowance": 0.006504535675048828,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 8.17618498695083
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 6827,
+      "coordinates": 64,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.0024355018153511504,
+          "actual_omitted_mass": 0.002413646193947738,
+          "certified": true,
+          "output_error_upper": 0.12174129339939634,
+          "actual_output_l2": 0.0023905207084830974,
+          "restricted_output_numerical_l2": 2.143498988373132e-07,
+          "actual_supported_kl": 0.002416563733473442,
+          "kl_upper": 0.0024384724742410684,
+          "kl_upper_from_mass": 0.002438472474241069,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 5472,
+          "value_fraction": 0.8015233631170353,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.0021784901072687585,
+          "dense_fp32_output_l2": 2.9337970333183604e-07
+        },
+        {
+          "mass_upper": 0.0017266327472536648,
+          "actual_omitted_mass": 0.0017108125451829907,
+          "certified": true,
+          "output_error_upper": 0.10927692120813604,
+          "actual_output_l2": 0.0017382494528388655,
+          "restricted_output_numerical_l2": 9.30964066470479e-08,
+          "actual_supported_kl": 0.0017122776562240524,
+          "kl_upper": 0.0017281250956480802,
+          "kl_upper_from_mass": 0.0017281250956480802,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 5472,
+          "value_fraction": 0.8015233631170353,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.001997656059966386,
+          "dense_fp32_output_l2": 3.5811098941565094e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 9.67102698632516,
+        "minimum_ms": 9.394096996402368,
+        "p90_ms": 11.003206617897376,
+        "samples_ms": [
+          9.408002981217578,
+          10.729921021265909,
+          9.394096996402368,
+          9.67102698632516,
+          11.185397015651688
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.3984200011473149,
+        "minimum_ms": 0.37773101939819753,
+        "p90_ms": 0.8038615982513875,
+        "samples_ms": [
+          0.37773101939819753,
+          0.9052219975274056,
+          0.3984200011473149
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.10260299313813448,
+        "minimum_ms": 0.08948901086114347,
+        "p90_ms": 0.13618278899230063,
+        "samples_ms": [
+          0.0947279913816601,
+          0.08948901086114347,
+          0.10260299313813448,
+          0.14941199333406985,
+          0.1163389824796468
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 0.9521520114503801,
+        "minimum_ms": 0.941792008234188,
+        "p90_ms": 1.2243256031069905,
+        "samples_ms": [
+          1.3947940024081618,
+          0.9686230041552335,
+          0.9521520114503801,
+          0.9485649934504181,
+          0.941792008234188
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 1747712,
+        "summary_bytes": 54792,
+        "index_build_key_scalars": 436928,
+        "index_build_value_scalars": 436928
+      },
+      "seed_values": 171,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 436928,
+          "value_scalars": 350208,
+          "selected_keys": 5472,
+          "fully_scored_keys": 6827,
+          "key_read_bytes": 873856,
+          "value_read_bytes": 700416,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 6,
+          "tail_item_evaluations": 30189,
+          "tail_reduction_slots": 40962,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 40962,
+          "sort_items": 40962,
+          "tail_levels": 1355,
+          "score_roundoff_allowance": 0.0067958831787109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 436928,
+          "value_scalars": 350208,
+          "selected_keys": 5472,
+          "fully_scored_keys": 6827,
+          "key_read_bytes": 873856,
+          "value_read_bytes": 700416,
+          "dense_KV_read_bytes": 1747712,
+          "bound_evaluations": 6827,
+          "summary_scalars_read": 13696,
+          "stages": 6,
+          "tail_item_evaluations": 30189,
+          "tail_reduction_slots": 40962,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 40962,
+          "sort_items": 40962,
+          "tail_levels": 1355,
+          "score_roundoff_allowance": 0.006504535675048828,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 10.069446987472475
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 8192,
+      "coordinates": 32,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.03863080023092471,
+          "actual_omitted_mass": 0.0035882971719209096,
+          "certified": true,
+          "output_error_upper": 0.6028063039299918,
+          "actual_output_l2": 0.007502256320550042,
+          "restricted_output_numerical_l2": 4.298783378780923e-07,
+          "actual_supported_kl": 0.0035947505526081596,
+          "kl_upper": 0.039396760888936275,
+          "kl_upper_from_mass": 0.03939676088893628,
+          "top1_id": 8056,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4096,
+          "value_fraction": 0.5,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.003887189416047523,
+          "dense_fp32_output_l2": 4.863030637649257e-07
+        },
+        {
+          "mass_upper": 0.06556593329335346,
+          "actual_omitted_mass": 0.009460381244367363,
+          "certified": true,
+          "output_error_upper": 0.9130870159357767,
+          "actual_output_l2": 0.012016597735141493,
+          "restricted_output_numerical_l2": 1.4561875064387246e-07,
+          "actual_supported_kl": 0.009505414899762085,
+          "kl_upper": 0.06781420919664487,
+          "kl_upper_from_mass": 0.06781420919664487,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4096,
+          "value_fraction": 0.5,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002536394659640697,
+          "dense_fp32_output_l2": 1.6186006071090676e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 10.080919018946588,
+        "minimum_ms": 8.977411984233186,
+        "p90_ms": 11.735005408991128,
+        "samples_ms": [
+          10.080919018946588,
+          8.977411984233186,
+          9.765144990524277,
+          11.990863014943898,
+          11.351219000061974
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.39475300582125783,
+        "minimum_ms": 0.3719200030900538,
+        "p90_ms": 0.3980466048233211,
+        "samples_ms": [
+          0.39475300582125783,
+          0.3719200030900538,
+          0.3988700045738369
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.1018719922285527,
+        "minimum_ms": 0.08929800242185593,
+        "p90_ms": 0.12142818886786699,
+        "samples_ms": [
+          0.13134698383510113,
+          0.08929800242185593,
+          0.10654999641701579,
+          0.1018719922285527,
+          0.09799498366191983
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 1.1200570152141154,
+        "minimum_ms": 1.105420000385493,
+        "p90_ms": 1.2393335928209126,
+        "samples_ms": [
+          1.3088519917801023,
+          1.1350559943821281,
+          1.105420000385493,
+          1.113375008571893,
+          1.1200570152141154
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 2097152,
+        "summary_bytes": 65544,
+        "index_build_key_scalars": 524288,
+        "index_build_value_scalars": 524288
+      },
+      "seed_values": 128,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 393216,
+          "value_scalars": 262144,
+          "selected_keys": 4096,
+          "fully_scored_keys": 4096,
+          "key_read_bytes": 786432,
+          "value_read_bytes": 524288,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 6,
+          "tail_item_evaluations": 41088,
+          "tail_reduction_slots": 49152,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 49152,
+          "sort_items": 49152,
+          "tail_levels": 4096,
+          "score_roundoff_allowance": 0.00920414924621582,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 393216,
+          "value_scalars": 262144,
+          "selected_keys": 4096,
+          "fully_scored_keys": 4096,
+          "key_read_bytes": 786432,
+          "value_read_bytes": 524288,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 6,
+          "tail_item_evaluations": 41088,
+          "tail_reduction_slots": 49152,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 49152,
+          "sort_items": 49152,
+          "tail_levels": 4096,
+          "score_roundoff_allowance": 0.007167816162109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 10.475672024767846
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 8192,
+      "coordinates": 32,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.12140189040643652,
+          "actual_output_l2": 5.806926047924513e-07,
+          "restricted_output_numerical_l2": 5.806926047924513e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 8056,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 8192,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.003887189416047523,
+          "dense_fp32_output_l2": 4.863030637649257e-07
+        },
+        {
+          "mass_upper": 0.0,
+          "actual_omitted_mass": 0.0,
+          "certified": true,
+          "output_error_upper": 0.09602577269122216,
+          "actual_output_l2": 1.194744965544197e-07,
+          "restricted_output_numerical_l2": 1.194744965544197e-07,
+          "actual_supported_kl": 0.0,
+          "kl_upper": 0.0,
+          "kl_upper_from_mass": 0.0,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 8192,
+          "value_fraction": 1.0,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002536394659640697,
+          "dense_fp32_output_l2": 1.6186006071090676e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 11.280425998847932,
+        "minimum_ms": 10.802917997352779,
+        "p90_ms": 11.896645807428285,
+        "samples_ms": [
+          11.477988009573892,
+          11.280425998847932,
+          11.209362011868507,
+          12.175751005997881,
+          10.802917997352779
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.39475300582125783,
+        "minimum_ms": 0.3719200030900538,
+        "p90_ms": 0.3980466048233211,
+        "samples_ms": [
+          0.39475300582125783,
+          0.3719200030900538,
+          0.3988700045738369
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.1018719922285527,
+        "minimum_ms": 0.08929800242185593,
+        "p90_ms": 0.12142818886786699,
+        "samples_ms": [
+          0.13134698383510113,
+          0.08929800242185593,
+          0.10654999641701579,
+          0.1018719922285527,
+          0.09799498366191983
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 1.1200570152141154,
+        "minimum_ms": 1.105420000385493,
+        "p90_ms": 1.2393335928209126,
+        "samples_ms": [
+          1.3088519917801023,
+          1.1350559943821281,
+          1.105420000385493,
+          1.113375008571893,
+          1.1200570152141154
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 2097152,
+        "summary_bytes": 65544,
+        "index_build_key_scalars": 524288,
+        "index_build_value_scalars": 524288
+      },
+      "seed_values": 128,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 524288,
+          "value_scalars": 524288,
+          "selected_keys": 8192,
+          "fully_scored_keys": 8192,
+          "key_read_bytes": 1048576,
+          "value_read_bytes": 1048576,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 7,
+          "tail_item_evaluations": 41088,
+          "tail_reduction_slots": 57344,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 57344,
+          "sort_items": 57344,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.00920414924621582,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 524288,
+          "value_scalars": 524288,
+          "selected_keys": 8192,
+          "fully_scored_keys": 8192,
+          "key_read_bytes": 1048576,
+          "value_read_bytes": 1048576,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 7,
+          "tail_item_evaluations": 41088,
+          "tail_reduction_slots": 57344,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 57344,
+          "sort_items": 57344,
+          "tail_levels": 0,
+          "score_roundoff_allowance": 0.007167816162109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 11.67517900466919
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 8192,
+      "coordinates": 64,
+      "eta": 0.1,
+      "heads": [
+        {
+          "mass_upper": 0.09614787032942973,
+          "actual_omitted_mass": 0.09496395311183653,
+          "certified": true,
+          "output_error_upper": 1.3173042403658402,
+          "actual_output_l2": 0.14952449364901713,
+          "restricted_output_numerical_l2": 2.795294056564995e-07,
+          "actual_supported_kl": 0.09978050525978656,
+          "kl_upper": 0.10108950534280679,
+          "kl_upper_from_mass": 0.1010895053428068,
+          "top1_id": 8056,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 512,
+          "value_fraction": 0.0625,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.003887189416047523,
+          "dense_fp32_output_l2": 4.863030637649257e-07
+        },
+        {
+          "mass_upper": 0.08853911437287394,
+          "actual_omitted_mass": 0.08772432098862895,
+          "certified": true,
+          "output_error_upper": 1.1993712942382422,
+          "actual_output_l2": 0.08526446446928058,
+          "restricted_output_numerical_l2": 9.492610935494362e-08,
+          "actual_supported_kl": 0.09181305496735326,
+          "kl_upper": 0.0927065978772841,
+          "kl_upper_from_mass": 0.09270659787728411,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 1024,
+          "value_fraction": 0.125,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002536394659640697,
+          "dense_fp32_output_l2": 1.6186006071090676e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 6.430759007344022,
+        "minimum_ms": 5.937963025644422,
+        "p90_ms": 6.573620991548523,
+        "samples_ms": [
+          6.5747709886636585,
+          6.058730999939144,
+          6.430759007344022,
+          5.937963025644422,
+          6.5718959958758205
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.39475300582125783,
+        "minimum_ms": 0.3719200030900538,
+        "p90_ms": 0.3980466048233211,
+        "samples_ms": [
+          0.39475300582125783,
+          0.3719200030900538,
+          0.3988700045738369
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.1018719922285527,
+        "minimum_ms": 0.08929800242185593,
+        "p90_ms": 0.12142818886786699,
+        "samples_ms": [
+          0.13134698383510113,
+          0.08929800242185593,
+          0.10654999641701579,
+          0.1018719922285527,
+          0.09799498366191983
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 1.1200570152141154,
+        "minimum_ms": 1.105420000385493,
+        "p90_ms": 1.2393335928209126,
+        "samples_ms": [
+          1.3088519917801023,
+          1.1350559943821281,
+          1.105420000385493,
+          1.113375008571893,
+          1.1200570152141154
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 2097152,
+        "summary_bytes": 65544,
+        "index_build_key_scalars": 524288,
+        "index_build_value_scalars": 524288
+      },
+      "seed_values": 128,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 524288,
+          "value_scalars": 32768,
+          "selected_keys": 512,
+          "fully_scored_keys": 8192,
+          "key_read_bytes": 1048576,
+          "value_read_bytes": 65536,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 3,
+          "tail_item_evaluations": 23680,
+          "tail_reduction_slots": 24576,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 24576,
+          "sort_items": 24576,
+          "tail_levels": 7680,
+          "score_roundoff_allowance": 0.009022712707519531,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 524288,
+          "value_scalars": 65536,
+          "selected_keys": 1024,
+          "fully_scored_keys": 8192,
+          "key_read_bytes": 1048576,
+          "value_read_bytes": 131072,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 4,
+          "tail_item_evaluations": 30848,
+          "tail_reduction_slots": 32768,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 32768,
+          "sort_items": 32768,
+          "tail_levels": 7168,
+          "score_roundoff_allowance": 0.007167816162109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 6.82551201316528
+    },
+    {
+      "article": "article_0.npz",
+      "layer": 6,
+      "kv_head": 0,
+      "prefix": 8192,
+      "coordinates": 64,
+      "eta": 0.01,
+      "heads": [
+        {
+          "mass_upper": 0.0034275680050870365,
+          "actual_omitted_mass": 0.003383574869536001,
+          "certified": true,
+          "output_error_upper": 0.16411512325270133,
+          "actual_output_l2": 0.006923458627375482,
+          "restricted_output_numerical_l2": 3.0675830663864137e-07,
+          "actual_supported_kl": 0.003389312104215933,
+          "kl_upper": 0.003433455573512292,
+          "kl_upper_from_mass": 0.003433455573512292,
+          "top1_id": 8056,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4096,
+          "value_fraction": 0.5,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 0,
+          "dense_native_output_l2": 0.003887189416047523,
+          "dense_fp32_output_l2": 4.863030637649257e-07
+        },
+        {
+          "mass_upper": 0.00922501968846585,
+          "actual_omitted_mass": 0.009134598656571947,
+          "certified": true,
+          "output_error_upper": 0.21098495464764647,
+          "actual_output_l2": 0.011621831298141476,
+          "restricted_output_numerical_l2": 8.139784188520464e-08,
+          "actual_supported_kl": 0.009176574922648412,
+          "kl_upper": 0.009267833692699455,
+          "kl_upper_from_mass": 0.009267833692699456,
+          "top1_id": 0,
+          "top1_coverage": 1.0,
+          "top16_coverage": 1.0,
+          "values_read": 4096,
+          "value_fraction": 0.5,
+          "audit": {
+            "interval_deficit": 0.0,
+            "mass_deficit": 0.0,
+            "kl_deficit": 0.0,
+            "output_deficit": 0.0,
+            "false_stop": false
+          },
+          "query_head": 3,
+          "dense_native_output_l2": 0.002536394659640697,
+          "dense_fp32_output_l2": 1.6186006071090676e-07
+        }
+      ],
+      "query_timing": {
+        "median_ms": 10.306935000699013,
+        "minimum_ms": 9.313444985309616,
+        "p90_ms": 10.576397803379223,
+        "samples_ms": [
+          9.435454005142674,
+          10.687631001928821,
+          9.313444985309616,
+          10.409548005554825,
+          10.306935000699013
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_build_timing": {
+        "median_ms": 0.39475300582125783,
+        "minimum_ms": 0.3719200030900538,
+        "p90_ms": 0.3980466048233211,
+        "samples_ms": [
+          0.39475300582125783,
+          0.3719200030900538,
+          0.3988700045738369
+        ],
+        "warmup_calls": 1,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_native_timing": {
+        "median_ms": 0.1018719922285527,
+        "minimum_ms": 0.08929800242185593,
+        "p90_ms": 0.12142818886786699,
+        "samples_ms": [
+          0.13134698383510113,
+          0.08929800242185593,
+          0.10654999641701579,
+          0.1018719922285527,
+          0.09799498366191983
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "dense_fp32_timing": {
+        "median_ms": 1.1200570152141154,
+        "minimum_ms": 1.105420000385493,
+        "p90_ms": 1.2393335928209126,
+        "samples_ms": [
+          1.3088519917801023,
+          1.1350559943821281,
+          1.105420000385493,
+          1.113375008571893,
+          1.1200570152141154
+        ],
+        "warmup_calls": 2,
+        "scope": "synchronized wall time; includes host control, launches and device work"
+      },
+      "index_storage": {
+        "archive_bytes": 2097152,
+        "summary_bytes": 65544,
+        "index_build_key_scalars": 524288,
+        "index_build_value_scalars": 524288
+      },
+      "seed_values": 128,
+      "tail_mode": "unquantized per-key upper-cap logsumexp (not the CPU 16-band profile)",
+      "floating_point_status": "heuristically guarded FP32; dense-oracle verification is not a rounding proof",
+      "work": [
+        {
+          "key_coordinate_scalars": 524288,
+          "value_scalars": 262144,
+          "selected_keys": 4096,
+          "fully_scored_keys": 8192,
+          "key_read_bytes": 1048576,
+          "value_read_bytes": 524288,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 6,
+          "tail_item_evaluations": 41088,
+          "tail_reduction_slots": 49152,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 49152,
+          "sort_items": 49152,
+          "tail_levels": 4096,
+          "score_roundoff_allowance": 0.00920414924621582,
+          "output_roundoff_allowance": 0.006702789083892239
+        },
+        {
+          "key_coordinate_scalars": 524288,
+          "value_scalars": 262144,
+          "selected_keys": 4096,
+          "fully_scored_keys": 8192,
+          "key_read_bytes": 1048576,
+          "value_read_bytes": 524288,
+          "dense_KV_read_bytes": 2097152,
+          "bound_evaluations": 8192,
+          "summary_scalars_read": 16384,
+          "stages": 6,
+          "tail_item_evaluations": 41088,
+          "tail_reduction_slots": 49152,
+          "tail_preprocessing_slots": 0,
+          "tail_suffix_lookups": 0,
+          "retained_mass_reduction_slots": 49152,
+          "sort_items": 49152,
+          "tail_levels": 4096,
+          "score_roundoff_allowance": 0.007167816162109375,
+          "output_roundoff_allowance": 0.006702789083892239
+        }
+      ],
+      "query_plus_build_ms": 10.701688006520271
+    }
+  ],
+  "summary": {
+    "r32/eta0.1": {
+      "head_queries": 8,
+      "group_queries": 4,
+      "certified_fraction": 1.0,
+      "mean_value_fraction": 0.6466421020445459,
+      "mean_mass_upper": 0.035478200692525996,
+      "mean_actual_omitted_mass": 0.006306156439380221,
+      "mean_output_l2": 0.00941651541108138,
+      "mean_output_error_upper": 0.5415642948202228,
+      "full_value_read_fraction": 0.125,
+      "top1_index0_fraction": 0.875,
+      "median_sparse_ms": 9.867462009424344,
+      "median_dense_native_ms": 0.09761849651113153,
+      "median_dense_fp32_ms": 0.8736239979043603,
+      "median_paired_slowdown_vs_native": 104.66092118207405,
+      "sparse_faster_fraction": 0.0,
+      "mean_requested_KV_byte_fraction": 0.7349815765334095,
+      "median_query_plus_build_ms": 10.26404851290863,
+      "mean_adaptive_stages": 5.625
+    },
+    "r32/eta0.01": {
+      "head_queries": 8,
+      "group_queries": 4,
+      "certified_fraction": 1.0,
+      "mean_value_fraction": 0.9696997436836323,
+      "mean_mass_upper": 0.0007822495271395211,
+      "mean_actual_omitted_mass": 0.00011852112194528416,
+      "mean_output_l2": 0.00022406015052678428,
+      "mean_output_error_upper": 0.11062192450966461,
+      "full_value_read_fraction": 0.75,
+      "top1_index0_fraction": 0.875,
+      "median_sparse_ms": 10.810531995957717,
+      "median_dense_native_ms": 0.09761849651113153,
+      "median_dense_fp32_ms": 0.8736239979043603,
+      "median_paired_slowdown_vs_native": 111.59981756584295,
+      "sparse_faster_fraction": 0.0,
+      "mean_requested_KV_byte_fraction": 0.9772748077627242,
+      "median_query_plus_build_ms": 11.351439999998547,
+      "mean_adaptive_stages": 6.5
+    },
+    "r64/eta0.1": {
+      "head_queries": 8,
+      "group_queries": 4,
+      "certified_fraction": 1.0,
+      "mean_value_fraction": 0.14279200638948472,
+      "mean_mass_upper": 0.08310742217357146,
+      "mean_actual_omitted_mass": 0.08229115602967665,
+      "mean_output_l2": 0.10210591044310777,
+      "mean_output_error_upper": 1.1338447915552692,
+      "full_value_read_fraction": 0.0,
+      "top1_index0_fraction": 0.875,
+      "median_sparse_ms": 6.140698998933658,
+      "median_dense_native_ms": 0.09761849651113153,
+      "median_dense_fp32_ms": 0.8736239979043603,
+      "median_paired_slowdown_vs_native": 69.46517168647462,
+      "sparse_faster_fraction": 0.0,
+      "mean_requested_KV_byte_fraction": 0.5713960031947424,
+      "median_query_plus_build_ms": 6.679773505311459,
+      "mean_adaptive_stages": 3.25
+    },
+    "r64/eta0.01": {
+      "head_queries": 8,
+      "group_queries": 4,
+      "certified_fraction": 1.0,
+      "mean_value_fraction": 0.6781285555471088,
+      "mean_mass_upper": 0.0041285319401675406,
+      "mean_actual_omitted_mass": 0.0040871748267529056,
+      "mean_output_l2": 0.005965643525018592,
+      "mean_output_error_upper": 0.15089496336263855,
+      "full_value_read_fraction": 0.125,
+      "top1_index0_fraction": 0.875,
+      "median_sparse_ms": 9.674303495557979,
+      "median_dense_native_ms": 0.09761849651113153,
+      "median_dense_fp32_ms": 0.8736239979043603,
+      "median_paired_slowdown_vs_native": 100.22727452985256,
+      "sparse_faster_fraction": 0.0,
+      "mean_requested_KV_byte_fraction": 0.8390642777735544,
+      "median_query_plus_build_ms": 10.215211499598809,
+      "mean_adaptive_stages": 5.75
+    }
+  },
+  "audit": {
+    "interval_deficit": 0.0,
+    "mass_deficit": 0.0,
+    "kl_deficit": 0.0,
+    "output_deficit": 0.0,
+    "false_stop": false,
+    "violations_above_1e_6": 0
+  },
+  "status": "passed"
+}

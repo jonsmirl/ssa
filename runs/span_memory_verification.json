@@ -1,0 +1,74 @@
+{
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "scope": "CPU cached-head storage/attention diagnostic; GPU used only by existing full-suite regression tests.",
+  "implementation_status": "New uncommitted working-tree files; SHA256 identifies measured source.",
+  "commands": {
+    "focused": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests/test_span_memory.py ssa/tests/test_span_memory_experiment.py -q",
+    "experiment": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.span_memory_experiment",
+    "full_suite": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q"
+  },
+  "test_output": {
+    "focused": "46 passed in 0.18s",
+    "full_suite": "449 passed, 14 warnings in 40.93s",
+    "warnings": "Existing torch.jit.script_method deprecation warnings from test_batched_tail_tree.py",
+    "exit_codes": [
+      0,
+      0
+    ]
+  },
+  "coverage": [
+    "Realizable joint contraction",
+    "Single-key interference: norm sum 2 to 2.5, squared sum 2 to 4.25",
+    "Inconsistent-target residual floor",
+    "Off-span invariance and unseen-target failure",
+    "Exact modular no-linear-map witness; negative result inconclusive",
+    "Prefix-only feature fitting",
+    "Future-data isolation",
+    "Equal representation-state caps and exact selected reads",
+    "Full-selection dense recovery",
+    "Measurement-independent persistent update grid",
+    "Repeated temporary update reads charged",
+    "Unselected NaNs ignored; selected NaNs rejected",
+    "Sparse local softmax remains stable when dense-selected mass underflows"
+  ],
+  "experiment": {
+    "artifact": "runs/span_memory_comparison.json",
+    "status": "complete",
+    "budgets_scalars": [
+      8192,
+      16384
+    ],
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "same_queries_per_case": 16,
+    "new_fitting_variant_beats_sparse_mean_online_oracle_error": false,
+    "source_hashes_verified": 2,
+    "fixture_sha256": "5656b2725bbdb29a09c7c13c93126ac3f2cfb44ba0c32e60768ffc49fc54895a",
+    "exact_linear_obstruction": {
+      "rows": 65,
+      "key_dimension": 64,
+      "augmented_rank_mod_prime": 65,
+      "prime": 2147483647,
+      "positive": true
+    }
+  },
+  "fences": [
+    "Joint updates fit each batch, not all historically held keys.",
+    "Dense-weight attention is an oracle diagnostic, not a deployable subquadratic reader.",
+    "Frozen suffix prediction differs from causal online admission of suffix values.",
+    "Caps exclude full diagnostic archive, batch/solver workspace, and temporary evaluation copies.",
+    "All seeds reuse the same inspected document and queries; linear baselines are identical across seeds.",
+    "Results do not rule out learned features, regularization, different update schedules, nonlinear memory, or output cancellation.",
+    "No full-model CE/retrieval claim; no Kaggle run or new model forward."
+  ],
+  "source_and_artifact_sha256": {
+    "ssa/span_memory.py": "9e30fee0a58c0be87e39676121f828498581480c6fd8860db11779ad8fc922bf",
+    "ssa/span_memory_experiment.py": "3c7e5d97799a52bd1f805fcfcd07604a9b9ec8f416b7b513b21017a89f16fe1e",
+    "ssa/tests/test_span_memory.py": "72882969b27c8bd394a07c53f50a3546c96819e9f4a485808548c1c3c8b99a6d",
+    "ssa/tests/test_span_memory_experiment.py": "3059063545e8724ef0f3c1dcf11e3abd91b0020d7dc4ed5c608b8fa5d17ff6a0",
+    "runs/span_memory_comparison.json": "83957884c9ed5821c7c3527054b556e1e1f0b8648be0f097749fe72d4f073275"
+  }
+}

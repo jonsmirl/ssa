@@ -1,0 +1,42 @@
+{
+  "recorded_utc": "2026-09-10T20:56:19Z",
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "working_tree_changes": true,
+  "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q",
+  "hardware": "local RTX 4080",
+  "result": "349 passed, 14 warnings in 56.08s",
+  "exit_code": 0,
+  "skipped": 0,
+  "warning": "torch.jit.script_method is deprecated; use torch.compile or torch.export",
+  "timing_scope": "Test runtime overlaps a validation model experiment; not an isolated performance measurement.",
+  "final_suite_with_reader_diagnostic": {
+    "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q",
+    "result": "352 passed, 14 warnings in 36.49s",
+    "exit_code": 0,
+    "skipped": 0,
+    "hardware": "local RTX 4080, no simultaneous local model experiment",
+    "added_source_sha256": {
+      "ssa/tail_correction.py": "bdfdeb344a53b0e985821b12831a2e939e3812a44324de8a66c98b396d5593d5",
+      "ssa/reader_weighted_tail_diagnostic.py": "f92806a46ba3c58e2808a2bdaf03ef58270f3803ed972c8ebc21d57a859653fb",
+      "ssa/tests/test_reader_weighted_tail_diagnostic.py": "f6a89a20035d3d01d8fcc71884a3c3cacceec034f1927423ece6c7f665ca6e6b"
+    }
+  },
+  "substrate_coarse_projection_audit": {
+    "commit": "206193290e5aa1b0465d518f12625c10952b0953",
+    "independent_check": "Imported recognition and printed all 44 theorem axiom footprints with lake env lean /tmp/ssa_coarse_axiom_audit.lean",
+    "all_44_axioms": ["propext", "Classical.choice", "Quot.sound"],
+    "full_build": "Existing Substrate audit log reports success at 15178 jobs; SSA did not repeat the full build."
+  },
+  "other_checks": [
+    "18 focused fullscale runner tests passed in 0.98s",
+    "compileall for runner, notebook builder, and runner tests passed",
+    "git diff --check passed"
+  ],
+  "source_sha256_after_test": {
+    "ssa/tail_correction.py": "cee57ffb59b6e2c9bf5e680448baea277c8a17de9b46b9b92caa2d11070a4c2b",
+    "ssa/hybrid_tail_attention.py": "644c63da127f0fe2449d2c1dd39631cb0d2d6ebacd9705b83afe222c385ba9bc",
+    "ssa/fullscale_tail_runner.py": "14c72b22c1f3cf7097346b36a018266bf29f2db0527e27f195aa7af49d3a5fa8",
+    "ssa/tail_tree_router.py": "1df43ede3363fb9c754bd8d3fcaf6cc4d07ba79b2e581a91d0bd15cc2db0d795",
+    "ssa/tests/test_fullscale_tail_runner.py": "268409288393a307a58eba4bb419c178c884326981a340ef2711881c9396e65c"
+  }
+}

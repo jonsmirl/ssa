@@ -1800,8 +1800,9 @@ Output written on subquadratic_attention.pdf (52 pages).
 
 ## Trainable repair and fixed-state tail correction
 
-**Status:** a trained hard-token-tree controller works on the controlled address task, and fixed-state
-tail correction improves actual next-token CE in complete frozen Qwen. These are distinct experiments:
+**Status:** a trained hard-token-tree controller works on the controlled address task. Fixed-state tail
+correction improves short-context Qwen CE, but the full-scale run below shows degradation at 8K/32K and
+failed long-context retrieval. These are distinct experiments:
 there is no claim that a Qwen GRU discovers address repair, nor that this reproduces the user's router.
 
 ### Learned individual-token retries
@@ -1938,3 +1939,819 @@ Output written on subquadratic_attention.pdf (55 pages).
 git diff --check
 PASS
 ```
+
+## RTX 6000 full-corpus and long-context tail evaluation
+
+**Result: negative length transfer.** The saved 512-context gains improve full-corpus quality at 512/4K,
+but worsen sparse-only quality at 8K/32K. This overturns any interpretation of the small pilot as a working
+long-context correction. All runs completed; the negative result is not an OOM or failed execution gate.
+
+**Artifact:** `runs/kaggle_tail_v1/ssa_tail_fullscale.json`; exact remote source snapshots and manifest are
+in the same directory. **Notebook:** `jonsmirl/ssa-tail-fullscale-rtx6000`, version 1, private, ARC3 attached,
+internet OFF. **Hardware:** RTX PRO 6000 Blackwell Server Edition, 94.97 GiB GPU memory, 176.88 GiB visible
+host memory. Torch 2.10.0+cu128; pinned offline Transformers 5.12.1 and FAISS 1.14.1 wheels. No FAISS GPU
+search is used. Driver elapsed time is **1754.4 s (29.2 minutes)**.
+
+Protocol: unchanged frozen Qwen2.5-0.5B and 336 saved gains, all 24 layers and 14 query heads. The entire
+official WikiText-2 test stream contains **298,938 tokens**. Nonoverlapping windows reset context and
+state; each length includes the partial last window, and NLL is summed and divided by the actual number
+of predicted tokens. Window-boundary transitions are excluded. This is our stated tokenization/windowing
+protocol, not a claim of direct comparability to other published WikiText perplexities. There is no fitting
+or test-driven selection in this run; the previously inspected first test windows remain part of the full
+corpus, so this enlarges rather than replaces the holdout.
+
+| Context | Windows / scored targets | Dense CE / PPL | Sparse CE / PPL | Frozen tail CE / PPL |
+|---|---|---|---|---|
+| 512 | 584 / 298354 | 2.84114 / 17.14 | 3.56388 / 35.30 | **2.98248 / 19.74** |
+| 4096 | 73 / 298865 | 2.49299 / 12.10 | 4.30522 / 74.09 | **4.05773 / 57.84** |
+| 8192 | 37 / 298901 | 2.44504 / 11.53 | 4.35865 / 78.15 | **4.59922 / 99.41 — worse** |
+| 32768 | 10 / 298928 | 2.40206 / 11.05 | 5.20952 / 183.01 | **5.56623 / 261.45 — worse** |
+
+Tail beats sparse CE on 584/584, 62/73, 7/37, and 1/10 paired windows respectively. Token top-1 accuracy
+(not retrieval recall) follows the same reversal:
+
+| Context | Dense token accuracy | Sparse | Tail | Whole-corpus seconds: dense / sparse / tail |
+|---|---:|---:|---:|---|
+| 512 | 45.61% | 37.33% | 43.67% | 5.32 / 83.44 / 102.74 |
+| 4096 | 49.54% | 29.43% | 31.32% | 2.71 / 106.04 / 124.84 |
+| 8192 | 50.08% | 28.59% | 25.34% | 2.67 / 132.20 / 150.94 |
+| 32768 | 50.68% | 22.33% | 16.55% | 3.56 / 160.24 / 178.98 |
+
+The batched tree starts every token from a disjoint cover of **completed past blocks**. Only those nodes
+and their descendants can be searched; future-bearing summary nodes never enter the candidate forest.
+Radius caps use the existing outward guard. Fixed fanout four and beam 32 keep the tested-slot count
+conditional on logarithmic height; beam pruning is still approximate and not a mass certificate. It is a
+new batched traversal, not a promise of bitwise route equality to every earlier traversal under pruning.
+All three quality modes use the same model and causal data; sparse and tail share this routing algorithm.
+Exact attention still scores two past 64-key blocks plus the causal current block, maximum 192 keys.
+
+Tail counts/value sums now advance by query chunks, rather than materializing all prefix summaries at
+once. Vocabulary projection is also chunked, with exact target-count-weighted CE. The raw KV archive and
+hidden states still grow with sequence length; this is not a fixed-total-memory transformer. Whole-corpus
+peak allocations are at most 1.63, 1.69, 1.75, and 2.21 GB at the four lengths. This reference remains
+substantially slower than dense attention on the RTX 6000; no speed win is inferred from the bounded
+selected set.
+
+### Long-context retrieval and execution
+
+Nine fixed direct-word semantic probes use depths 0.1, 0.5, and 0.9 at each length. They all query the
+same `walnut` fact against four candidates; this is a limited mechanism test, not a broad retrieval suite.
+
+| Context | Dense correct | Sparse correct | Tail correct |
+|---|---:|---:|---:|
+| 8192 | 3/3 | 2/3 | 1/3 |
+| 32768 | 3/3 | 2/3 | 0/3 |
+| 131072 | 1/3 | 0/3 | 0/3 |
+| Total | **7/9** | **4/9** | **1/9** |
+
+Every mode executes the complete transformer at **131,072 tokens**. Tail time is 91.0–91.1 s per 128K
+probe, sparse 82.9–83.0 s, dense 2.6–2.8 s; peak allocation is **5.807 GB**. The attached model config has
+`max_position_embeddings=32768`, default RoPE, theta 1e6. No YaRN or positional rescaling is applied.
+Thus 128K failure includes base-model positional extrapolation and is not solely a router/state result;
+the tail's deterioration is already present within the configured 8K/32K range. These tests do not update
+or repeat the earlier 10M capacity claim, which used a different execution/router/YaRN configuration.
+
+### Reproduction and verification
+
+```bash
+python kaggle_tail/build_notebook.py
+kaggle kernels push -p kaggle_tail -t 10800
+kaggle kernels status jonsmirl/ssa-tail-fullscale-rtx6000
+python kaggle_tail/watch.py
+kaggle kernels output jonsmirl/ssa-tail-fullscale-rtx6000 -p runs/kaggle_tail_v1
+```
+
+Base commit is `35c2c0b69338d67e9301da798ea1d04361b6d6a2`; the manifest records the exact uncommitted
+test-run source hashes. All twelve source/input SHA256 checks match the downloaded artifacts. Input token
+bundles and generated notebooks remain local/private rebuildable artifacts, not public corpus copies.
+The saved gain hash matches the committed small-run gain artifact; no gains were changed.
+
+Remote gate: dense fallback max last-logit delta **0.25** (bf16 tolerance 0.5), CE delta **0.001509**
+(tolerance 0.02); chunked projection versus Hugging Face CE delta **3.83e-8** (tolerance 1e-5). All passed.
+The tolerances validate approximate bf16 numerical wiring, not mathematical dense identity or an IEEE
+rounding proof. CPU tests additionally compare the batched prefix forest to exhaustive routing, test
+future isolation at a pruned beam, deterministic ties, and chunk invariance.
+
+```text
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest ssa/tests -q
+317 passed, 14 warnings in 38.91s  (CUDA enabled)
+
+cd paper && latexmk -pdf -interaction=nonstopmode -halt-on-error subquadratic_attention.tex
+Output written on subquadratic_attention.pdf (56 pages).
+```
+
+What remains unproved and unmeasured: reliable long-context tail approximation, a training objective that
+finds it, preservation of retrieval when correction is enabled, production throughput, and quality on the
+user's high-recall router/checkpoint. No deterministic certificate or Substrate theorem predicted this
+learned approximation would generalize; the measured failure does not contradict the conditional math.
+
+## Mean-consistent tail and bounded-influence revision
+
+**Development validation, not a new holdout.** Two official validation windows at each length compare
+seven fixed candidates, with the same causal tree, exact key budget, base model, and saved gains.
+Lengths overlap in token coverage; the validation split has prior development use. The only proposed
+influence cap is 0.25; no cap grid or gain refitting is used here.
+
+| Context | Dense PPL | Sparse | Old tail | Actual means, zero gains | Actual means, clipped saved gains | Prototype + 25% cap | Actual means + 25% cap |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 512 | 8.70 | 16.71 | 10.63 | 11.88 | 11.93 | 12.14 | 13.16 |
+| 8192 | 8.45 | 60.69 | 74.47 | 53.79 | 59.07 | 47.36 | 53.46 |
+| 32768 | 10.28 | 180.91 | 246.34 | 210.30 | 214.19 | 145.03 | 169.90 |
+
+The actual-mean estimator obeys a real-arithmetic Jensen **lower** mass inequality but still worsens
+32K CE versus sparse-only. The prototype with capped influence wins mean validation CE among the four
+revisions and improves sparse-only CE at each length; it sacrifices some of the old tail's 512-context
+benefit. This is not recovery of dense quality, a mass upper certificate, or a retrieval result.
+
+`runs/tail_revision_selection.json` freezes that configuration before the version-2 regression test.
+The rule is recorded after examining validation: require improvement over sparse at every length,
+then minimize the unweighted mean of the three context CEs. Only the two capped variants qualify.
+The full test corpus and probes were already inspected in version 1, so version 2 is not a pristine
+holdout. No version-2 result is used to select the correction.
+
+### Why this change, and what the math does not promise
+
+The assignment prototypes are selected from the first 64 keys, not the actual means of the keys assigned
+to them. On the previously inspected Qwen layer-18/KV-head-0 cache, a 32-query float64 diagnostic finds
+that the prototype estimate overstates actual omitted mass on 29 queries: median ratio 30.17, maximum
+102.78. Replacing it with actual omitted-cell means gives median ratio 0.0543 and maximum 0.2022,
+with no overestimate. These one-head data do not prove the cause of the whole-model failure.
+
+Actual means require counts, key sums, and value sums, with selected contributions subtracted. For a
+partition into nonempty cells, uniform-within-cell weights proportional to the exponential of each
+cell's mean logit uniquely minimize reverse KL to dense softmax within that coarse family. The exact
+KL gap is the log partition ratio. Substrate commit
+`206193290e5aa1b0465d518f12625c10952b0953` now supplies the exact projection, unique optimum, refinement,
+selected-key summaries, gain accounting, and conditional output/movement theorems. The public proof
+specification is included at `docs/coarse_read_projection.md`; the original build request is retained
+at `docs/substrate_coarse_tail_request.md` with its completion status.
+Neither reverse-KL optimality nor partition refinement guarantees lower output error or model CE.
+
+The selected revision instead retains the prototype estimate and limits its normalized mixture share
+to 0.25. This bounds movement from the selected output, not error relative to dense output. A correction
+can still point in the wrong direction. The numerical audit replaced subtraction of a large log-mass
+offset with a directly bounded scalar mixture, fixing extreme-logit cancellation and empty-tail NaN
+gradients. Validation used the earlier, algebraically equivalent cap arithmetic; deployment uses the
+stable implementation. Bitwise validation/deployment equivalence is not asserted.
+
+### Artifacts and verification
+
+```bash
+python -m ssa.tail_mass_diagnostic --cache /tmp/ssa_qwen_qkv_8192.npz --out runs/tail_mass_diagnostic.json
+python -m ssa.tail_revision_experiment
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q
+```
+
+Artifacts: `runs/tail_mass_diagnostic.json`, `runs/tail_revision_validation.json`,
+`runs/tail_revision_selection.json`, and `runs/tail_revision_verification.json`. The base SHA is
+`35c2c0b69338d67e9301da798ea1d04361b6d6a2`; source and input hashes identify the uncommitted experiment.
+The CUDA suite reports **349 passed, 14 warnings in 56.08 s**, with no skips. Suite timing overlaps
+the validation run and is not an isolated performance measurement.
+
+### Reader-weighted training objective (training not run)
+
+Substrate's `ReadWeightedError` distinguishes raw residual norm from error seen by a fixed linear
+reader. For Qwen's frozen attention output projection, an exact local target is
+`||W_O (o_dense - o_corrected)||^2`, with all heads concatenated before applying `W_O`. Separate
+per-head MSE misses its cross-head terms. This measures immediate residual-stream discrepancy;
+later normalization, MLPs, and CE remain nonlinear and are not covered by that identity.
+
+Writing `e=o_dense-o_S`, `d=u-o_S`, a training-only shared scalar oracle gate is
+`clip(dot(W_O e, W_O d)/||W_O d||^2, 0, rho)`, or zero for a zero denominator. A future learned gate
+must use only inference-available summaries, with dense errors restricted to training labels. Multiple
+independent head gates require a coupled box-constrained quadratic, not independent scalar optima.
+Gate training has not been run. A bounded oracle diagnostic has now tested its local headroom; see below.
+Existing transported fitting budgets require assumptions such as
+fixed targets, independent convex updates, and exact compatible transport; they do not establish a
+guarantee for shared-network SGD or downstream CE.
+
+### Reader-weighted oracle diagnostic
+
+`python -m ssa.reader_weighted_tail_diagnostic` captures all fourteen query heads and two KV heads at
+layer index 18 on the first 8,192 official-validation tokens. Sparse and capped outputs share the same
+dense hidden inputs and causal routes. It evaluates 8,000 queries after the trivial fully selected prefix.
+The oracle chooses one scalar in `[0,1]` multiplying the already capped multi-head correction; it cannot
+amplify the correction beyond the cap. All heads are concatenated before applying the actual frozen
+output projection. This is not an end-to-end CE evaluation or an inference-time mechanism.
+
+| Output | Mean squared projected L2 error |
+|---|---:|
+| Sparse | 33.66724 |
+| Prototype + cap | 24.55520 |
+| Raw-error oracle suppression | 24.50256 |
+| Reader-weighted oracle suppression | 24.48491 |
+| Joint 14-head feasible oracle suppression | 22.97759 |
+
+The cap improves this local error by 27.07%, but even the dense-informed reader-weighted oracle adds only
+**0.286%** improvement. It selects the full capped correction on 88.5% of queries. Cross-head terms
+contribute roughly 32.3% of capped projected error, so ignoring them changes the objective substantially;
+nevertheless, this particular scalar suppression problem has little remaining headroom. This does not
+exclude gains from a different correction direction, richer state, new reads, amplification, or joint
+multi-layer training. The extension to fourteen independently controlled head gates, solved jointly
+through the full output-projection Gram matrix, reduces projected error by **6.42% versus the cap**.
+Raw error increases versus the shared reader-weighted oracle. Thus the small shared-scalar gain must
+not be presented as a limit on independent head gating. The feasible numerical box solution takes
+30 coordinate sweeps; maximum projected KKT residual is `8.73e-6`, and maximum first-order gap is
+`4.70e-6`. These are floating-point diagnostics, not an outward-rounded certificate of an exact optimum.
+Dense targets remain oracle inputs, not available at inference; no gate has been trained on these labels.
+Artifact: `runs/reader_weighted_tail_diagnostic.json`, with input/source hashes;
+three focused oracle-optimality and cross-head tests pass. No new Substrate theorem is needed to run this
+diagnostic: the existing fixed-reader algebra and scalar quadratic identity suffice.
+The final CUDA-enabled suite including this diagnostic reports **352 passed, 14 warnings in 36.49 s**,
+with no skips and no concurrent local model run; its record is in `runs/tail_revision_verification.json`.
+
+## Capped tail: full-corpus improvement does not preserve retrieval
+
+**Measured status:** the validation-selected 0.25 influence limit improves full-corpus perplexity over
+sparse-only at every tested length, but strict retrieval deteriorates from 4/9 to 2/9. This is a useful
+CE improvement, not a retrieval-safe solution. No further setting was selected from these test results.
+
+Artifact: `runs/kaggle_tail_v2/ssa_tail_fullscale.json`. Private notebook
+`jonsmirl/ssa-tail-fullscale-rtx6000`, version 2, completed in **1750.94 s (29.18 minutes)** on the same
+94.97-GiB RTX PRO 6000. ARC3 was attached, internet OFF, and the same two pinned public wheels were
+installed with `--no-index --no-deps`. All twelve corpus arms and twenty-seven probe arms completed.
+The input stream, saved gains, model, selected-key budget, and causal router match version 1. The tail
+remains the prototype estimator, not the Jensen estimator; only its applied mixture is capped at 0.25.
+
+| Context | Targets | Dense PPL | Sparse PPL | Original tail PPL | Capped tail CE / PPL | Capped token top-1 |
+|---|---:|---:|---:|---:|---|---:|
+| 512 | 298354 | 17.14 | 35.30 | 19.74 | 3.15383 / **23.43** | 41.52% |
+| 4096 | 298865 | 12.10 | 74.09 | 57.84 | 3.92787 / **50.80** | 32.39% |
+| 8192 | 298901 | 11.53 | 78.15 | 99.41 | 4.28877 / **72.88** | 29.03% |
+| 32768 | 298928 | 11.05 | 183.01 | 261.45 | 5.04194 / **154.77** | 22.66% |
+
+The 512-context cap loses some original-tail benefit. The 8K improvement over sparse is much smaller
+than on development validation. Token accuracy is not retrieval recall. Capped whole-corpus execution
+takes 103.98, 126.19, 151.95, and 179.90 seconds at the four lengths, versus dense 5.38, 2.72, 2.68,
+and 3.56 seconds. No speedup is claimed. Peak allocation at 128K is 5.807 GB; the new rule adds neither
+selected keys nor cell state. The KV archive still grows with context.
+Paired capped CE beats sparse on 584/584, 73/73, 23/37, and 9/10 windows; it beats the old tail on
+3/584, 56/73, 32/37, and 9/10. The mean gain is not an every-window guarantee.
+
+### Strict retrieval, including the tie
+
+| Context | Dense strict wins | Sparse strict wins | Original tail strict wins | Capped strict wins | Capped gold ties |
+|---|---:|---:|---:|---:|---:|
+| 8192 | 3/3 | 2/3 | 1/3 | 2/3 | 1 |
+| 32768 | 3/3 | 2/3 | 0/3 | 0/3 | 0 |
+| 131072 | 1/3 | 0/3 | 0/3 | 0/3 | 0 |
+| Total | **7/9** | **4/9** | **1/9** | **2/9** | **1** |
+
+At 8192/depth 0.5, capped `walnut` and `lantern` both score **4.15625**. The existing candidate-order
+rule reports this as correct, giving 3/9 ordered successes; it is not a strict win. Version 1 has no
+gold ties in any probe arm. At 32K, corpus CE improves while all three capped retrieval probes fail.
+At 128K, native unscaled RoPE exceeds the model's configured 32K range, but that cannot explain the
+already observed within-range 32K regression. The repeated probes are narrow mechanism tests, not a
+broad retrieval benchmark or the user's separate high-recall checkpoint.
+
+### Reproduction, provenance, and mathematical boundary
+
+```bash
+python kaggle_tail/build_notebook.py --tail-mode prototype --gain-mode saved \
+  --max-tail-share 0.25 --selection runs/tail_revision_selection.json
+kaggle kernels push -p kaggle_tail -t 10800
+python kaggle_tail/watch.py
+kaggle kernels output jonsmirl/ssa-tail-fullscale-rtx6000 -p runs/kaggle_tail_v2
+```
+
+The selection artifact is embedded in the run. Base commit:
+`35c2c0b69338d67e9301da798ea1d04361b6d6a2`; the manifest identifies the exact uncommitted deployment
+sources and inputs. The downloaded source snapshot is the reproduction target; subsequent public
+docstring clarification of weak versus strict improvement does not change its numerical algorithm.
+All fourteen manifest hashes verify; tokens and gains are byte-identical to version 1. Dense/sparse
+per-window losses, accuracies, layouts, and baseline probe records reproduce version 1 exactly.
+`python runs/kaggle_tail_v2/audit.py` regenerates `comparison.json`, including paired-window and strict
+tie-aware retrieval summaries.
+Dense fallback and chunked-loss gates pass with the same measured deltas as version 1. This run is a
+frozen regression comparison on a previously inspected test set, not a pristine holdout.
+
+Substrate `206193290` establishes the actual-mean projection and conditional local movement/readout
+theorems. It does not make the prototype cap variationally optimal or guarantee its CE, retrieval, or
+CUDA behavior. The route-aware follow-up is now formalized at
+`68968fc7aae0a024172288f090f25c4d61451324`: exact restricted-read overlap, full executed-trace stability,
+signed nonlinear propagation with shared state radii, and strict prediction margins on a supplied
+candidate set. Its public specification is `docs/routed_correction_certificate.md`; the original
+request is retained at `docs/substrate_routed_perturbation_request.md` with completion status.
+This is a conditional theorem, not a certificate already evaluated for these Qwen runs. Uniform
+derivative/guard bounds, a valid full-state model, final readout identification, and all runtime costs
+still need to be supplied by SSA. It preserves a reference prediction, not correctness or CE, and
+does not turn the observed retrieval failures into successes.
+
+## Routed-correction implementation and computed-endpoint fallback
+
+Two implementations answer different questions. `ssa/routed_correction_certificate.py` checks the
+conditional nonlinear path certificate from Substrate `68968fc7a`; its concrete provider is a complete
+small CPU transformer. `ssa/endpoint_acceptance.py` instead compares two computed model outputs
+directly; the Qwen experiment uses this second policy, not uniform Qwen Taylor bounds.
+
+### Analytic-bound complete transformer reference
+
+Artifact: `runs/routed_certificate_reference.json`. The model has eight positions, width four, two
+heads, two layers, seven vocabulary entries, token/position embeddings, causal hard top-two attention,
+RMSNorm, tanh feed-forward layers, and a final normalized vocabulary projection. A correction reads
+omitted-key cell means; those scans are charged. Full-sequence states include all positions. Every
+executed insertion-sort comparison is recorded, including ties; actual-state branch replays and
+charged union reads handle route changes. Bounds are analytic uniform RMSNorm/softmax/product/tanh
+bounds, not estimates from sampled Hessians. Seeded weights scaled by 0.2 and RMS epsilon 0.5 make
+this a deliberately bound-friendly toy, not a Qwen analogue with useful certified constants.
+
+Four seeds and strengths `0,0.0001,0.01,0.25,1,4,64` give:
+
+| Check | Measured result |
+|---|---:|
+| Trials | 28 |
+| Algebraic margin passes, before endpoint veto | 18 |
+| Accepted nonzero corrections | 14 of 24 |
+| Observed prediction-changing proposals | 2, both rejected |
+| Endpoint vetoes after algebraic pass | 0 |
+| Numerical interval violations / maximum interval deficit | 0 / 0 |
+| Maximum Taylor-remainder deficit | 0 |
+| Maximum raw radius-tube deficit | 1.07553e-16 |
+| Accepted prediction violations | 0 |
+
+The raw tube deficit is within the float64 consistency tolerance, **not exactly zero**. The generic
+checker trusts supplied complete states, correct derivatives/branch evaluations, and uniform bound
+hypotheses; a provenance string is not a proof. Independent tests stress the analytic provider but do
+not prove IEEE arithmetic. Rejection often reflects loose bounds rather than a changed prediction.
+Each run charges five Jacobians with 5,120 scalar entries, five forced-branch replays, routing scans,
+guards, and read unions; per-trial counts/timing are in the artifact. This implementation has no
+subquadratic runtime claim. Its deployed result explicitly falls back to the reference on rejection.
+
+### Qwen: target-free endpoint acceptance, with both forwards charged
+
+Artifact: `runs/routed_acceptance_qwen.json`, status `complete`. Local RTX 4080, frozen cached
+Qwen2.5-0.5B in bfloat16, saved 336 gains from `runs/qwen_tail_final/results.json`; no training or
+new threshold selection. Each arm uses the existing causal batched tree, two past 64-key blocks,
+current causal block, and 16 prototype cells per KV head. The candidate has the previously selected
+25% mixture cap. Both independent 24-layer prefills run with `use_cache=False`.
+
+The gate sees no target labels: use the candidate logits only if reference and candidate have the
+same unique winner; otherwise retain reference logits. Ties reject. Nonfinite candidates reject and
+nonfinite references error. Corpus decisions use all 151,936 vocabulary entries. Gold labels enter
+only subsequent scoring. Preservation of the computed reference argmax is **by construction**, not
+independent evidence of a path theorem, reference correctness, or recovery of missing information.
+
+The first two nonoverlapping complete windows from official WikiText-2 validation are used at each
+length; windows overlap across lengths, and this development split has already been inspected.
+
+| Context | Targets | Reference PPL | Candidate PPL | Accepted PPL | Accepted fraction | Reference = accepted token accuracy |
+|---|---:|---:|---:|---:|---:|---:|
+| 512 | 1,022 | 16.70847 | 12.07519 | 14.90995 | 75.8317% | 44.3249% |
+| 8,192 | 16,382 | 60.68602 | 47.52214 | 55.30998 | 54.4622% | 31.2904% |
+| 32,768 | 65,534 | 180.91186 | 144.96062 | 166.22768 | 45.2773% | 22.1564% |
+
+All 82,938 scored positions preserve reference argmaxes. The empirical CE benefit is smaller than
+the ungated candidate's; rejecting every argmax change also rejects beneficial prediction changes.
+Each length charges four full forwards for its two windows, and 8/128/512 logit projections in
+256-position chunks. Total measured corpus times are 3.83/41.97/201.85 seconds, including both arms,
+gate, and diagnostic scoring. This is not a matched latency benchmark or a speedup claim.
+
+Six fixed walnut NIAH probes use a **four-candidate** gate, not a full-vocabulary guarantee:
+
+| Context | Reference strict wins | Candidate strict wins | Accepted strict wins | Proposals accepted |
+|---|---:|---:|---:|---:|
+| 8,192 | 3/3 | 2/3 | 3/3 | 2/3 |
+| 32,768 | 3/3 | 0/3 | 3/3 | 0/3 |
+
+Depths are 0.1, 0.5, and 0.9. These are a separate same-device paired run: sparse probe scores and
+success counts differ from the prior RTX 6000 execution, so its baselines must not be reused here.
+The combined corpus/probe experiment charges 24 full model forwards and 603.56 seconds of measured
+evaluation work, with peak allocated memory 2.2653 GB. Offline local caches suffice; Kaggle was not
+needed. No new dense run was performed. The six probes are not a broad retrieval evaluation.
+
+### Reproduction and remaining work
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.routed_certificate_experiment
+python -m ssa.routed_acceptance_demo
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q
+```
+
+Both experiment artifacts record base commit `35c2c0b69338d67e9301da798ea1d04361b6d6a2` and exact
+source hashes: the new implementation is an uncommitted working-tree addition to that base, not code
+already present at the base SHA. All seven Qwen source hashes, its gain hash, and both CPU provider/core
+hashes match the measured files. Verification output is recorded in
+`runs/routed_acceptance_verification.json`.
+
+The path checker is implemented for the small transformer, but useful uniform Qwen bounds, scalable
+derivative evaluation, and verified floating-point margins remain open. The Qwen fallback is not
+dual-cache autoregressive serving and does not preserve the sampling distribution or fix wrong
+reference predictions. Once both endpoints have been computed, direct comparison avoids the extra
+path-certificate work; useful path certificates would need amortization or partial-execution savings
+not demonstrated here. Neither the small reference nor the endpoint experiment establishes cheap
+retrieval-safe tail correction, a general CE guarantee, or quality preservation at 10M context.
+
+## Shared-memory fitting: capacity, interference, and attention diagnostics
+
+`ssa/span_memory.py` and `ssa/span_memory_experiment.py` compare shared linear value decoders with
+cell summaries, motivated by Substrate `22d6b0c4c`'s held-span fitting theorem and `6d7ae4257`'s
+single-key interference witness. This tests a proposed implementation family; it does not assume
+that Qwen's values are realizable by one linear function of its keys.
+
+### Protocol and mathematical scope
+
+The input is the previously inspected layer-18/KV-0 fixture `/tmp/ssa_qwen_qkv_8192.npz`, containing
+8,192 Q/K/V rows of width 64. SHA256:
+`5656b2725bbdb29a09c7c13c93126ac3f2cfb44ba0c32e60768ffc49fc54895a`.
+Feature normalization, fixed random tanh features, and k-means centers use the first 512 keys only.
+Every value decoder sees the same first 4,096 values during fitting; no suffix value enters the
+frozen fit. There is no hyperparameter selection on the suffix.
+
+Two representations use the same update comparisons: normalized raw keys plus an intercept, and
+fixed random tanh features plus an intercept. These features are **not learned**. Joint updates are
+`W <- W + 0.5 pinv(X_batch) (V_batch-X_batch W)`, with relative SVD cutoff `1e-10`; sequential updates
+apply normalized delta steps of rate 0.5 in stream order. Batch size is 64. Joint fitting acts on
+each supplied batch, **not all historically held keys**. The full held-span theorem must not be
+claimed for this update schedule or for inconsistent target values. Full-prefix least-squares
+fits are separately labelled oracle capacity diagnostics.
+
+The frozen protocol predicts the unseen second-half values without state updates. The online
+protocol admits every intervening value before its query, so it measures causal reconstruction,
+not unseen-value generalization. Persistent update batches use a fixed grid; queries inside a
+batch fit a temporary copy which is discarded. Additional measurement queries therefore cannot
+change the future persistent state, and repeated temporary reads/solver work are charged.
+
+At each of 16 common suffix query positions, all modes select the same two past 64-key blocks by
+centroid score and the current causal block: mean 160.5 exact selected keys. Predicted values are
+replaced by exact values at selected positions. The main attention comparison supplies the **true
+dense attention weights**, isolating value approximation; it explicitly scans all visible keys
+and is not a deployable sparse reader. A separate online cell-centroid arm approximates both
+weights and values, with count/sum subtraction for selected keys. It is the cell-summary baseline
+architecture, not the calibrated 16-cell full-model tail with saved gains.
+
+### Measured negative result for the fitting variants
+
+Mean attention-output L2 error, averaged over the same 16 queries and three seeds:
+
+| Online reconstruction | 8,192-scalar cap | 16,384-scalar cap |
+|---|---:|---:|
+| Sparse exact selected attention | 2.3583 | 2.3583 |
+| Linear batch-joint, oracle weights | 36.7952 | 36.7952 |
+| Linear sequential, oracle weights | 3.6549 | 3.6549 |
+| Random-tanh batch-joint, oracle weights | 194.1890 | 6.1325 |
+| Random-tanh sequential, oracle weights | 3.2521 | 3.2815 |
+| Cell means, oracle weights | **1.9987** | **1.9760** |
+| Cell means, approximate centroid weights | 2.0924 | 2.0178 |
+
+The raw linear models are identical across seeds/budgets, not independent replications. Random-feature
+and cell seeds are 0, 1, 2; they do not produce additional independent documents or query sets.
+Oracle weights are not an output-error lower bound: weight errors can sometimes compensate value
+errors. No new fitting variant wins this comparison, so no variant was advanced to full-model CE
+or retrieval testing. These negative results were retained without a suffix-selected rate/rank sweep.
+
+Frozen suffix relative Frobenius value errors are 14.9875 for linear batch-joint, 1.2232 for linear
+sequential, 16.6179/1.7141 for tanh batch-joint, 1.0752/1.1078 for tanh sequential, and
+0.8987/0.9051 for cells at the two caps. Good fitting on the latest batch is not good retention:
+the report records old-anchor errors separately from current-batch contraction and irreducible error.
+Ill-conditioning is also exposed: seed-0 prefix batches reach retained condition numbers about
+50,988 for raw features and 115,146 for the smaller tanh representation. The exact-real span theorem
+does not assert stable pseudoinverse fitting on such data. These measurements do not exclude better
+regularization, learned features, a different fitting schedule, or useful output cancellation.
+
+### Exact obstruction and synthetic regression gates
+
+`linear_obstruction` converts stored floating-point numbers to exact dyadic rationals modulo the
+fixed prime 2,147,483,647. On the first 65 fixture positions, the matrix consisting of all 64 key
+columns and the first value column has modular rank 65. Consequently its rational determinant is
+nonzero: **no real linear key-to-value map fits even that value coordinate on those positions**.
+This checks the supplied stored numbers, not unrounded activations. The routine's failure to find
+such a minor is explicitly inconclusive; it does not certify realizability. This obstruction does
+not rule out approximate attention outputs, richer features, or nonlinear memories.
+
+The synthetic tests reproduce realizable joint contraction, off-span invariance, and the proved
+single-key interference witness: candidate residual-norm sum 2 to 2.5 while the selected squared
+error falls 1 to 0.25. The candidate squared-error sum rises 2 to 4.25; these two aggregates are
+not conflated. Tests also show inconsistent-target error floors and failure on an unseen orthogonal
+target despite exact training fit. Protocol gates cover leakage, deterministic ties, full-selection
+dense recovery, query-schedule invariance, selected NaNs, and stable sparse normalization when
+selected dense-normalized weights underflow to zero.
+
+### Resource accounting and reproduction
+
+Caps cover **representation state**, including normalization/feature parameters and value weights,
+or cell centers/counts/sums. Raw-linear state is 4,288 scalars; tanh state is 8,190/16,317 scalars
+(63/126 features); cell state is 8,127/16,383 scalars (63/127 cells). Each joint/sequential pair has
+identical features, state size and observed values. The comparison does not equate total resident
+memory or FLOPs. The full K/V diagnostic archive, materialized feature arrays, solver/batch workspace,
+temporary query copies, anchor-error checks and dense truth calculations are additional resources.
+
+Each case charges 2,568 exact query-selected values, 98,312 shared oracle key logits and dense truth
+value rows, plus 97,792 key rows scanned while rebuilding the reference routing means. Online state
+observes all 8,192 values, with extra temporary-batch processing counted separately. Cell calibration,
+assignment and repeated prediction work, update-operation estimates and SVD work proxies are also
+reported. Estimates are not allocator measurements or a runtime guarantee.
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest \
+  ssa/tests/test_span_memory.py ssa/tests/test_span_memory_experiment.py -q
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.span_memory_experiment
+```
+
+Artifact: `runs/span_memory_comparison.json`; source hashes and fixture hash are embedded. The base
+commit is `35c2c0b69338d67e9301da798ea1d04361b6d6a2`, with these new working-tree source files identified
+by hash rather than claimed present at that commit. This is a CPU float64/exact-integer diagnostic;
+Kaggle and a new model forward were unnecessary. Verification is in `runs/span_memory_verification.json`.
+The focused tests report **46 passed in 0.18 s**. The full CUDA-enabled regression suite reports
+**449 passed, 14 existing deprecation warnings in 40.93 s**. Both experiment source hashes match
+the measured files, and `git diff --check` passes.
+
+## Cell-summary minimax and persistent all-prefix ridge
+
+**Status: implemented and measured; stability improves, but useful tail recovery is not established.**
+The experiment in [`summary_recovery_experiment.py`](ssa/summary_recovery_experiment.py) consumes
+the sharp fixed-summary recovery and persistent-ridge mathematics described self-containedly in
+[`summary_recovery_experiments.md`](docs/summary_recovery_experiments.md). Its reference cores are
+[`cell_summary_minimax.py`](ssa/cell_summary_minimax.py) and
+[`persistent_ridge.py`](ssa/persistent_ridge.py). No GPU or new model forward is needed for these
+cached-head diagnostics. They do not measure perplexity, retrieval accuracy, or efficient inference.
+
+### Matched Qwen measurements
+
+The fixture is `/tmp/ssa_qwen_qkv_8192.npz`, SHA-256
+`5656b2725bbdb29a09c7c13c93126ac3f2cfb44ba0c32e60768ffc49fc54895a`: the previously inspected
+Qwen2.5-0.5B layer-18, KV-head-0 document. All modes share 16 suffix queries, the same causal
+prefixes, and exactly the same selected keys. Entries below average the same queries across
+three seeds; seeds do not constitute independent held-out documents.
+
+| Head-output mean L2 error | 8,192-scalar cap | 16,384-scalar cap |
+|---|---:|---:|
+| Sparse selected attention, locally normalized | 2.3583 | 2.3583 |
+| Persistent projected-linear ridge, online | 2.3021 | 2.1338 |
+| Persistent tanh ridge, online | 1.9266 | 1.8589 |
+| Earlier cell-value prediction, oracle weights | 1.9987 | 1.9760 |
+| Unread-mean coefficient decoder, oracle weights | 2.0023 | 1.9804 |
+| Median coefficient decoder, oracle weights | 0.9934 | 0.9822 |
+| **Selected-only oracle, true weights and zero tail** | **1.0661** | **1.0661** |
+| One global value sum, oracle median coefficient | 1.0262 | 1.0262 |
+
+The selected-only oracle is essential: it uses the *true globally normalized selected weights*,
+which already require a dense denominator here. Much of the apparent improvement over sparse
+attention is available without estimating tail values at all. Ridge does not beat that control;
+its tail estimate increases mean error. Median cell decoding improves on the selected-only and
+one-global-sum oracles modestly, but is still dense-oracle evaluation, not a deployable router.
+None of these comparisons establishes retrieval preservation.
+
+Ridge does fix the severe instability of the tested batch-update rule. At matching tanh features,
+joint-update mean errors are 964.5762/194.1890, versus persistent ridge 1.9266/1.8589; sequential
+delta controls give 3.5299/3.2521. Those controls have the same features but smaller state because
+they do not retain Gram/cross statistics. The artifact also reruns the earlier full-budget controls
+with their wider features; these two comparison classes are explicitly separate.
+
+### What the minimax diagnostic says
+
+For fixed cell sums and exact selected values, the optimal arbitrary-decoder worst-case error
+over scalar values in `[-1,1]` is the sum of unread coefficient deviations from their cell median.
+It is attained by a decoder and by an indistinguishable pair of balanced integer witnesses.
+This is a **fixed-observation, full-cube** result, not a lower bound on observed Qwen error or
+accuracy. Actual Qwen values are correlated vectors and the witnesses need not be model-realizable.
+
+| Mean scalar-cube recovery radius | 8,192 cap | 16,384 cap |
+|---|---:|---:|
+| No summary, supplied selected set: omitted mass | 0.74909 | 0.74909 |
+| One global value sum | 0.74281 | 0.74281 |
+| Geometry-cell sums: sharp optimum | 0.73655 | 0.73464 |
+| Same cell sums: unread-mean coefficient decoder | 1.28321 | 1.27573 |
+
+The geometry cells only slightly reduce the worst-case information loss at this route budget.
+Across all 96 Qwen query/seed/cap instances, radii range from 0.45205 to 0.99031; **zero** satisfy
+radius at most 0.10 or 0.01. These are absolute scalar-cube error targets, **not omitted-mass
+certificates**. The median optimum is below the mean-coefficient decoder's worst-case error,
+but neither a probability-normalized decoder nor an observed-value optimum is required by the theorem.
+
+### Fitting, validation, and resources
+
+Normalization and feature bases use the first 512 keys. Penalties `{0.01,1,100,10000}` are
+compared by frozen value MSE: fit `[0,3072)`, validate `[3072,4096)`. All twelve Qwen family/seed/cap
+fits select **100**, which remains fixed for the sum-loss objective as context grows. Suffix
+values are not used for selection. After refitting the first 4096 rows, frozen suffix relative
+Frobenius errors are 0.93645/0.94160 for projected-linear and 0.90713/0.91133 for tanh. Online
+measurements instead admit every value before its query; they are not unseen-value prediction.
+
+The state cap includes normalization/basis, Gram, cross statistics, cached decoder, count and
+penalty. Ridge uses **35/63 features and 8,045/16,193 scalar-equivalents**, rather than pretending
+that only its decoder is stored. Cell state uses 63/127 cells and 8,127/16,383 scalars. Solvers,
+reference archives, materialized feature arrays and simultaneous experimental replicas are extra.
+
+Each case charges 2,568 exact query-selected values, 98,312 shared oracle logits/dense truth
+value rows, and 97,792 key rows scanned by reference routing. Ridge admits 8,192 distinct values
+but processes 8,648 fit rows including discarded partial-query copies. Validation rereads are
+additional. Gram/cross operation estimates, factorizations, reader-gain solves, diagnostic
+least-squares fits, old-anchor checks, control SVDs, feature work, cell scans and sorts are itemized.
+These are work/storage estimates, not measured allocator peaks or equal-FLOP comparisons.
+
+Online fixed-reader gains span 0.01672–0.15270 and 0.02185–0.20630 for projected-linear at the
+two caps; tanh spans 0.01414–0.11176 and 0.01818–0.15074. No mismatch-radius or target-bias
+bound is supplied for Qwen, so these are amplification diagnostics, not output certificates.
+
+### Synthetic and numerical checks
+
+Predefined synthetic cases use 256 positions, eight-dimensional keys, four-dimensional values,
+eight queries and a 512-scalar cap. They are controls, not favorable replacements for Qwen.
+
+| Synthetic case | Sparse L2 | Selected-only oracle L2 | Median-cell L2 | Projected-linear ridge L2 | Tanh ridge L2 |
+|---|---:|---:|---:|---:|---:|
+| Realizable linear values | 1.13609 | 1.53563 | 0.88823 | 0.000314 | 0.31791 |
+| Independent values | 0.41346 | 0.20722 | 0.13945 | 0.20077 | 0.15643 |
+| Concentrated attention, independent values | 1.72320 | 1.34486 | 1.20817 | 1.34392 | 1.34093 |
+
+Across Qwen and synthetic cases there are 120 cell instances and 480 frozen/online ridge
+instances. Integer witness and state-cap violations: **zero**. Maximum primal/dual pairing
+discrepancy is **1.11e-15**; maximum signed-output identity discrepancy is **2.38e-14** rounded
+up. Maximum row-norm-scaled output-bound and universal reader-gain-bound deficits are both zero.
+The numerical audit tolerance is `1e-10`; this is not an IEEE or interval proof of softmax/solves.
+
+### Reproduction and remaining scope
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.summary_recovery_experiment
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest \
+  ssa/tests/test_cell_summary_minimax.py ssa/tests/test_persistent_ridge.py \
+  ssa/tests/test_summary_recovery_experiment.py -q
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q
+```
+
+Artifact: [`runs/summary_recovery_comparison.json`](runs/summary_recovery_comparison.json).
+Verification: [`runs/summary_recovery_verification.json`](runs/summary_recovery_verification.json).
+The artifact identifies base commit `35c2c0b69338d67e9301da798ea1d04361b6d6a2` plus exact hashes
+of the working-tree source files; these new files are not claimed present at that base commit.
+The mathematical source build is `940cee72ffb2d8ccd3c78bb70a1c2b5ce06382fb`.
+
+The full suite reports **527 passed, 14 existing warnings in 38.85 s**; the focused run reports
+**78 passed in 0.32 s**. Source and fixture hashes match the artifact and `git diff --check` passes.
+Tests cover future-data
+isolation, validation selection, input immutability, full-selection dense recovery, integer
+witnesses, ridge objective/gain/bias identities and the repeated-residual counterexample.
+The global-sum control also uses fixed row-order accumulation so extra query measurements do
+not change its later output through a different floating-point reduction order.
+
+Still unproved/unimplemented: efficient non-oracle coefficient/normalization construction,
+query-uniform accessible residual bounds, model-realizable recovery lower bounds, and end-to-end
+retrieval or CE benefit. These results do not justify promoting ridge as a working long-context
+tail-recovery solution. They identify normalization and the observation channel as issues separate
+from regression stability.
+
+## Partial-coordinate certified attention reads
+
+**Status: a positive logical-read result, not a runtime or semantic-retrieval result.**
+The [public experiment report](docs/partial_coordinate_attention.md) gives the complete math,
+protocol, commands, provenance, comparisons and work-accounting limits. A CPU implementation
+supplies attention-logit intervals from unread key-coordinate extrema to the existing 16-band
+score-tail certificate. No new covariance/Bennett/outlier cap or learned predictor is used.
+
+On 16 cached Qwen2.5-0.5B layer-18/KV0 queries with matched causal prefixes:
+
+| Target omitted mass | Initial coordinates / 64 | Key-coordinate reads | Value rows | Combined logical K/V | Certified |
+|---|---:|---:|---:|---:|---:|
+| 10% | 16 | 83.57% | 78.09% | 80.83% | 16/16 |
+| 10% | 32 | 66.47% | 32.95% | 49.71% | 16/16 |
+| 10% | 64 | 100% | 9.86% | 54.93% | 16/16 |
+| 1% | 32 | 81.16% | 62.32% | 71.74% | 16/16 |
+| 1% | 64 | 100% | 32.64% | 66.32% | 16/16 |
+
+At r=32 and the 10% target, actual omitted mass averages 0.8344%, versus a
+9.055% certified upper bound. The existing radius reader reads all keys and values.
+The exact-score oracle value floor averages 5.94%/27.83% at the 10%/1% targets,
+but requires every exact key logit and ignores real seed/batch constraints.
+
+Fixed 128-plus-boundary value budgets average 2.65% of visible keys. Their top-16
+coverage reaches 97.27% at r=16 and 100% at r=32, yet actual omitted mass is
+20.27%/17.89%; only 0/16 and 1/16 queries respectively certify 10% mass. Token 0
+is the true top-1 key in all queries, making 100% top-1 recall trivial sink retention.
+These are attention-key diagnostics, not semantic retrieval accuracy.
+
+The 10%-value-cap progressive policy certifies 9/16 queries at 10% mass and 2/16
+at 1%, after reading all key coordinates. Failure is reported, not accepted.
+Synthetic concentrated/random/adversarial cases are included, with identical queries
+across modes. Random geometry largely requires full reads.
+
+Audit: **880 trials, zero violations above 1e-9**, maximum interval deficit
+7.11e-15 and output deficit 1.98e-15; zero mass/KL deficits or false strict top-set
+certificates. Focused tests: **102 passed in 0.24 s**. Full suite: **652 passed,
+14 existing warnings in 46.98 s**. This is not a formal IEEE soundness proof.
+
+The fraction excludes dense summary construction, value-norm scanning, dense NumPy
+interval refreshes and oracle computations, all separately reported. The implementation
+still scans every key; across n queries this is not subquadratic. No controller was
+trained and no GPU speedup, held-out quality or new complete-model result was measured.
+
+Run `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.partial_coordinate_experiment`.
+Artifact: [partial_coordinate_attention.json](runs/partial_coordinate_attention.json).
+Verification: [partial_coordinate_verification.json](runs/partial_coordinate_verification.json).
+Base commit `35c2c0b69338d67e9301da798ea1d04361b6d6a2`; exact uncommitted source and
+fixture hashes are embedded in the artifacts.
+
+## Partial-coordinate GPU latency on fresh multi-head geometry
+
+**Status: numerical certificates pass; actual acceleration fails.**
+The [GPU implementation and protocol](docs/partial_coordinate_gpu.md) measures a fused-kernel
+prototype on the RTX 4080, using two fresh named WikiText-2 test articles, three Qwen layers,
+four query heads and four causal prefixes. Each timed call processes two query heads sharing
+one KV head, not all 14 heads or complete model inference. There are 96 head queries per setting.
+
+| Initial coordinates | Mass target | Mean requested K/V bytes / dense | Mean value rows / dense | Median sparse call | Median dense BF16 call |
+|---|---:|---:|---:|---:|---:|
+| 32/64 | 10% | 56.00% | 41.33% | 8.570 ms | 0.079 ms |
+| 32/64 | 1% | 81.25% | 75.01% | 9.914 ms | 0.079 ms |
+| 64/64 | 10% | 55.14% | 10.28% | 4.783 ms | 0.079 ms |
+| 64/64 | 1% | 67.41% | 34.81% | 7.429 ms | 0.079 ms |
+
+Every setting certifies all 96 head queries; all **384 numerical trials** have zero observed
+interval, mass, supported-KL or output-bound deficits and no false stops. Full value reads
+are needed in 5/96, 37/96, 0/96 and 8/96 cases respectively. The requested byte counts are
+masked/gather scalar loads, **not measured physical DRAM traffic**. Sparse calls are slower
+than native BF16 in all 192 measured two-head/configuration calls, and slower than the
+FP32 dense control in 191/192 calls; that control's median is 1.444 ms. Sparse output
+is FP32; native dense output is BF16.
+
+At 32 coordinates and 10% mass, actual omitted mass averages 0.3584%, versus a 5.0157%
+upper bound; mean head-output L2 error is 0.00654. The output certificate remains loose,
+averaging 1.3643. Attention sink token 0 wins 75/96 head queries, so attention top-key
+coverage still must not be called semantic retrieval accuracy.
+
+Timings are warmed, synchronized wall times including host control, sorts, adaptive decisions,
+GPU launches and sparse output; index construction and dense oracles are excluded and
+reported separately. Including index construction raises medians to 8.998, 10.474, 5.378
+and 7.911 ms. This is not a cold-cache bandwidth benchmark or a complete-model serving test.
+
+The implementation uses cached upper-score order and suffix log-masses. It also removes
+16-band rounding by summing individual upper caps, and doubles read batches instead of
+the CPU reference's fixed increments. Thus fresh-data work differences cannot be attributed
+solely to GPU fusion. The certificate/controller is not a single fused device kernel.
+
+Before the sweep, a large-common-logit softmax normalization bug was corrected using
+centered scores; CUDA regressions cover both signs at 1e8 and 1e9. Float64 queries are
+rejected rather than silently rounded. Float32 guards remain empirical engineering
+allowances, not a formal floating-point theorem.
+
+Commands:
+
+```sh
+python -m ssa.partial_coordinate_fixture --out-dir /tmp/ssa_partial_fresh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.partial_coordinate_gpu_experiment
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q
+```
+
+Sources and model/fixture hashes are in [the complete artifact](runs/partial_coordinate_gpu.json).
+The [uncached control](runs/partial_coordinate_gpu_uncached.json) covers four matched groups;
+[verification](runs/partial_coordinate_gpu_verification.json) records source hashes and tests.
+The full GPU-enabled suite passes **700 tests, with 14 existing warnings in 44.64 s**.
+No training, perplexity, semantic retrieval, full-model sparse rollout, or Kaggle run is claimed.
+The result does not justify scaling this host-adaptive design to larger hardware; a genuinely
+device-resident controller and fewer global scans would be a new implementation experiment.
+
+## Fixed-stage device certificate and conditional dense fallback
+
+**Status: the agreed latency stop/go test fails; no crossover through 32K.**
+The [device-resident pipeline](docs/device_coordinate_attention.md) uses a fixed sparse proposal,
+GPU-side mass decision, selected-value reads on acceptance, and full K/V reads only for rejected
+heads. No query-dependent host branch or scalar extraction is used. Rejected proposals' extra
+key reads are charged. Both sparse and dense paths use the same warmed CUDA Graph harness.
+
+The sweep reuses the two named 8K articles and adds a nonrepeated natural-text 32K WikiText
+test stream excluding those articles. Three layers, four query heads and matched causal prefixes
+give 132 head queries, each tested at eight fixed settings: 32/64 initial coordinates, 25%/50%
+proposal budgets, and 10%/1% omitted-mass targets. Each call contains two heads sharing one KV
+head. This is a frozen dense-geometry attention test, not a sparse-model serving evaluation.
+
+On the growth stream alone, aggregated across the eight settings and six two-head groups:
+
+| Context | Pipeline GPU-event median | Dense GPU-event median | Median paired slowdown | Mean fallback fraction | Mean requested K/V bytes / dense |
+|---|---:|---:|---:|---:|---:|
+| 8,192 | 0.287 ms | 0.011 ms | 25.80× | 36.46% | 91.28% |
+| 16,384 | 0.314 ms | 0.019 ms | 16.26× | 29.17% | 85.16% |
+| 32,768 | 0.366 ms | 0.026 ms | 13.78× | 14.58% | 73.31% |
+
+All **1,056 head-query/configuration trials** passed the numerical audit with zero observed
+proposal-mass, final-mass, interval or output-bound deficits, no false acceptance and no invalid
+or uncertified final result. Nevertheless, there are **zero wins in 528 matched comparisons**
+under either synchronized wall timing or CUDA-event timing. Even the best individual event-time
+ratio is 11.02× slower than dense. The relative gap narrows with length, but no measured point
+approaches parity; extrapolating a future crossover would be unsupported.
+
+Conditional fallback matters: a rejected head reads both its proposal key coordinates and all
+dense keys, while reading its values only once. With 32 initial coordinates and a 25% proposal,
+accepted K/V requests are about 43.75% of dense; rejected requests are 131.25%. These counts
+exclude separately charged summary/intermediate traffic and are not physical DRAM measurements.
+Favorable average requested-byte counts alone do not establish favorable runtime.
+
+Fixed-stage means no adaptive host loop, not one monolithic fused kernel. Stable global sorting,
+mass reductions, status masks and output merges remain device operations. Build, preparation,
+compilation/capture costs are outside warmed replay and separately recorded. The result is negative
+even with that favorable amortization. Deterministic real-arithmetic bounds are not replaced by
+calibrated probabilities; floating-point allowances still lack a formal IEEE proof.
+
+```sh
+python -m ssa.device_coordinate_fixture --out-dir /tmp/ssa_device_growth
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.device_coordinate_experiment
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q
+```
+
+[Complete artifact](runs/device_coordinate_attention.json),
+[source hashes and verification](runs/device_coordinate_verification.json), and
+[self-contained protocol](docs/device_coordinate_attention.md).
+Focused tests: **45 passed in 2.23 s**. Full GPU-enabled suite: **745 passed, 14 existing
+warnings in 44.19 s**, with the new CUDA graph tests executed rather than skipped.
+No new model training, semantic retrieval score, larger-context success or Kaggle result is claimed.
+The recommendation is to stop this in-GPU design rather than repeat hardware-scale experiments;
+this does not prove all deterministic sparse attention, or slower-memory/offloaded KV designs,
+cannot succeed.

@@ -26,13 +26,45 @@ Detailed experiment records live in [RESULTS.md](RESULTS.md).
 | Dense equivalence | **Validated at small scale** | 4K dense-equivalence gate and dense/streamed 128K NIAH gates passed |
 | Kernel scaling | **Measured to 12M** | Single-head synthetic IVF kernel: 139.5 ms, 6.55 GB, 2.9× the `n·κ` floor |
 | Output-error certification | **Reference implementation** | CPU adaptive selectors bound omitted mass, KL, and attention-output error; no production GPU kernel claim |
+| Routed correction prediction preservation | **Analytic CPU reference implemented** | Complete small transformer: 18/28 path tests accept, including 14 nonzero corrections; Qwen uniform path bounds remain open |
+| Qwen endpoint acceptance | **Measured, two charged forwards** | Target-free fallback preserves computed sparse-reference predictions; 32K validation PPL 180.91 → 166.23; not a path certificate or speedup |
 | Geometry-routed score-tail certificate | **Sound reference; negative Qwen sparsity result** | Separate attention-logit block caps feed a 16-level tail profile; zero oracle violations, but the tested Qwen-8K head still requires a full read |
 | Bounded-state recurrent repair | **Trained controlled result** | A GRU with hard individual-token tree reads reaches 99.935% answer accuracy on fresh 4K-address tasks using eight keys; explicit address clues and route supervision are required in this experiment |
-| CE-trained fixed-state tail correction | **Complete-model quality improvement** | Frozen Qwen with 336 learned gains: held-out 512-token perplexity 35.79 sparse → 20.36 corrected (17.94 dense); improvement persists to 4K, with a substantial dense-quality gap |
+| Bounded-influence fixed-state tail correction | **Perplexity improvement; retrieval tradeoff** | Full WikiText-2 test on RTX 6000: a 25% mixture cap improves sparse PPL through 32K, but strict retrieval falls to 2/9 versus sparse 4/9 and dense 7/9 |
 | Lean-checked supporting invariants | **Verified abstractly** | Recursive balls, exact restricted-read/output identities, strict or index-tie-broken top selection, grounded read-budget limits, and the composed causal reservoir plan |
 | Float32 tree bounds | **Guarded and stress-tested** | RTX 4080 comparison with float64 descendant oracles: zero guarded misses in 90,105 balls and 1,081,260 score caps; empirical, not an IEEE-arithmetic proof |
 | Worst-case cheap losslessness | **Ruled out in the grounded-probe model** | A budget-`b` adaptive read returning only probed positions has uniform-spike recall at most `b/n`; arbitrary preprocessing is outside this theorem |
-| Broad model quality | **Open** | Small WikiText perplexity slices are measured; no dense 10M baseline, long-context training, broad task suite, or frontier-model evaluation |
+| Cell-summary recovery and persistent ridge | **Measured CPU oracle diagnostic** | Median summaries have sharp cube recovery radius about 0.735; ridge stabilizes fitting but loses to the oracle-selected/no-tail control; no retrieval or efficient-kernel result |
+| Partial-coordinate certified reads | **Measured CPU reference** | 16 Qwen-8K queries meet 10% mass target at 49.71% logical K/V reads with 32-coordinate probing; dense reference overhead excluded from that fraction, no GPU speedup or semantic-retrieval claim |
+| Partial-coordinate GPU execution | **Certificates pass; slower than dense** | Fresh two-document/three-layer/four-head sweep: 384 trials pass, but 4.8–9.9 ms versus 0.079 ms dense BF16 for two-head groups; requested byte reductions do not yield a speedup |
+| Device-resident certified fallback | **Research line closed after negative latency results** | Fixed-stage CUDA Graph pipeline passes 1,056 trials, but loses all 528 latency comparisons; natural-text growth reaches 32K with no crossover (0.366 ms versus 0.026 ms GPU-event medians) |
+| Broad model quality | **Open** | Full WikiText-2 test measured through 32K; no dense 10M baseline, long-context training, broad task suite, or frontier-model evaluation |
+
+The [partial-coordinate experiment](docs/partial_coordinate_attention.md) turns partial key reads
+into attention-logit intervals and feeds them to the existing mass/output certificate. On the cached
+Qwen head, high top-key recall alone still leaves too much mass; adaptive reads certify the requested
+bound. All 880 numerical trials pass the audit. This measures logical data reads, not runtime savings.
+
+The [GPU experiment](docs/partial_coordinate_gpu.md) tests actual latency on fresh Qwen geometry.
+Fused partial-score/bound and sparse-value kernels preserve the checked certificate, but the
+adaptive implementation is **slower than dense attention in every measured group**. It is not
+a deployable acceleration: reducing requested K/V bytes did not offset its routing/control work.
+The [device-resident follow-up](docs/device_coordinate_attention.md) removes host acceptance
+decisions and charges conditional dense fallback. It still loses against matched dense graph
+replay through 32K. This partial-coordinate certified GPU acceleration research line is closed;
+its code and negative results are preserved. This is not a mathematical impossibility claim
+about all certified sparse attention.
+
+The [summary-recovery experiment](docs/summary_recovery_experiments.md) separates information loss
+from fitting instability. On 16 cached Qwen-8K head queries and three seeds, persistent tanh ridge
+reduces mean head-output L2 error from sparse **2.3583** to **1.9266/1.8589** at 8K/16K scalar
+state caps, including Gram/cross statistics. However, the true-weight selected-only oracle with
+**no tail estimate** achieves **1.0661**; stability alone has not recovered a useful tail. Median
+cell decoders achieve **0.9934/0.9822**, with most improvement over sparse already explained by
+oracle normalization. Their worst-case cube radii remain **0.7366/0.7346**, versus **0.7491**
+omitted mass with no summary. These are not measured accuracy floors or deployable certificates.
+See [results](RESULTS.md#cell-summary-minimax-and-persistent-all-prefix-ridge) and
+[artifact](runs/summary_recovery_comparison.json).
 
 ## Sparse reads plus bounded tail state
 
@@ -42,24 +74,35 @@ subtracted from the summary before their exact weights are inserted. All incomin
 it is not reconstructing arbitrary unseen values from sparse output alone. Raw next-token CE trains 336
 per-head gains while all base Qwen weights remain frozen. No filler tokens are needed.
 
-On eight windows from WikiText-2's official test split, with training and gain selection confined to the
-official train/validation splits:
+On the **entire 298,938-token official WikiText-2 test split** on an RTX Pro 6000, with the gains frozen
+after training on the official train split and development selection on validation:
 
-| Context | Dense perplexity | Sparse | CE-trained tail |
-|---|---:|---:|---:|
-| 512 | 17.94 | 35.79 | **20.36** |
-| 1,024 | 17.05 | 57.28 | **27.50** |
-| 4,096 | 11.80 | 74.23 | **52.46** |
+| Context | Dense perplexity | Sparse | Original trained tail | Tail with 25% cap |
+|---|---:|---:|---:|---:|
+| 512 | 17.14 | 35.30 | 19.74 | **23.43** |
+| 4,096 | 12.10 | 74.09 | 57.84 | **50.80** |
+| 8,192 | 11.53 | 78.15 | 99.41 | **72.88** |
+| 32,768 | 11.05 | 183.01 | 261.45 | **154.77** |
 
-These are flat-router reference measurements, not a full-corpus perplexity benchmark. Training uses only
-512-token windows. The exact read budget stays at two past 64-key blocks plus the causal current block.
-The summary holds 49,920 scalars across all 24 layers, plus centers; training additionally stores prefix
-activations. The learned estimate is **not a deterministic mass/output certificate**, and the reference is
-slower than dense attention at these lengths. The existing SSA tree can supply routes through
-[`tail_tree_router.py`](ssa/tail_tree_router.py), without pooling future queries.
-With that hierarchy and the same saved gains, corrected perplexities are **20.36 / 27.51 / 52.41** at
-512 / 1024 / 4096, versus tree sparse-only **35.74 / 57.38 / 74.44**. See
-[`hierarchical results`](runs/qwen_tail_tree/results.json); this reference adapter is also slower than dense.
+These use batched causal tree routing and token-weighted loss, including final partial windows. Training
+uses only 512-token windows. The exact read budget stays at two past 64-key blocks plus the causal current
+block. The summary holds 49,920 scalars across all 24 layers, plus centers; inference prefix snapshots now
+advance in bounded chunks. The KV archive still grows with context. The learned estimate is **not a
+deterministic mass/output certificate**, and this reference remains slower than dense attention.
+
+The cap was selected on development validation before the second full-corpus run; no gains were refitted.
+It improves sparse-only perplexity at all four lengths but gives up some original-tail benefit at 512.
+These are repeated regression tests, not a fresh holdout after the first run was inspected.
+
+Nine fixed NIAH probes through 128K give **dense 7/9, sparse 4/9, capped tail 2/9 strict wins plus one
+tie**; the original tail gives 1/9. At 32K the capped model loses all three probes, versus sparse 2/3.
+The model uses native,
+unscaled RoPE (configured for 32K), so the 128K failures include a positional extrapolation confound;
+retrieval degradation already occurs at 32K. The correction is **not a retrieval-safe long-context
+solution**, despite its CE improvement. See the [capped full-scale results](runs/kaggle_tail_v2/ssa_tail_fullscale.json),
+[original run](runs/kaggle_tail_v1/ssa_tail_fullscale.json), and [Kaggle reproduction](kaggle_tail/README.md).
+Peak allocation remains 5.81 GB at 128K. Earlier eight-window results remain recorded, but do not override
+the full-corpus and retrieval evidence.
 
 Reproduce training or evaluate the portable learned gains without retraining:
 
@@ -75,6 +118,63 @@ The demo requires locally cached Qwen2.5-0.5B weights/tokenizer and WikiText-2, 
 [`results.json`](runs/qwen_tail_final/results.json) includes all 336 gain values, per-window losses, source
 hashes, and the base commit. [Detailed results](RESULTS.md#trainable-repair-and-fixed-state-tail-correction)
 include the negative untrained and MLP controls. The new tail architecture has not been evaluated at 10M.
+
+An experimental correction in [`tail_correction.py`](ssa/tail_correction.py) distinguishes assignment
+prototypes from the actual means of unopened cells. Actual means give a Jensen **lower** mass bound,
+not the upper bound needed by the deterministic certified reader. A separate mixture-share limit bounds
+how far the estimated tail can move the selected output; it does not guarantee improved accuracy.
+The formal follow-up landed in Substrate commit `206193290`: exact reverse-KL projection, unique
+cell-uniform optimum, refinement, selected-key streaming identities, conditional output transport,
+and the movement/alignment criteria. The self-contained
+[`public specification`](docs/coarse_read_projection.md) is included here; no private repository is
+needed. These results do not imply lower model CE, and the capped prototype variant does not inherit
+the actual-mean estimator's variational optimum.
+The route-aware follow-up landed at `68968fc7a`. Its [public specification](docs/routed_correction_certificate.md)
+connects exact route-switch costs, full comparison traces, nonlinear multi-layer propagation, and a
+strict prediction-margin test under one hypothesis set. This preserves a supplied reference winner,
+not its correctness. SSA now implements a [numerical path checker](ssa/routed_correction_certificate.py)
+and a [complete small causal transformer](ssa/routed_certificate_experiment.py) with analytic uniform
+RMSNorm, attention, and feed-forward bounds. Across 28 seeded correction trials, 18 pass the algebraic
+margin test, including 14 nonzero corrections; both prediction-changing proposals are rejected.
+There are zero observed interval violations. These are float64 checks, not an IEEE proof; the tiny
+model uses bound-friendly weights and normalization, and charges dense Jacobians and routing scans.
+It does **not** instantiate useful Qwen path bounds or establish subquadratic certification.
+
+A separate [Qwen endpoint policy](ssa/endpoint_acceptance.py) evaluates both the sparse reference and
+capped-tail candidate. It accepts a candidate row only when both have the same strict winner, falling
+back on disagreement, ties, or a nonfinite candidate. No target labels enter this decision. On two
+development-validation windows per context on the local RTX 4080:
+
+| Context | Sparse PPL | Accepted-output PPL | Proposals accepted | Reference prediction changes |
+|---|---:|---:|---:|---:|
+| 512 | 16.71 | 14.91 | 75.8% | 0 |
+| 8,192 | 60.69 | 55.31 | 54.5% | 0 |
+| 32,768 | 180.91 | 166.23 | 45.3% | 0 |
+
+This full-vocabulary preservation is **by construction**, not evidence that the reference is correct.
+The measured CE improvement is empirical, and the policy cannot repair a wrong reference argmax.
+Both full model forwards and both logit projections are charged; this is paired teacher-forced prefill,
+not dual-cache generation, preserved sampling behavior, a Qwen Taylor certificate, or a speedup.
+When both endpoints are already computed, their direct comparison avoids the extra path-bound work.
+The [run artifact](runs/routed_acceptance_qwen.json) records source hashes, costs, and separate
+four-candidate retrieval probes; this small validation run does not replace the full-corpus results above.
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.routed_certificate_experiment
+python -m ssa.routed_acceptance_demo
+```
+
+The Qwen command uses the existing saved gains and offline model/data caches. It fits the local RTX 4080;
+Kaggle is not required for this experiment.
+
+The [storage comparison tests](ssa/span_memory_experiment.py) now check joint batch fitting,
+sequential delta updates, and cell sums on the cached 8K Qwen head. At two representation-state caps
+and three seeds, none of the tested linear/random-tanh fitting variants improves sparse attention's
+mean output error, even when supplied oracle attention weights; cell summaries do. This is a negative
+result for these particular updates, not a no-go theorem for fixed-state memory. Frozen unseen-value
+prediction and causal online reconstruction are reported separately. The [results](runs/span_memory_comparison.json)
+also contain an exact-arithmetic witness ruling out perfect linear key-to-value reconstruction on
+the stored fixture. No additional full-model training or Kaggle run is justified by this comparison.
 
 ## Complete 10M transformer result
 
@@ -161,10 +261,12 @@ The `ε||q||²` term is required because `ρ_c` is measured in the metric of `S_
 the tightest upper bound available from `(μ_c, Σ_c, b)` alone. On real transformer keys the exact covariance
 bound can cost at least a full key scan, which is why the scalable implementation uses budgeted lossy routing.
 
-Related algebraic results are machine-checked in the separate Substrate Lean development; the relevant audit
-is through Substrate commit `fad55ff82`, including the potential-store precursor `88a4c7012`, the six
+Related algebraic results are machine-checked in the separate Substrate Lean development. The audit
+includes the potential-store precursor `88a4c7012`, the six
 subsequent SSA commits through `77cd1b8c6`, the trace/covariance/outlier-peeled mass-tree results through
-`9c6b1ad35`, and their Inference-facing consumer. The broader mapping between Substrate results and this code is
+`9c6b1ad35`, their Inference-facing consumer `fad55ff82`, and the cell-mean projection/streaming/output
+results at `206193290`, and the routed nonlinear comparison-path certificate at `68968fc7a`.
+The broader mapping between Substrate results and this code is
 documented in [`docs/substrate_math_imports.md`](docs/substrate_math_imports.md). The checked results now
 include recursive real-valued ball containment and its pairing cap, monotone expansion of the certified drop
 set as a tree bound tightens, causal selection by cutting every routed set at the query's original position,

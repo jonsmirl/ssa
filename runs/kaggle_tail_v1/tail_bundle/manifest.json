@@ -1,0 +1,20 @@
+{
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "sha256": {
+    "ssa/__init__.py": "c1f2a0b7762c3a9adfcaceaa03de187054b3ec8b81dc492a9348ef901ec57df0",
+    "ssa/ssa_kernel.py": "bb08b6dd20ff8650743cfdaa9b08b5d9fd8c5fdc3d9fdaa657462558776fdb06",
+    "ssa/ivf_kernel.py": "983f6f8bbfd9a4c6cec1e9043bb4aee93a873992a94885e8ab49968253d93ea6",
+    "ssa/cascade_router.py": "78ed5f6e7a87648111afdf9208bf91bc89895ea435eaeee69fa42c162b76911f",
+    "ssa/streaming_qwen.py": "271aef7ea54cc420ad6ac7eaf6d99a71212612a1b6ae70520c671e5ac19adb8d",
+    "ssa/kaggle_10m_runner.py": "45dfb2a1badc243ae5432a6b58f0362dbc57b1833397bcdfa22c817a31e4e958",
+    "ssa/hybrid_tail_attention.py": "9da00d13419f97e789103d56d4fd85eee392091b1cd4f9d1d9dd497afd2aa4af",
+    "ssa/tail_tree_router.py": "1df43ede3363fb9c754bd8d3fcaf6cc4d07ba79b2e581a91d0bd15cc2db0d795",
+    "ssa/qwen_tail_demo.py": "059f8bb02f786a4fd6b1add717c93513de9e2e0dfd836acd2c5e76165695a93a",
+    "ssa/fullscale_tail_runner.py": "60a3d18d637043f09393f976ab2d5f8f3af0a4e4e3e023ec7317eeaaebcc37e4",
+    "tail_bundle/tokens.npz": "c08123dcb1f46b8fd31845cd86c2c63a9229859d7f803c2c2c5338224b1c1253",
+    "tail_bundle/gains.json": "9d300be359c5354112a499f62f863c30de7a071c7aeff84c7cfa4ed1a31f7f96"
+  },
+  "test_tokens": 298938,
+  "text_sha256": "430983e5a711fbc4c6576edffecacf47ff23d58f62f3923d2386d798e0a794c9",
+  "protocol": "all official WikiText-2 test windows at 512,4096,8192,32768; 9 fixed NIAH probes through 131072; saved gains frozen"
+}

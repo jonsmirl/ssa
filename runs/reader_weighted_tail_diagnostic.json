@@ -1,0 +1,141 @@
+{
+  "config": {
+    "context": 8192,
+    "layer": 18,
+    "out": "runs/reader_weighted_tail_diagnostic.json"
+  },
+  "model": "Qwen/Qwen2.5-0.5B",
+  "split": "official validation, first window; development diagnostic",
+  "hardware": "NVIDIA GeForce RTX 4080",
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "source_sha256": {
+    "reader_weighted_tail_diagnostic.py": "f92806a46ba3c58e2808a2bdaf03ef58270f3803ed972c8ebc21d57a859653fb",
+    "hybrid_tail_attention.py": "644c63da127f0fe2449d2c1dd39631cb0d2d6ebacd9705b83afe222c385ba9bc",
+    "tail_correction.py": "bdfdeb344a53b0e985821b12831a2e939e3812a44324de8a66c98b396d5593d5",
+    "tail_tree_router.py": "1df43ede3363fb9c754bd8d3fcaf6cc4d07ba79b2e581a91d0bd15cc2db0d795"
+  },
+  "token_sha256": "46091969036211ca39c229ce3d9ba65ae6e23fa31abf3d3ee4406065269a6bc2",
+  "gain_sha256": "9d300be359c5354112a499f62f863c30de7a071c7aeff84c7cfa4ed1a31f7f96",
+  "tensor_sha256": {
+    "q": "0f2a16a87bf3dfa2102a13cf8195ce6f212e26e9356bf24e11595afd46938ce6",
+    "k": "4285e791ab1fac07cd4d6f77a62fd61209f5126f80256918932ded7b5b55373b",
+    "v": "c7611ffd0ddbb987bf5b4470ddb510936815575896b9c505ed4677616c8593f8"
+  },
+  "projection_sha256": "604713a539606583ed34405470202311b9ecab557ddd50211f8479e21207a481",
+  "q_shape": [
+    1,
+    14,
+    8192,
+    64
+  ],
+  "k_shape": [
+    1,
+    2,
+    8192,
+    64
+  ],
+  "queries_measured": 8000,
+  "query_positions_zero_based": [
+    192,
+    8191
+  ],
+  "attention": {
+    "block": 64,
+    "top_blocks": 2,
+    "cells": 16,
+    "query_chunk": 256,
+    "router": "batched_tree",
+    "max_tail_share": 0.25,
+    "tail_mode": "prototype",
+    "gain_mode": "saved"
+  },
+  "rows": {
+    "sparse": {
+      "raw_mean_squared_l2": 99.02301788330078,
+      "projected_mean_squared_l2": 33.66724395751953,
+      "head_diagonal_projected_mean_squared_l2": 26.444610595703125,
+      "cross_head_term_mean": 7.222631454467773,
+      "cross_head_term_mean_absolute": 7.577095985412598
+    },
+    "capped": {
+      "raw_mean_squared_l2": 68.00225067138672,
+      "projected_mean_squared_l2": 24.55519676208496,
+      "head_diagonal_projected_mean_squared_l2": 16.615219116210938,
+      "cross_head_term_mean": 7.939979076385498,
+      "cross_head_term_mean_absolute": 8.008522033691406
+    },
+    "raw_oracle": {
+      "raw_mean_squared_l2": 67.78925323486328,
+      "projected_mean_squared_l2": 24.502559661865234,
+      "head_diagonal_projected_mean_squared_l2": 16.540559768676758,
+      "cross_head_term_mean": 7.961999893188477,
+      "cross_head_term_mean_absolute": 8.002198219299316
+    },
+    "reader_oracle": {
+      "raw_mean_squared_l2": 67.86852264404297,
+      "projected_mean_squared_l2": 24.484914779663086,
+      "head_diagonal_projected_mean_squared_l2": 16.5640926361084,
+      "cross_head_term_mean": 7.9208221435546875,
+      "cross_head_term_mean_absolute": 7.973427772521973
+    },
+    "joint_head_feasible_oracle": {
+      "raw_mean_squared_l2": 68.55386352539062,
+      "projected_mean_squared_l2": 22.97759437561035,
+      "head_diagonal_projected_mean_squared_l2": 16.891157150268555,
+      "cross_head_term_mean": 6.086437702178955,
+      "cross_head_term_mean_absolute": 6.259670257568359
+    }
+  },
+  "weighted_gate": {
+    "mean": 0.9606186747550964,
+    "zero_fraction": 0.0001250000059371814,
+    "one_fraction": 0.8850000500679016,
+    "quantiles_0_25_50_75_100": [
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "raw_gate": {
+    "mean": 0.9662561416625977,
+    "zero_fraction": 0.0,
+    "one_fraction": 0.8813750147819519,
+    "quantiles_0_25_50_75_100": [
+      0.0017818626947700977,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "joint_head_solver": {
+    "iterations": 30,
+    "projected_kkt_max": 8.732080459594727e-06,
+    "projected_kkt_mean": 3.22939754937579e-08,
+    "first_order_gap_mean": 1.664765036935023e-08,
+    "first_order_gap_max": 4.699130386143224e-06,
+    "variables_per_query": 14,
+    "algorithm": "cyclic coordinate descent, full cross-head Gram, box [0,1], initialized at shared oracle",
+    "scope": "Training-only feasible numerical solution; first-order gap is not an outward-rounded certificate or an exact optimum claim",
+    "gate": {
+      "mean": 0.7766723036766052,
+      "zero_fraction": 0.13252678513526917,
+      "one_fraction": 0.6778035759925842,
+      "quantiles_0_25_50_75_100": [
+        0.0,
+        0.6512331962585449,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "max_loss_excess_over_shared": 0.0
+  },
+  "gate_mean_absolute_difference": 0.019589154049754143,
+  "capped_projected_better_fraction": 0.9697500467300415,
+  "oracle_max_excess_over_best_endpoint": 1.9073486328125e-06,
+  "scope": "One layer at identical dense hidden inputs. Theta oracle uses unavailable dense inference target; no trained gate, no end-to-end CE or retrieval claim. W_O is the exact fixed linear reader; no theorem for later nonlinear layers. Attention outputs are bf16, diagnostic projections float32.",
+  "seconds": 4.198816706004436
+}

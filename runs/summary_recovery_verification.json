@@ -1,0 +1,52 @@
+{
+  "status": "pass",
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "scope": "New working-tree CPU reference implementations, not files claimed present at base_commit. No new model forward or retrieval/CE evaluation. Python checks are numerical, not Lean or IEEE proofs.",
+  "experiment_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.summary_recovery_experiment",
+  "artifact": "runs/summary_recovery_comparison.json",
+  "artifact_sha256": "77c0417b1d7d8681d6f3a63a865997f5c9cc6aa57bfdde92d8118be12b62227b",
+  "fixture": "/tmp/ssa_qwen_qkv_8192.npz",
+  "fixture_sha256": "5656b2725bbdb29a09c7c13c93126ac3f2cfb44ba0c32e60768ffc49fc54895a",
+  "source_and_fixture_hash_check": "PASS",
+  "source_sha256": {
+    "ssa/cell_summary_minimax.py": "002671a72b7e04d3b9c041828b16194149f162fe8055a8f63e26b33ddec509a2",
+    "ssa/persistent_ridge.py": "453cad1f69cc8875214cfeace64024fa625d425af600ea03c2ee83c952ea607e",
+    "ssa/summary_recovery_experiment.py": "00e6ade4e897d7bcf25fb6dfaf721ae6e5728b71fec1cc4510177f68807e23b4",
+    "ssa/span_memory.py": "9e30fee0a58c0be87e39676121f828498581480c6fd8860db11779ad8fc922bf",
+    "ssa/span_memory_experiment.py": "3c7e5d97799a52bd1f805fcfcd07604a9b9ec8f416b7b513b21017a89f16fe1e",
+    "ssa/tests/test_cell_summary_minimax.py": "93b243e2d1880ed411be792bd14ef6864549d41662b3f841ea3835b3da58ecff",
+    "ssa/tests/test_persistent_ridge.py": "8c76de260a926a5db5b12a69523f7691c396eec843a30551c9d7c213cca7d3db",
+    "ssa/tests/test_summary_recovery_experiment.py": "6cfcd92c6ea9c2cdf396ba4469e051338672ce453eea1c5f2c7fc738f1dea412"
+  },
+  "focused_tests": {
+    "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests/test_cell_summary_minimax.py ssa/tests/test_persistent_ridge.py ssa/tests/test_summary_recovery_experiment.py -q",
+    "exit_code": 0,
+    "output": "78 passed in 0.32s"
+  },
+  "full_suite": {
+    "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q",
+    "exit_code": 0,
+    "output": "527 passed, 14 warnings in 38.85s",
+    "warnings": "Existing torch.jit.script_method deprecation in test_batched_tail_tree.py"
+  },
+  "numerical_audit": {
+    "cell_query_count": 120,
+    "ridge_protocol_query_count": 480,
+    "integer_witness_violations": 0,
+    "state_cap_violations": 0,
+    "maximum_primal_dual_gap": 1.1102230246251565e-15,
+    "maximum_signed_identity_deficit": 2.3718001903972816e-14,
+    "maximum_output_bound_deficit": 0.0,
+    "maximum_reader_gain_bound_deficit": 0.0,
+    "tolerance": 1e-10,
+    "passed": true
+  },
+  "diff_check": "git diff --check: PASS",
+  "not_claimed": [
+    "Qwen retrieval or perplexity improvement",
+    "Model-realizable indistinguishable witnesses or empirical accuracy lower bounds",
+    "Minimax optimization over selected sets, all summaries or nonlinear storage",
+    "Accessible non-oracle attention denominator or unread feature aggregation",
+    "Subquadratic query work, fixed total archive memory or verified floating-point solver"
+  ]
+}

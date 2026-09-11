@@ -1,0 +1,267 @@
+{
+  "status": "complete",
+  "protocol": {
+    "bundle": "runs/kaggle_tail_bundle",
+    "model": "/home/jonsmirl/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B/snapshots/060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "out": "runs/kaggle_tail_preflight.json",
+    "contexts": "512,4096",
+    "probe_contexts": "",
+    "window_limit": 1,
+    "allow_other_gpu": true
+  },
+  "manifest": {
+    "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+    "sha256": {
+      "ssa/__init__.py": "c1f2a0b7762c3a9adfcaceaa03de187054b3ec8b81dc492a9348ef901ec57df0",
+      "ssa/ssa_kernel.py": "bb08b6dd20ff8650743cfdaa9b08b5d9fd8c5fdc3d9fdaa657462558776fdb06",
+      "ssa/ivf_kernel.py": "983f6f8bbfd9a4c6cec1e9043bb4aee93a873992a94885e8ab49968253d93ea6",
+      "ssa/cascade_router.py": "78ed5f6e7a87648111afdf9208bf91bc89895ea435eaeee69fa42c162b76911f",
+      "ssa/streaming_qwen.py": "271aef7ea54cc420ad6ac7eaf6d99a71212612a1b6ae70520c671e5ac19adb8d",
+      "ssa/kaggle_10m_runner.py": "45dfb2a1badc243ae5432a6b58f0362dbc57b1833397bcdfa22c817a31e4e958",
+      "ssa/hybrid_tail_attention.py": "9da00d13419f97e789103d56d4fd85eee392091b1cd4f9d1d9dd497afd2aa4af",
+      "ssa/tail_tree_router.py": "1df43ede3363fb9c754bd8d3fcaf6cc4d07ba79b2e581a91d0bd15cc2db0d795",
+      "ssa/qwen_tail_demo.py": "059f8bb02f786a4fd6b1add717c93513de9e2e0dfd836acd2c5e76165695a93a",
+      "ssa/fullscale_tail_runner.py": "60a3d18d637043f09393f976ab2d5f8f3af0a4e4e3e023ec7317eeaaebcc37e4",
+      "tail_bundle/tokens.npz": "c08123dcb1f46b8fd31845cd86c2c63a9229859d7f803c2c2c5338224b1c1253",
+      "tail_bundle/gains.json": "9d300be359c5354112a499f62f863c30de7a071c7aeff84c7cfa4ed1a31f7f96"
+    },
+    "test_tokens": 298938,
+    "text_sha256": "430983e5a711fbc4c6576edffecacf47ff23d58f62f3923d2386d798e0a794c9",
+    "protocol": "all official WikiText-2 test windows at 512,4096,8192,32768; 9 fixed NIAH probes through 131072; saved gains frozen"
+  },
+  "started": 1789068159.7842524,
+  "corpus": {
+    "512": {
+      "dense": {
+        "windows": [
+          {
+            "tokens": 512,
+            "targets": 511,
+            "nll_sum": 1276.5006103515625,
+            "top1_correct": 280,
+            "ce_nats": 2.4980442472633317,
+            "seconds": 0.028718184999888763,
+            "peak_allocated_gb": 1.39546624,
+            "start": 0
+          }
+        ],
+        "status": "complete",
+        "targets": 511,
+        "ce_nats": 2.4980442472633317,
+        "perplexity": 12.158691298448343,
+        "token_top1_accuracy": 0.547945205479452,
+        "seconds": 0.028718184999888763,
+        "peak_allocated_gb": 1.39546624
+      },
+      "sparse": {
+        "windows": [
+          {
+            "tokens": 512,
+            "targets": 511,
+            "nll_sum": 1384.8894653320312,
+            "top1_correct": 262,
+            "ce_nats": 2.7101555094560297,
+            "seconds": 0.41583780098881107,
+            "peak_allocated_gb": 1.568889344,
+            "start": 0
+          }
+        ],
+        "status": "complete",
+        "targets": 511,
+        "ce_nats": 2.7101555094560297,
+        "perplexity": 15.03161289107258,
+        "token_top1_accuracy": 0.512720156555773,
+        "seconds": 0.41583780098881107,
+        "peak_allocated_gb": 1.568889344
+      },
+      "tail": {
+        "windows": [
+          {
+            "tokens": 512,
+            "targets": 511,
+            "nll_sum": 1321.8413696289062,
+            "top1_correct": 267,
+            "ce_nats": 2.5867737174733976,
+            "seconds": 0.40716744000383187,
+            "peak_allocated_gb": 1.62718208,
+            "start": 0
+          }
+        ],
+        "status": "complete",
+        "targets": 511,
+        "ce_nats": 2.5867737174733976,
+        "perplexity": 13.286835293564845,
+        "token_top1_accuracy": 0.5225048923679061,
+        "seconds": 0.40716744000383187,
+        "peak_allocated_gb": 1.62718208
+      }
+    },
+    "4096": {
+      "dense": {
+        "windows": [
+          {
+            "tokens": 4096,
+            "targets": 4095,
+            "nll_sum": 9885.61343383789,
+            "top1_correct": 2073,
+            "ce_nats": 2.4140692146124274,
+            "seconds": 0.10713775199837983,
+            "peak_allocated_gb": 1.403436544,
+            "start": 0
+          }
+        ],
+        "status": "complete",
+        "targets": 4095,
+        "ce_nats": 2.4140692146124274,
+        "perplexity": 11.179359928502821,
+        "token_top1_accuracy": 0.5062271062271062,
+        "seconds": 0.10713775199837983,
+        "peak_allocated_gb": 1.403436544
+      },
+      "sparse": {
+        "windows": [
+          {
+            "tokens": 4096,
+            "targets": 4095,
+            "nll_sum": 16828.108032226562,
+            "top1_correct": 1255,
+            "ce_nats": 4.109428090897818,
+            "seconds": 3.49187282800267,
+            "peak_allocated_gb": 1.628338688,
+            "start": 0
+          }
+        ],
+        "status": "complete",
+        "targets": 4095,
+        "ce_nats": 4.109428090897818,
+        "perplexity": 60.911871552422994,
+        "token_top1_accuracy": 0.3064713064713065,
+        "seconds": 3.49187282800267,
+        "peak_allocated_gb": 1.628338688
+      },
+      "tail": {
+        "windows": [
+          {
+            "tokens": 4096,
+            "targets": 4095,
+            "nll_sum": 16254.210144042969,
+            "top1_correct": 1300,
+            "ce_nats": 3.9692820864573792,
+            "seconds": 4.0692213520087535,
+            "peak_allocated_gb": 1.686361088,
+            "start": 0
+          }
+        ],
+        "status": "complete",
+        "targets": 4095,
+        "ce_nats": 3.9692820864573792,
+        "perplexity": 52.94650617827979,
+        "token_top1_accuracy": 0.31746031746031744,
+        "seconds": 4.0692213520087535,
+        "peak_allocated_gb": 1.686361088
+      }
+    }
+  },
+  "probes": [],
+  "machine": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "torch": "2.10.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 4080",
+    "gpu_total_gib": 15.99,
+    "system_ram_gib": 78.54,
+    "nvidia_smi": "NVIDIA GeForce RTX 4080, 16376 MiB, 610.74"
+  },
+  "attention": {
+    "block": 64,
+    "top_blocks": 2,
+    "cells": 16,
+    "router": "batched_tree",
+    "query_chunk": 256
+  },
+  "model_config": {
+    "transformers_version": "5.12.1",
+    "architectures": [
+      "Qwen2ForCausalLM"
+    ],
+    "output_hidden_states": false,
+    "return_dict": true,
+    "dtype": "bfloat16",
+    "chunk_size_feed_forward": 0,
+    "is_encoder_decoder": false,
+    "id2label": {
+      "0": "LABEL_0",
+      "1": "LABEL_1"
+    },
+    "label2id": {
+      "LABEL_0": 0,
+      "LABEL_1": 1
+    },
+    "problem_type": null,
+    "vocab_size": 151936,
+    "hidden_size": 896,
+    "intermediate_size": 4864,
+    "num_hidden_layers": 24,
+    "num_attention_heads": 14,
+    "num_key_value_heads": 2,
+    "hidden_act": "silu",
+    "max_position_embeddings": 32768,
+    "initializer_range": 0.02,
+    "rms_norm_eps": 1e-06,
+    "use_cache": true,
+    "tie_word_embeddings": true,
+    "rope_parameters": {
+      "rope_theta": 1000000.0,
+      "rope_type": "default"
+    },
+    "use_sliding_window": false,
+    "sliding_window": null,
+    "max_window_layers": 24,
+    "layer_types": [
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention",
+      "full_attention"
+    ],
+    "attention_dropout": 0.0,
+    "pad_token_id": null,
+    "bos_token_id": 151643,
+    "eos_token_id": 151643,
+    "_name_or_path": "/home/jonsmirl/.cache/huggingface/hub/models--Qwen--Qwen2.5-0.5B/snapshots/060db6499f32faf8b98477b0a26969ef7d8b9987",
+    "model_type": "qwen2",
+    "use_mrope": false,
+    "output_attentions": false
+  },
+  "test_tokens": 298938,
+  "test_token_sha256": "c85ae2e689d62274b8527465bbd3acf7e3d273cd0d1f645ae985ad882a54d8ab",
+  "scope": "frozen 512-context gains; full official WikiText-2 test; unscaled positions; no new training; approximate tail, not a certificate",
+  "last_progress": "{'context': 4096, 'mode': 'tail', 'summary': {'status': 'complete', 'targets': 4095, 'ce_nats': 3.9692820864573792, 'perplexity': 52.94650617827979, 'token_top1_accuracy': 0.31746031746031744, 'seconds': 4.0692213520087535, 'peak_allocated_gb': 1.686361088}}",
+  "gate": {
+    "max_abs_last_logit_delta": 0.28125,
+    "dense_fallback_ce_delta": 0.0011479625963186635,
+    "chunked_projection_ce_delta": 2.4355087724359237e-07,
+    "passed": true
+  },
+  "finished": 1789068170.8746552
+}

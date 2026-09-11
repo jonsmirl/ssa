@@ -1,0 +1,18 @@
+{
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "validation_artifact": "runs/tail_revision_validation.json",
+  "validation_sha256": "57d27d03aff4f50fb2f2f88f5c343affc6d770374eceed127493075ed06c708c",
+  "scope": "Development validation: first two official validation windows at each length. Overlap across lengths and earlier development use; not a fresh holdout.",
+  "rule": "Among the four revisions, require lower CE than sparse at every measured context; then minimize the unweighted mean of the three context CEs. Rule recorded after inspecting validation, before version-2 test execution.",
+  "revision_mean_ce": {
+    "jensen": 3.9362907620235332,
+    "jensen_saved": 3.9749478297420175,
+    "prototype_capped": 3.7771535866931636,
+    "jensen_capped": 3.8971674600383372
+  },
+  "eligible": ["prototype_capped", "jensen_capped"],
+  "selected": "prototype_capped",
+  "selected_config": {"tail_mode": "prototype", "gain_mode": "saved", "max_tail_share": 0.25},
+  "deployment_numerics": "Validation used a log-mass-shift implementation of the cap. Deployment uses the algebraically equivalent direct bounded mixture, fixing extreme-logit cancellation and empty-tail gradients. Uncapped arithmetic unchanged. This is not a claim of bitwise validation/deployment equivalence; deployment sources are hashed in the notebook manifest.",
+  "test_fence": "The official test corpus and nine fixed probes were already inspected in version 1. Version 2 is a frozen regression comparison, not a pristine holdout. No gains are refitted and no configuration is selected using version-2 results."
+}

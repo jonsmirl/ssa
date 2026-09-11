@@ -145,6 +145,14 @@ attention for small `B`, selection for large `B`), and where the capacity trade 
 
 ## 8. Real-model probes (need `transformers` + `datasets`)
 
+**`cell_summary_minimax.py`**, **`persistent_ridge.py`**, **`summary_recovery_experiment.py`** —
+CPU cached-Q/K/V diagnostics for the sharp fixed-cell-summary cube recovery radius and all-prefix
+fixed-penalty ridge. Integer kernel witnesses, selected correction, chronological penalty selection,
+reader-specific gains, and full statistics-state accounting are tested. Ridge stabilizes fitting but
+does not beat the selected-only dense-weight oracle on this Qwen fixture. No new model forward is
+needed; [public math/protocol](../docs/summary_recovery_experiments.md) states the oracle and
+worst-case/model-distribution distinctions. Run `python -m ssa.summary_recovery_experiment`.
+
 These extract real query/key geometry from pretrained models and re-run the routing/selection tests on it —
 the evidence that the geometry is benign in practice, not just in synthetic benign setups.
 
@@ -188,12 +196,63 @@ the evidence that the geometry is benign in practice, not just in synthetic beni
   Flat routing or SSA's append-only tree supplies two past blocks; current-block attention is token-causal.
   `python -m ssa.qwen_tail_demo --help` lists training and portable-JSON checkpoint evaluation commands.
   Positive small held-out perplexity results do not imply dense equivalence or long-context quality.
+- **`fullscale_tail_runner.py`**, **`kaggle_tail/`** — offline RTX 6000 whole-WikiText-2-test evaluation
+  through 32K and nine NIAH probes through 128K, saved gains frozen. Batched prefix-forest routing and
+  chunked state/logit projections make the test memory-bounded. The original tail worsens 8K/32K CE.
+  A validation-selected 25% influence cap improves sparse PPL at all four lengths, but strict retrieval
+  falls to 2/9 plus one tie versus sparse 4/9. This is not a retrieval-safe solution.
+- **`tail_correction.py`**, **`tail_revision_experiment.py`** — actual-mean Jensen lower mass and stable
+  bounded-influence mixing; validation compares both with the original prototype estimate. The selected
+  capped-prototype mode is not the variational actual-mean optimum or an output-error certificate.
+- **`reader_weighted_tail_diagnostic.py`** — dense-target single-layer scalar and joint-head gate oracles
+  measured after the actual output projection. Joint gating has 6.42% local projected-error headroom;
+  no deployable gate or end-to-end CE improvement follows from that oracle experiment.
+- **`routed_correction_certificate.py`** — float64 checker for supplied complete paths, uniform bounds,
+  strict comparison guards or same-state route jumps, propagated radii, and signed final margins.
+  Union-read TV/output accounting is explicit. Provenance strings do not prove the supplied hypotheses.
+- **`routed_certificate_experiment.py`** — complete small two-layer causal multi-head transformer with
+  analytic uniform RMSNorm/attention/tanh bounds and full routing traces. The 28-trial reference accepts
+  14 nonzero corrections, rejects both prediction changes, and has zero numerical interval violations.
+  Full Jacobians and quadratic routing are charged; this is not a scalable Qwen certificate or IEEE proof.
+- **`endpoint_acceptance.py`**, **`routed_acceptance_demo.py`** — target-free strict-winner comparison of
+  sparse and capped-tail Qwen outputs, with fallback on ties or disagreement. Both full forwards are
+  charged. Two validation windows per length improve accepted-output PPL through 32K while retaining
+  reference argmaxes by construction. Four-candidate probes protect only their supplied candidate set;
+  this is neither nonlinear path certification nor dual-cache autoregressive serving.
+- **`span_memory.py`**, **`span_memory_experiment.py`** — joint batch least-squares and sequential delta
+  memory updates, exact modular linear-realizability obstruction, and prefix-only cell summaries.
+  Matched representation-state caps, separate frozen/online protocols, old-association interference,
+  and dense-weight oracle attention diagnostics. On the cached Qwen head, neither tested fitting
+  family beats sparse output error; cell summaries do. The oracle scans, full diagnostic archive,
+  SVD workspace and repeated partial-batch work are outside the representation cap and explicitly
+  reported. This is not an efficient attention implementation or an end-to-end retrieval evaluation.
 - **`gemma_keys.py`** — the frontier-scale, deep-head check (Gemma, head_dim 256): re-runs centroid-vs-cumulant
   routing and the temperature sweep on a 256-dimensional head.
 
 ---
 
 ## Tests
+
+`partial_coordinate_attention.py` and `partial_coordinate_experiment.py` provide a CPU reference
+for global-coordinate and per-block signed attention-logit intervals, exact key completion, and
+score-tail mass/TV/KL/output stopping. Top-set certification remains separate. They report logical
+K/V reads separately from dense index construction, refresh work and oracle scans. Run
+`python -m ssa.partial_coordinate_experiment`; see the
+[math, protocol and measurements](../docs/partial_coordinate_attention.md). This is not a GPU kernel.
+
+`partial_coordinate_gpu.py` supplies Triton partial-score/interval, missing-coordinate completion
+and sparse-value reduction kernels, with PyTorch adaptive control and cached tail ordering.
+`partial_coordinate_fixture.py` extracts fresh multi-layer/head QKV, and
+`partial_coordinate_gpu_experiment.py` measures actual latency and dense-oracle certificates.
+The [GPU result](../docs/partial_coordinate_gpu.md) is negative for speed: fewer requested K/V
+bytes, but slower than dense attention on the RTX 4080. No full-model serving claim is made.
+
+`device_coordinate_attention.py` provides the fixed-stage successor: `prepare(...).run()` is
+CUDA-graph compatible, with device-side acceptance and predicated dense fallback. Values are
+fetched only after the decision. `device_coordinate_fixture.py` adds natural 32K growth geometry;
+`device_coordinate_experiment.py` measures the whole query pipeline against matched dense graph
+replay. [This stop/go experiment](../docs/device_coordinate_attention.md) passes certificate tests
+but finds no speed crossover through 32K. Rejected proposal reads and metadata work are charged.
 
 `tests/` holds the pytest suite (fast CPU assertions, with GPU-gated kernel checks). Run `pytest ssa/tests`.
 See `tests/README.md` for what each test locks in.

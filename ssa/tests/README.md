@@ -27,6 +27,13 @@ incremental fixed-size summaries; the signed tail-kernel error identity and its 
 leakage, head-group equivalence, nonzero finite CE-path gain gradients, checkpoint recomputation gradients,
 causal/unique supplied routes, and the existing SSA tree adapter against a flat oracle at exhaustive beam.
 
+**`test_batched_tail_tree.py`** — batched prefix forests match exhaustive causal flat routing at full beam;
+partial prefixes, padding, equal-score replay, beam-pruned future isolation, and query-chunk invariance.
+
+**`test_fullscale_tail_runner.py`** — CPU reference checks for chunked, shifted CE and target accounting,
+partial windows, last-token probes, the complete-layer gate and hook restoration, and rejection of
+invalid contexts, duplicate arms, work limits, and nonfinite influence caps before an expensive run.
+
 **`test_certified_attention.py`** — dense-oracle validation of mass, KL and value-aware output bounds.
 Exercises random geometries, temperatures, block sizes, causal prefixes and work caps; equal-logit
 support restriction, redundant values, tiny weights with large values, log-space extremes, zero
@@ -169,7 +176,59 @@ load).
 `e^{B·KKᵀ}` grows with the entry magnitude `B` — the split between the linear-attention and selection regimes
 (paper §7.3).
 
+**`test_routed_correction_certificate.py`** — supplied-path consistency, same-state branch jumps,
+complete-trace guards, signed nonlinear intervals, tube propagation, charged union TV/output bounds,
+strict ties and fail-closed malformed evidence. Interval checks are recorded before endpoint vetoes.
+
+**`test_routed_certificate_experiment.py`**, **`test_routed_uniform_bounds.py`** — complete small
+transformer integration, nonzero correction acceptance, prediction-change rejection, causal masks and
+full routing traces. Sampled derivative/remainder checks stress analytic formulas; they are not proofs
+of uniformity or IEEE rounding guarantees.
+
+**`test_endpoint_acceptance.py`**, **`test_routed_acceptance_protocol.py`** — strict target-independent
+computed-endpoint acceptance, ties, nonfinite candidates, subset scope, and CPU-mocked paired-prefill
+CE/accounting. Each chunk charges two projections, counts exactly the shifted targets, and changing
+only scoring labels does not change acceptance.
+
+**`test_span_memory.py`** — realizable joint contraction, selected-key versus off-target interference,
+inconsistent-target residual floor, unchanged orthogonal directions, unseen-target failure, stable
+ties/empty cells, non-mutation, and exact prime-field obstruction witnesses. An absent obstruction
+is inconclusive, not a certificate of realizability.
+
+**`test_span_memory_experiment.py`** — fixed-prefix training and causal online protocols, future-data
+poisoning, matched state caps and selected reads, exact replacement/dense recovery, separate old/new
+fit errors, and invariance under extra measurement queries. Partial batch updates use temporary copies
+and their repeated reads are charged. Tests also cover unselected NaNs and selected dense-weight
+underflow without corrupting sparse attention.
+
+**`test_cell_summary_minimax.py`**, **`test_persistent_ridge.py`**,
+**`test_summary_recovery_experiment.py`** — median primal/dual equality and exact integer cell
+kernel witnesses, selected-only decoding, ties/empty/full reads, ridge objective/gain/bias,
+the repeated-residual trap, chronological validation, causal isolation, query-schedule invariance,
+full statistics-state accounting, dense-prefix oracles and fixed synthetic controls. These test
+CPU algebra/protocols, not model retrieval or interval-certified softmax.
+
 ## Conventions
+
+`test_device_coordinate_attention.py` — 32 CUDA checks for fixed proposals, conditional dense
+fallback, duplicate-read accounting, causal boundaries, centered normalization and graph replay
+with changed queries that swap acceptance between heads. `test_device_coordinate_fixture.py`
+and `test_device_coordinate_experiment.py` add 13 CPU checks for nonrepeated growth text,
+fixture provenance, proposal/final oracle checks, and invalid-certification rejection.
+
+`test_partial_coordinate_gpu.py` — 35 CUDA checks for FP16/BF16/FP32 intervals, causal
+snapshots, mass/KL/output bounds, deterministic ties, extreme keys, full-read recovery,
+cached-tail equivalence, and large-common-logit centered normalization. CUDA access is
+required to execute these rather than skip them.
+`test_partial_coordinate_fixture.py` and `test_partial_coordinate_gpu_experiment.py` — 13
+CPU protocol checks for article boundaries, capture restoration, independent oracle failure
+detection and paired latency summaries.
+
+`test_partial_coordinate_attention.py` and `test_partial_coordinate_experiment.py` — 102 tests
+for admissible partial-logit intervals, causal snapshot isolation, extreme keys, exact completion,
+strict top-set ties, separate mass certification, value-independent routing, dense TV/KL/output
+checks, monotone retained caps, full recovery and unique coordinate-read accounting. These are
+guarded float64 reference checks, not a formal floating-point proof or hardware traffic measurement.
 
 - Tests import from the installed package path (`from ssa.core import …`), so run them from the repository
   root (or with the repo on `PYTHONPATH`).

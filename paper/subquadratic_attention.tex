@@ -80,7 +80,8 @@ Near-floor kernel scaling to 12M & demonstrated & single-head synthetic IVF benc
 Omitted-mass and output-error certificates & reference implementation & CPU, adaptive, worst-case full scan\\
 Geometry-routed score-tail certificate & sound reference, negative sparsity result & 16-level attention-score tail; Qwen-8K still reads every visible key\\
 Bounded-state recurrent repair & trained controlled result & hard token-tree GRU reads reach 99.935\% on fresh 4K address tasks with supplied clues\\
-Fixed-state tail correction & complete-model quality improvement & frozen Qwen, 336 CE-trained gains; 512-token PPL 35.79 sparse to 20.36 corrected, versus 17.94 dense\\
+Fixed-state tail correction & capped PPL gain; retrieval unresolved & capped full-test PPL improves at 512--32K; strict retrieval 2/9 plus one tie, sparse 4/9, dense 7/9\\
+Prediction-preserving correction & numerical reference; expensive Qwen fallback & toy path checks; paired-endpoint Qwen policy retains 6/6 local probes with two forwards, no Qwen path certificate\\
 Supporting routing invariants & proved in this paper & self-contained statements and proofs in Appendix~\ref{app:invariants}; private Lean audit is corroborating provenance\\
 Cheap worst-case losslessness & impossible under the stated models & grounded probes have a $b/n$ ceiling; a $K$-state index with unread-output width $a$ has a $K(b+a)/n$ ceiling\\
 \bottomrule
@@ -1093,6 +1094,487 @@ training convergence, dense-equivalent quality, and transfer to arbitrary contex
 score-tail certificate remains a separate available check; the learned tail must never be passed to it as an
 admissible residual bound. These reference kernels establish quality and correctness tests, not a speed
 improvement or a 10M-context result for the new architecture.
+
+\subsection{Full-scale frozen-tail test: length transfer fails}
+
+The small-slice improvement does not survive longer contexts. A separate private ARC3-attached Kaggle run
+on an RTX PRO 6000 Blackwell (94.97 GiB GPU, 176.88 GiB visible host RAM) evaluates the \emph{entire official
+WikiText-2 test stream, 298,938 tokens}, with unchanged 512-context gains and no new training or selection.
+Loss is weighted by predicted-token count, includes partial final windows, and excludes transitions across
+reset context boundaries. Previously inspected first test windows remain in the corpus; this enlarges
+rather than replaces the holdout. Results depend on this specified tokenization/windowing protocol.
+\begin{center}\small
+\begin{tabular}{rrrrr}\toprule
+Context & Dense PPL & Sparse PPL & Frozen-tail PPL & Tail-better windows\\\midrule
+512 & 17.14 & 35.30 & 19.74 & 584/584\\
+4096 & 12.10 & 74.09 & 57.84 & 62/73\\
+8192 & 11.53 & 78.15 & 99.41 (worse) & 7/37\\
+32768 & 11.05 & 183.01 & 261.45 (worse) & 1/10\\\bottomrule
+\end{tabular}
+\end{center}
+Token top-1 accuracy likewise drops with the correction at 8K (sparse 28.59\%, tail 25.34\%) and 32K
+(22.33\% versus 16.55\%). This is an executed negative quality result, not OOM, an aborted run, or a
+positive finding obtained by retuning on test data. It precludes calling the current frozen correction a
+working long-context solution for the original uncapped tail. It does not rule out other state architectures
+or length-aware training; Section 5.14 measures the capped revision separately.
+
+The batched router uses the same center/radius inequality as SSA's append-only tree. It initializes each
+query from the base-four decomposition of its completed-block prefix, a disjoint cover; future-bearing
+nodes never enter that frontier. Beam 32 is still approximate, and a different batched expansion schedule
+need not give bitwise-identical routes to the earlier pruned traversal. Sparse and corrected arms both
+use this algorithm with independent token queries and the same 192-key maximum exact budget. A chunked
+state scan avoids sequence-wide prefix-summary activations during inference; chunked vocabulary projection
+avoids a sequence-by-vocabulary logit allocation. The archive and hidden states still grow with context.
+Full-beam dense-oracle, pruned future-isolation, and chunk-invariance tests cover the new traversal.
+
+Nine semantic NIAH probes place the same direct-word fact at depths 0.1, 0.5, and 0.9. Correct counts are
+dense/sparse/tail: 3/2/1 at 8K, 3/2/0 at 32K, and 1/0/0 at 128K, for totals \emph{7/9, 4/9, 1/9}. This is a
+narrow repeated-fact test, not a broad retrieval benchmark. All 24 layers and 14 query heads execute at
+131,072 tokens. The model retains default RoPE with theta 1e6 and a 32K configured range, so the 128K
+comparison includes base-model positional extrapolation. Deterioration of the correction already occurs
+within 8K/32K, independent of that beyond-range qualification. No new 10M tail test is claimed.
+
+The run takes 1754.4 s. At 128K, tail correction takes 91.0--91.1 s per probe versus sparse 82.9--83.0 s
+and dense 2.6--2.8 s, with 5.807 GB peak allocation. At 32K, the entire corpus takes 3.56 s dense, 160.24 s
+sparse, and 178.98 s corrected. There is no measured speed benefit. The remote bf16 dense-fallback gate
+passes with maximum last-logit difference 0.25 and CE difference 0.001509; chunked projection differs from
+Hugging Face CE by 3.83e-8. Numerical tolerances are not exact-arithmetic or IEEE proofs.
+
+The full record is \texttt{runs/kaggle\_tail\_v1/ssa\_tail\_fullscale.json};
+\texttt{kaggle\_tail/README.md} gives exact commands, offline dependencies, and notebook identity. Source/input
+SHA256 manifest and remote source snapshots are retained, with base commit
+\texttt{35c2c0b69338d67e9301da798ea1d04361b6d6a2}. All twelve manifest checks pass. The complete CUDA suite
+reports 317 passed, 14 warnings. No theorem supplied favorable kernel-error bounds or learning/generalization
+guarantees for these cells; this failure does not contradict the conditional math.
+
+\subsection{Mean-consistent coarse reads and bounded influence}\label{sec:coarse-tail}
+
+The fixed centers in (\ref{eq:tail-correction}) are assignment prototypes, not the means of the keys they
+represent. Consequently $C_a^T\exp(\beta\inner{q}{c_a})$ need not lie below or above the true omitted
+mass. Growing counts can amplify an inaccurate prototype score. A separate dense-oracle diagnostic uses
+32 causal queries from the previously inspected Qwen layer-18/KV-head-0 8192-token fixture, 16 first-block
+prototypes, and two exact 64-key blocks plus the current causal block. It uses a flat block-mean router,
+not the full-scale batched tree, and is not an independent validation set.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrrr@{}}\toprule
+Tail estimator & Median mass ratio & Maximum & Overestimates & Mean output MSE\\\midrule
+Prototypes, saved gain & 30.1722 & 102.7825 & 29/32 & 0.0855034\\
+Omitted-cell means, zero gain & 0.054310 & 0.202241 & 0/32 & 0.0845644\\\bottomrule
+\end{tabular}
+\caption{Estimated/true omitted mass on one cached Qwen head; not a complete-model quality test.}
+\end{table}
+
+Sparse-only mean MSE is 0.104503. Mean applied tail share is 0.927665 for the prototype estimate versus
+0.226706 for the mean-consistent estimate. This exposes a large mass-estimation bias in this one head,
+not a demonstrated sole cause of the complete-model failure. The mean-consistent estimate is still a
+severe underestimate; a better mass direction or single-head MSE does not establish better model CE.
+The record is \texttt{runs/tail\_mass\_diagnostic.json}, reproduced by
+\texttt{python -m ssa.tail\_mass\_diagnostic --cache /tmp/ssa\_qwen\_qkv\_8192.npz --out
+runs/tail\_mass\_diagnostic.json}. It records the fixture SHA256; the implementation base is
+\texttt{35c2c0b69338d67e9301da798ea1d04361b6d6a2} plus the working-tree revision.
+
+The implemented alternative also maintains per-cell key sums. After subtracting selected contributions,
+let $m_C$ and $\bar k_C$ be the actual omitted count and mean. Then, for a nonempty cell and $g_C\le0$,
+\begin{equation}\label{eq:coarse-jensen}
+L_C=m_C e^{\beta\inner{q}{\bar k_C}+g_C}
+\le m_C e^{\frac1{m_C}\sum_{i\in C}s_i}
+\le\sum_{i\in C}e^{s_i}.
+\end{equation}
+This is a \emph{lower bound}, never an admissible omitted-mass upper cap. Empty cells contribute zero.
+\texttt{tail\_correction.py} clips positive gains to zero in this mode; zero gains give the largest Jensen
+lower bound for these summaries. Fixed causal assignments, count/key/value sums, and exact selected-key
+subtraction suffice to implement the read without changing its exact read budget. Additional key-sum
+state costs $md$ scalars per KV head. For this 24-layer, two-KV-head model with 16 cells and
+$d=d_v=64$, count/key/value sums occupy 99,072 scalars, versus 49,920 for the prototype mode's
+count/value sums. Both also retain 49,152 prototype scalars for assignment. Neither removes the growing
+raw archive; these are summary-state counts, not total inference or training memory.
+
+There is a stronger variational interpretation. Form a partition $P$ of the visible carrier with selected
+keys as singleton cells and the remaining assignment cells as unopened cells. With mean logit $a_C$,
+define $Z_P=\sum_C |C|e^{a_C}$ and $q_P(i)=e^{a_C}/Z_P$. Among all distributions uniform within each
+cell, this zero-gain coarse read uniquely minimizes $\mathrm{KL}(\cdot\|p)$ for dense attention $p$:
+\begin{equation}\label{eq:coarse-pythagoras}
+\mathrm{KL}(r\|p)=\mathrm{KL}(r\|q_P)+\log(Z/Z_P).
+\end{equation}
+Refinement increases $Z_P$ and decreases this optimal reverse KL; singleton refinement is dense attention.
+This optimum concerns actual means, zero gains, and uncapped mixing; applying a tail-share cap generally
+leaves that optimum.
+This does \emph{not} order output error, opposite-direction KL, retrieval accuracy, or downstream CE.
+Appendix~\ref{app:coarse-tail} supplies the public derivation, the exact cost of gains, and the separate
+upper-bound hypothesis needed to turn the partition gap into an output certificate.
+
+A second implemented control caps the approximate tail's mixture share at $\rho\in[0,1]$. For one head
+at one query, with selected output $o_S$, normalized approximate tail $u$, and share $0\le\alpha\le\rho$,
+$o_\alpha=o_S+\alpha(u-o_S)$ satisfies $\|o_\alpha-o_S\|\le\rho\|u-o_S\|$. This bounds influence,
+not error. With $e=o_{\rm dense}-o_S$ and $d=u-o_S$, error does not increase precisely when
+$\alpha\|d\|^2\le2\inner{e}{d}$ for $\alpha>0$; a wrong-direction correction can fail at every
+positive share. Mean consistency and bounded influence are separate options, not new Bennett or outlier
+caps. Their complete-model utility must be measured independently.
+These scalar identities do not imply
+$\|W_O D_\alpha d\|\le\rho\|W_Od\|$ for independent head gates: the output projection mixes heads,
+and gating can undo cross-head cancellation. A shared scalar applied to the concatenated correction is
+different and retains the scalar identity after any fixed linear output projection.
+
+The finite projection, selected-summary realization, conditional output transport, and scalar movement/
+alignment results are machine-checked in Substrate commit
+\texttt{206193290}. The self-contained public specification and streaming
+pseudocode are copied into \nolinkurl{docs/coarse_read_projection.md}; no private repository is needed to
+read or reproduce the mathematics. Appendix~\ref{app:coarse-tail} gives the public arguments and source
+ownership. Numerical tests in \nolinkurl{ssa/tests/test_tail_correction.py} remain separate from those
+proofs: CUDA arithmetic, future-independent implementation behavior, favorable learned cells, and CE or
+retrieval quality are not formally verified.
+The full-scale negative result above remains the measured status of the original frozen tail.
+
+\subsection{Development validation: limiting influence helps more than changing the mean}
+
+Seven fixed candidates run on the first two official WikiText-2 validation windows at each of 512, 8192,
+and 32768 tokens, on the RTX 4080. The base model and saved gains remain frozen; no new CE training occurs.
+All sparse candidates share the batched tree, 16 cells, and the same maximum 192 exact keys. The one
+tested influence cap, $\rho=0.25$, is specified before examining these validation results. The windows
+overlap across lengths and include previously used short-context validation data; this is development
+selection, not an independent holdout. Perplexity uses token-weighted CE within each length.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrr@{}}\toprule
+Candidate & 512 PPL & 8192 PPL & 32768 PPL\\\midrule
+Dense & 8.70 & 8.45 & 10.28\\
+Sparse only & 16.71 & 60.69 & 180.91\\
+Original prototypes, saved gains & 10.63 & 74.47 & 246.34\\
+Actual means, zero gains & 11.88 & 53.79 & 210.30\\
+Actual means, saved gains clipped at zero & 11.93 & 59.07 & 214.19\\
+Prototypes, saved gains, share cap 0.25 & \textbf{12.14} & \textbf{47.36} & \textbf{145.03}\\
+Actual means, zero gains, share cap 0.25 & 13.16 & 53.46 & 169.90\\\bottomrule
+\end{tabular}
+\caption{Development validation, two windows per length; bold identifies the selected revision, not every column's minimum.}
+\end{table}
+
+The capped-prototype revision has the lowest unweighted mean CE across these three lengths among the
+sparse revisions, and improves over sparse-only at every length. It is selected for a frozen full-corpus
+rerun. It trades away some of the original tail's 512-token gain: 12.14 versus 10.63 perplexity. At 32K it
+is still far from dense, 145.03 versus 10.28. The uncapped actual-mean estimator improves mass direction
+and has the reverse-KL property above, but its 32K perplexity still exceeds sparse-only, 210.30 versus
+180.91. Neither the mathematical optimum nor a bounded correction implies a language-model quality
+guarantee. The capped prototype remains a heuristic, not a mass certificate.
+The selected revision retains the original prototypes and their 49,920-scalar count/value state; it does
+not use the optional Jensen key sums or inherit their variational property. The default uncapped prototype
+mode remains available to reproduce the original algorithm.
+
+The complete record is \nolinkurl{runs/tail_revision_validation.json}, with per-window losses, source/input
+hashes, and base commit \texttt{35c2c0b69338d67e9301da798ea1d04361b6d6a2} plus working-tree changes.
+Reproduce with:
+\begin{quote}\small\ttfamily\raggedright
+python -m ssa.tail\_revision\_experiment \textbackslash{}\\
+--split validation --contexts 512,8192,32768 \textbackslash{}\\
+--windows 2 --out runs/tail\_revision\_validation.json
+\end{quote}
+Numerical hardening made after this process started replaces a subtracted log-mass offset with directly
+capped mixture weights; the remote run uses that revised implementation, whose source hash
+differs from the validation process's recorded hash. Algebraic equivalence is not a claim of
+bitwise-identical corpus outputs or a floating-point proof.
+
+\nolinkurl{runs/tail_revision_verification.json} records this command:
+\begin{quote}\small\ttfamily\raggedright
+OPENBLAS\_NUM\_THREADS=1 OMP\_NUM\_THREADS=1 \textbackslash{}\\
+python -m pytest ssa/tests -q
+\end{quote}
+It reports \emph{349 passed, 14 warnings} in 56.08 s, with no skips. This suite overlaps the validation experiment,
+so neither recorded runtime is an isolated performance measurement. This validation table alone
+establishes no full-corpus or retrieval result; Section 5.14 reports the completed frozen rerun on the
+already examined official test stream. The selection rule is recorded after examining validation, before
+version-2 execution, in \nolinkurl{runs/tail_revision_selection.json}; neither that corpus nor the probes
+are a pristine new holdout.
+
+\subsection{Reader-weighted oracles: scalar versus joint-head suppression}
+
+A diagnostic captures all 14 query heads and two KV heads at layer index 18 on the first 8192 official
+validation tokens. Sparse and capped-prototype outputs use identical dense hidden inputs and causal
+routes. After the fully selected prefix, 8000 queries are measured. For concatenated outputs, let
+$e=o_{\rm dense}-o_S$ and $d=o_{\rm capped}-o_S$. The actual frozen output projection $W_O$ gives
+the scalar suppression oracle
+\begin{equation}
+\theta^*=\operatorname{clip}_{[0,1]}
+\frac{\inner{W_Oe}{W_Od}}{\|W_Od\|^2},
+\qquad \theta^*=0\text{ when }W_Od=0.
+\end{equation}
+It minimizes $\|W_O(e-\theta d)\|^2$ on the segment from sparse to already capped output. One shared
+$\theta$ scales the complete correction, rather than optimizing independent head gates. The dense target
+is unavailable during sparse inference; this is an oracle diagnostic, not a deployable learned gate.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{lr}\toprule
+Output & Mean squared projected L2 error\\\midrule
+Sparse & 33.66724\\
+Prototype + cap & 24.55520\\
+Raw-error oracle suppression & 24.50256\\
+Reader-weighted oracle suppression & 24.48491\\
+Joint 14-head feasible numerical suppression & 22.97759\\\bottomrule
+\end{tabular}
+\caption{One layer at fixed dense hidden inputs; the suppression oracle uses unavailable dense targets.}
+\end{table}
+
+The cap reduces this local projected error by 27.07\%, but even the reader-weighted oracle adds only
+\emph{0.286\%} improvement over the cap and chooses the full capped correction for 88.5\% of queries.
+Cross-head terms account for 32.3\% of capped projected error; dropping them substantially changes the
+objective. The full-reader oracle nevertheless shows little headroom in this scalar-suppression family. The oracle
+cannot amplify the existing correction or change its direction. This negative finding does not rule out
+richer state, different directions, additional reads, or joint multi-layer training, and measures neither
+CE nor retrieval. The linear-reader quadratic is not a theorem about subsequent nonlinear layers.
+
+A coupled box-constrained quadratic instead supplies one suppression factor in $[0,1]$ per head,
+retaining the full cross-head Gram matrix. Thirty cyclic coordinate-descent sweeps, initialized at the
+shared oracle, find a feasible numerical solution with projected error 22.97759, \emph{6.42\% below the cap}.
+Raw squared error rises from 68.00225 to 68.55386: improvement depends on the reader. The maximum
+projected KKT residual is $8.73\times10^{-6}$ and maximum first-order gap is $4.70\times10^{-6}$.
+These floating-point diagnostics are not outward-rounded certificates or an exact-optimum claim.
+The scalar 0.286\% finding therefore does not bound the usefulness of independent head gates. Both
+oracles require dense targets, only suppress existing head corrections, and have not been trained into
+inference-available gates or evaluated for complete-model CE.
+
+Reproduce with:
+\begin{quote}\small\ttfamily\raggedright
+python -m ssa.reader\_weighted\_tail\_diagnostic \textbackslash{}\\
+--context 8192 --layer 18 \textbackslash{}\\
+--out runs/reader\_weighted\_tail\_diagnostic.json
+\end{quote}
+The artifact records tensor, projection, source, token, and gain hashes and the same base commit plus
+working-tree changes. Attention outputs are bf16 and diagnostic projections float32 on the RTX 4080;
+maximum numerical oracle excess over the better endpoint is $1.91\times10^{-6}$ for the scalar oracle. The three focused tests in
+\nolinkurl{ssa/tests/test_reader_weighted_tail_diagnostic.py} pass. These are numerical checks, not a new
+formally verified theorem or evidence of a significant new algorithm.
+
+The connected route-aware formal object is now built in Substrate commit
+\texttt{68968fc7}: route-switch overlap costs, stability of executed hard-routing comparisons, signed
+nonlinear propagation, and terminal prediction margins. Section 5.15 and Appendix~\ref{app:routed-path}
+state its conditional scope; \nolinkurl{docs/routed_correction_certificate.md} is the public standalone
+specification. SSA now has a conditional float64 checker and a small random-transformer instantiation
+(Section 5.16); \emph{a Qwen instantiation with useful uniform path bounds remains open}. The separate
+computed-endpoint policy in Section 5.17 does not supply those bounds. Preserving a reference prediction
+still does not imply that the prediction is correct.
+
+\subsection{Full-scale capped tail: perplexity improves, retrieval is not preserved}
+
+Version 2 of the ARC3-attached RTX PRO 6000 experiment freezes the validation-selected prototype mode,
+the same 336 saved gains, and a per-head mixture-share cap of 0.25. It reruns all 298,938 official
+WikiText-2 test tokens with identical windowing and exact-read budgets, plus the same nine probes.
+There is no version-2 test fitting or configuration selection. Because the corpus and probes were already
+examined in version 1, this is a frozen regression comparison, not an untouched holdout.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{lrrrr}\toprule
+Context & Dense PPL & Sparse PPL & Original tail (v1) & Capped tail (v2)\\\midrule
+512 & 17.14 & 35.30 & 19.74 & \textbf{23.43}\\
+4096 & 12.10 & 74.09 & 57.84 & \textbf{50.80}\\
+8192 & 11.53 & 78.15 & 99.41 & \textbf{72.88}\\
+32768 & 11.05 & 183.01 & 261.45 & \textbf{154.77}\\\bottomrule
+\end{tabular}
+\caption{Frozen full-corpus regression comparison; the cap improves sparse PPL, not retrieval preservation.}
+\end{table}
+
+The cap improves corpus perplexity over sparse-only at every measured length and repairs the original
+tail's aggregate 8K/32K CE regressions. It loses some of the original 512-token gain and remains far
+from dense quality. At 32K, CE decreases from 5.20952 to 5.04194 and token top-1 accuracy rises from
+22.33\% to 22.66\%; dense accuracy is 50.68\%. These are modest improvements in an approximation with a
+large remaining quality gap, not dense-equivalent attention.
+
+Retrieval does not follow CE. The capped arm has \emph{two strict wins and one tied maximum out of nine},
+versus sparse 4/9 and dense 7/9. The script's ordered argmax records 3/9 for the capped arm because the
+8K, depth-0.5 probe ties \texttt{walnut} and \texttt{lantern} at logit 4.15625 and the gold candidate comes
+first. Strict capped wins by length are 2/3 at 8K, 0/3 at 32K, and 0/3 at 128K, with the one additional
+tie at 8K. At 32K, sparse wins two probes and the capped correction wins none. The repeated fact and
+four candidate words remain a narrow test; no broad retrieval or result for the motivating high-recall checkpoint
+is inferred. Native RoPE retains the model's 32K configured range, so 128K includes positional
+extrapolation, but the 32K retrieval regression is within the configured range.
+
+All twelve corpus arms and 27 probe arms complete in 1750.94 s. The entire 32K corpus takes 179.90 s
+capped versus 159.82 s sparse and 3.56 s dense. At 128K, capped probes take 91.44--91.48 s, sparse
+82.72--82.75 s, and dense 2.64 s; peak allocation is 5.807 GB. There is no speed benefit or new 10M
+claim. The remote dense-fallback and chunked-projection gates pass with the same tolerances as version 1.
+
+The record is \nolinkurl{runs/kaggle_tail_v2/ssa_tail_fullscale.json}, with remote source snapshots and
+manifest under \nolinkurl{runs/kaggle_tail_v2/}. It records base commit
+\texttt{35c2c0b69338d67e9301\allowbreak da798ea1d04361b6d6a2} plus hashed experiment sources, test tokens, gains,
+and the frozen selection record. Build and submit the offline notebook with:
+\begin{quote}\small\ttfamily\raggedright
+python kaggle\_tail/build\_notebook.py --tail-mode prototype \textbackslash{}\\
+--gain-mode saved --max-tail-share 0.25\\
+kaggle kernels push -p kaggle\_tail -t 10800
+\end{quote}
+The private notebook is \nolinkurl{jonsmirl/ssa-tail-fullscale-rtx6000}, version 2, with ARC3 attached and
+internet off; \nolinkurl{kaggle_tail/README.md} records attachment and dependency details. The final local
+CUDA-enabled suite reports \emph{352 passed, 14 warnings in 36.49 s}, no skips, in
+\nolinkurl{runs/tail_revision_verification.json}.
+
+The measured algorithmic improvement is bounded prototype influence, not a new admissible mass cap,
+the cell-mean variational optimum, or an inference-time oracle gate. It improves this corpus metric but
+does not solve retrieval-safe long-context sparse attention. The requested route-aware certificate in
+Section 5.15 is formally built but is not instantiated by those full-scale capped-tail experiments.
+
+\subsection{Route-aware nonlinear acceptance certificate: mathematics built, Qwen bounds open}
+
+Substrate commit \texttt{68968fc7aae0a0241722\allowbreak88f090f25c4d61451324} connects actual route changes
+and nonlinear depth to a signed terminal read. Its 40 theorems do not assume the router globally Lipschitz.
+For two nonempty selected sets at the \emph{same state}, with the same logits and values, write
+$Z_A=\sum_{i\in A}e^{s_i}$. Their restricted distributions obey the exact overlap law
+\begin{equation}\label{eq:routed-overlap}
+\begin{split}
+\operatorname{TV}(p_S,p_T)&=1-\frac{Z_{S\cap T}}{\max(Z_S,Z_T)},\\
+\|o_S-o_T\|&\le2V\operatorname{TV}(p_S,p_T)\quad(\|v_i\|\le V).
+\end{split}
+\end{equation}
+Only union keys are needed, but $|S\cup T|\le|S|+|T|$ explicitly charges those reads. This compares
+two sparse reads, not either one with dense attention, and is not a finite KL bound for arbitrary
+supports. Actual attention logits are evaluated on the union; CCC's routing metric need not bound them.
+Multi-head differences retain their signs until the common output projection.
+
+The other route alternative is full executed-trace stability. A finite ordered comparison tree must
+represent every decision, including pruning, queue order, cell assignment, and final selection. For each
+executed signed gap $g$ with positive nominal margin $g(x)$, a uniform $K$-Lipschitz bound on the same
+radius-$E$ ball as the state analysis and $KE<g(x)$ prevent a first changed comparison. A final top-$k$
+margin alone is insufficient. A zero margin supplies no positive stability radius; failing this sufficient
+test proves neither a changed route nor an error. Hard top-one can indeed jump by one between arbitrarily
+close inputs selecting values zero and one on opposite sides of a tie.
+
+Appendix~\ref{app:routed-path} states the combined theorem: actual corrected executions, these route
+alternatives, uniform derivative variation on shared state balls, and a closed radius recurrence imply a
+signed terminal interval. Positive lower endpoints for every pairwise candidate margin preserve the
+reference's strict winner on exactly that candidate set. The standalone public specification is
+\nolinkurl{docs/routed_correction_certificate.md}. The proof owners are
+{\small\texttt{RestrictedReadOverlap}, \texttt{ComparisonTrace}, \texttt{QuadraticRemainder},
+\texttt{LinearPath}, \texttt{ComparisonPath}, \texttt{ComparisonPathWitness}}, and the attention
+{\small\texttt{RoutedCorrectionRecognition}}.
+
+The remaining large-model gap is an application, not another one-step descent inequality: identify the actual SSA
+comparison trace and complete cache/state, supply useful uniform bounds, charge reference and union
+evaluations, and verify numerics. No Qwen path-certificate instance, useful large-model uniform constants,
+training guarantee, or subquadratic acceptance cost has been measured or proved here. Final
+normalization must be included among smooth stages before terminal linear reads represent actual logits.
+Reference preservation cannot recover an answer that the reference misses, and a four-candidate
+certificate cannot establish full-vocabulary preservation. The measured unfiltered cap's retrieval failure remains.
+
+\subsection{Float64 checker and a complete toy-transformer certificate}
+
+\nolinkurl{ssa/routed_correction_certificate.py} implements a CPU float64 checker for supplied stage
+evidence: reference and candidate states, full-state Jacobians, actual corrections, both branch evaluations
+at the candidate state, uniform curvature/guard bounds, and compatible radii. It checks the recurrence,
+observed Taylor residuals, shared tubes, same-state jumps, signed terminal intervals, and strict pairwise
+margins. Missing or inconsistent evidence fails closed. A mandatory bound-provenance string is \emph{not
+a proof}; the generic checker cannot establish the maps, derivatives, completeness of the trace, or
+validity of uniform bounds from those data alone. Numerical slack is used, not outward-rounded
+interval arithmetic.
+
+\nolinkurl{ssa/routed_certificate_experiment.py} supplies a concrete small causal transformer: two layers,
+two heads, eight tokens, hidden dimension four, top-two token reads, vocabulary seven, token/position
+embeddings, pre-normalized attention, tanh MLPs, final RMS normalization, and a language-model head.
+All sequence states participate in the Jacobians. The router uses explicit insertion sort and records
+every executed comparison with lower-key tie-breaking. Corrections use actual-state mean-logit tails;
+route changes use the same-state selected-union bound. Analytic RMS-normalization, softmax, product,
+and tanh bounds are supplied on the stated Frobenius balls; autograd provides full Jacobians, not the
+uniform curvature constants. This numerical instantiation is not itself Lean- or IEEE-verified.
+
+Four random seeds and strengths $0,10^{-4},0.01,0.25,1,4,64$ produce the following measured result.
+Strengths multiply the actual correction; values above one are deliberate stress tests, not convex gates.
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{lr}\toprule
+Check & Result\\\midrule
+Algebraic margin passes before endpoint veto & 18/28\\
+Accepted nonzero corrections & 14/24\\
+Endpoint vetoes after algebraic pass & 0\\
+Observed changed predictions & 2; both rejected\\
+Signed interval violations / maximum deficit & 0 / 0\\
+Maximum Taylor-bound deficit & 0\\
+Maximum state-radius excess & $1.08\times10^{-16}$\\\bottomrule
+\end{tabular}
+\caption{Conditional float64 checker on a complete random toy transformer; not Qwen or an IEEE certificate.}
+\end{table}
+
+The endpoint comparison is an additional check, not the evidence for interval validity: the algebraic
+passes and interval deficits are reported separately. The small radius excess is floating-point roundoff,
+not an exact zero bound. Large strengths can make propagated radii enormous and the sufficient test
+uninformative. Weight scale 0.2 and RMS epsilon 0.5 are deliberately bound-friendly toy settings, not
+Qwen parameters; preserved random-model predictions are not accuracy or retrieval measurements.
+
+Each trial evaluates five reference stages, five candidate stages, five forced-branch replays, and five
+full $32\times32$ Jacobians (5120 matrix entries), besides comparisons, bound evaluations, tail scans,
+and union reads. The implementation materializes full score matrices and uses a full sorting router;
+this is a correctness reference, not subquadratic or faster inference. Reproduce with:
+\begin{quote}\small\ttfamily\raggedright
+python -m ssa.routed\_certificate\_experiment \textbackslash{}\\
+--out runs/routed\_certificate\_reference.json
+\end{quote}
+The artifact stores all 28 paths, observed and algebraic checks, work counts, source hashes, and base
+commit \texttt{35c2c0b69338d67e9301\allowbreak da798ea1d04361b6d6a2} plus working-tree changes. No
+favorable Qwen curvature or executed-trace bounds have been obtained from this experiment.
+
+\subsection{Qwen computed-endpoint acceptance: preservation with two charged forwards}
+
+\nolinkurl{ssa/endpoint_acceptance.py} implements a separate, label-free fallback policy. Execute the
+sparse reference and capped candidate independently. Accept the candidate's logits only when both have
+the same \emph{unique} maximum on the supplied candidate set; otherwise return the computed reference
+logits. Ties fail closed, nonfinite candidates are rejected, and nonfinite references are errors. This
+preserves the computed reference's top-one choice by construction. It is \emph{not} an instantiation of
+the Taylor/route-path certificate, a bound on exact-real Qwen logits, or evidence that its uniform
+hypotheses hold. It evaluates both endpoints, rather than predicting their difference from a cheap certificate.
+
+A separate RTX 4080 run executes all 24 Qwen2.5-0.5B layers and native GQA heads, with the same saved
+gains and 0.25 capped prototypes. Two previously inspected official-validation windows at each length
+are teacher-forced; no fitting occurs. Corpus acceptance compares the full vocabulary before target
+labels are used for CE. Its measured results are:
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{lrrrr}\toprule
+Context & Reference PPL & Candidate PPL & Policy PPL & Candidate accepted\\\midrule
+512 & 16.71 & 12.08 & \textbf{14.91} & 75.83\%\\
+8192 & 60.69 & 47.52 & \textbf{55.31} & 54.46\%\\
+32768 & 180.91 & 144.96 & \textbf{166.23} & 45.28\%\\\bottomrule
+\end{tabular}
+\caption{Computed-endpoint acceptance on two development-validation windows per length, not a path certificate.}
+\end{table}
+
+There are zero reference top-one changes over 82,938 scored positions. Token accuracy is exactly the
+sparse reference's at each length, including 22.16\% at 32K. The policy retains some of the candidate's
+measured CE benefit while discarding every proposal to change the winning token. Neither CE improvement
+nor prediction correctness follows from this rule; in particular it cannot repair a reference error by
+choosing a different winner. Reference ties are retained unchanged, not promoted to strict wins.
+
+Six direct-word probes at 8K/32K and depths 0.1/0.5/0.9 protect only their four supplied candidates.
+This paired run gives \emph{reference 6/6, candidate 2/6, policy 6/6 strict gold wins}. At 32K, all three
+candidate answers are wrong and the policy returns the correct reference in all three. Only two probe
+corrections are accepted; the other four fall back. These are this local run's endpoints, not the Kaggle
+version-2 counts: its sparse reference differs numerically from the earlier run. No broad retrieval
+claim or full-vocabulary protection is inferred from these four-candidate probes.
+
+Every window or probe costs two complete forwards, both charged: twelve corpus forwards plus twelve
+probe forwards, totaling 603.56 s of evaluation and 2.265 GB peak allocation. The two 32K corpus windows
+take 201.85 s including projection and decisions; each 32K
+probe takes about 97.4--99.7 s. This is not a speed improvement or a fixed-budget single-trajectory
+decoder. The experiment uses independent paired prefills, not dual-cache autoregressive serving.
+Serving would need coherent independent reference/candidate state; preserving argmax does not preserve
+sampling outcomes. There is no 10M-context acceptance test or trained inference-time gate here.
+
+Reproduce with:
+\begin{quote}\small\ttfamily\raggedright
+python -m ssa.routed\_acceptance\_demo --contexts 512,8192,32768 \textbackslash{}\\
+--windows 2 --probe-contexts 8192,32768 \textbackslash{}\\
+--out runs/routed\_acceptance\_qwen.json
+\end{quote}
+The complete artifact records both endpoint losses, acceptance/tie counts, charged work, peak allocations,
+and source/input/gain hashes, with base commit
+\texttt{35c2c0b69338d67e9301\allowbreak da798ea1d04361b6d6a2} plus working-tree changes. This establishes
+a working expensive reference-preserving fallback, not the missing efficient Qwen path certificate.
+All seven recorded Qwen source hashes and the gain hash match, as do the CPU provider/checker hashes.
+The complete CUDA-enabled suite is run with:
+\begin{quote}\small\ttfamily\raggedright
+OPENBLAS\_NUM\_THREADS=1 OMP\_NUM\_THREADS=1 \textbackslash{}\\
+python -m pytest ssa/tests -q
+\end{quote}
+It reports \emph{403 passed, 14 warnings in 40.13 s}. These tests check the implemented numerical behavior,
+not the uniform-bound hypotheses for Qwen or a formally verified floating-point realization of the theorem.
 
 \section{The trilemma and the grounded-probe limit}\label{sec:trilemma}
 
@@ -2398,6 +2880,148 @@ The unknown absolute kernel-error sum is the missing hypothesis for a useful det
 The mixed read can improve output while its estimated mass remains inaccurate; neither low CE nor a
 positive tail weight supplies that missing bound. Finite-dimensional real state alone is also not a finite
 state-count assumption: finite-capacity lower bounds require their stated precision/cardinality conditions.
+
+\subsection{Variational coarse-tail projection and its limits}\label{app:coarse-tail}
+
+The finite statements below are formalized in Substrate commit
+\texttt{206193290} (full SHA in the public specification): \texttt{CellMeanProjection} owns the projection,
+unique minimum, partition equality/refinement, gains, and supplied-upper-bound transport;
+\texttt{SelectedCellMeanRead} owns selected-singleton refinement and the exact count/key/value realization.
+\texttt{RestrictedReadOutputBound} owns the Pinsker/output transport, and \texttt{ResidualStep} owns
+movement and the separate weak/strict alignment criteria. \texttt{CellMeanReadRecognition} applies these
+results to attention. The public standalone specification is \nolinkurl{docs/coarse_read_projection.md}.
+This proof status covers finite real mathematics, not the SSA kernels.
+An independent Lean axiom audit of all 44 new theorems reports exactly
+\texttt{[propext, Classical.choice, Quot.sound]} for every declaration.
+
+Let a nonempty finite carrier have finite logits $s_i$, dense probabilities $p_i=e^{s_i}/Z$, and a partition
+$P$ into nonempty cells. Set $a_C=|C|^{-1}\sum_{i\in C}s_i$ and $q_P(i)=e^{a_C}/Z_P$ with
+$Z_P=\sum_C|C|e^{a_C}$. Use natural-log KL and $0\log0=0$. Every probability distribution $r$ constant
+within each cell satisfies (\ref{eq:coarse-pythagoras}), including competitors with zero cell masses.
+
+\begin{proof}
+Subtract the two KL sums to obtain
+$\sum_i r_i[\log(Z/Z_P)+a_{C(i)}-s_i]$. On each cell $r_i$ is constant and
+$\sum_{i\in C}(a_C-s_i)=0$, proving the identity. KL nonnegativity and its equality case give the unique
+minimizer $q_P$ and $\mathrm{KL}(q_P\|p)=\log(Z/Z_P)$. Finite Jensen gives $Z_P\le Z$; applying it to
+the weighted subcell means proves $Z_P\le Z_{P'}$ under refinement. Equality $Z_P=Z$ holds exactly when
+the logits are constant in each cell. Selected singleton replacement is a refinement, and full singleton
+refinement gives $q_P=p$. Its output is computed from exact selected exponentials and, on each remaining
+cell, $e^{a_C}$ times the value sum.
+\end{proof}
+
+For finite gains $g_C$, let $q_g(i)=e^{a_C+g_C}/Z_g$, with $Z_g=\sum_C|C|e^{a_C+g_C}$. Substitution
+in the same identity yields, without any sign assumption,
+\begin{equation}\label{eq:coarse-gain-kl}
+\begin{split}
+\mathrm{KL}(q_g\|p)&=\log(Z/Z_g)+\sum_C q_g(C)g_C\\
+&=\mathrm{KL}(q_g\|q_P)+\mathrm{KL}(q_P\|p).
+\end{split}
+\end{equation}
+Nonpositive gains imply $Z_g\le Z_P$, not an improved reverse KL. The optimum already uses zero gains;
+gains shared by every cell leave the normalized distribution unchanged. Better downstream CE is a
+different objective. Given a \emph{separate} admissible total-mass upper bound $U\ge Z$, the zero-gain read
+satisfies $\mathrm{KL}(q_P\|p)\le\log(U/Z_P)$. Pinsker, with TV equal to half the $\ell_1$ distance,
+and values of norm at most $V$ then give
+$\|o_P-o\|\le2V\sqrt{\log(U/Z_P)/2}$. Without a tight, cheaply obtained $U$, this is not a useful
+fixed-budget certificate; it does not license using $Z_P$ as an upper cap.
+
+Finally, in a real inner-product value space, expanding the square gives
+\begin{equation}\label{eq:coarse-alignment}
+\|e-\alpha d\|^2-\|e\|^2
+=\alpha^2\|d\|^2-2\alpha\inner{e}{d}.
+\end{equation}
+For positive $\alpha$, nonincrease is equivalent to the condition in Section~\ref{sec:coarse-tail}; strict
+decrease uses a strict inequality. A formally supplied witness uses positive values $(2,1/2,7/2)$ and
+dense weights $(6,5,1)$, selecting the first value. It gives $o_S=2$ and $o_{\rm dense}=3/2$. Positive
+approximate tail weights $(1,5)$ on the same omitted values give $u=3$. For every positive cap $\rho$,
+the allowed step $\alpha=\min(\rho,1)>0$ increases error from $1/2$ to $1/2+\alpha$. The norm movement
+bound follows directly from homogeneity. These derivations assume exact finite summaries and real arithmetic. They supply neither
+CUDA rounding guarantees nor favorable partitions, learning convergence, length transfer, or
+subquadratic query work.
+
+\subsection{Connected routed-path certificate and witnesses}\label{app:routed-path}
+
+The following finite-stage theorem is formalized at Substrate \texttt{68968fc7}; the complete SHA and
+public specification are given in Section 5.15. An independent Lean audit of all 40 new declarations
+reports exactly \texttt{[propext, Classical.choice, Quot.sound]}. The path and remainder results hold in
+real normed spaces, not only finite-dimensional Hilbert spaces. The overlap implementation uses a finite
+coordinate carrier; arbitrary finite keys can be reindexed without changing the displayed sums.
+
+For stages $j<m$, let $P_j$ be a supplied finite ordered comparison tree and $F_{j,a}$ the map with
+branch $a$ fixed. Real normed state spaces may differ at each stage. Supply actual executions
+$x_{j+1}=F_{j,a_j}(x_j)$ and $y_{j+1}=F_{j,b_j}(y_j)+c_j$, with
+$a_j=P_j(x_j)$, $b_j=P_j(y_j)$. State includes every relevant cache and recurrent summary;
+$c_j$ is the actual increment at $y_j$, not its value at the nominal state. Define
+\begin{equation}\label{eq:path-terms}
+\begin{split}
+e_j&=y_j-x_j,\qquad J_j=DF_{j,a_j}(x_j),\\
+h_j&=F_{j,b_j}(y_j)-F_{j,a_j}(y_j),\\
+r_j&=F_{j,a_j}(y_j)-F_{j,a_j}(x_j)-J_je_j.
+\end{split}
+\end{equation}
+Supply nonnegative radii $E_j$ and nonnegative bounds $C_j,B_j,H_j$, with $\|e_0\|\le E_0$. Require the reference
+branch derivative at every point of $\overline B(x_j,E_j)$, uniformly satisfying
+$\|DF_{j,a_j}(u)-DF_{j,a_j}(v)\|\le H_j\|u-v\|$ there. At each stage, either every executed signed
+comparison satisfies the strict uniform-gap test from Section 5.15 on this \emph{same ball}, or supply
+$\|h_j\|\le B_j$ at the actual perturbed state. Stable traces give $h_j=0$; the alternative jump bound
+need not hold uniformly over the ball. With $\|c_j\|\le C_j$, require
+\begin{equation}\label{eq:path-radius}
+\|J_j\|E_j+C_j+B_j+\tfrac12H_jE_j^2\le E_{j+1}.
+\end{equation}
+
+\paragraph{Conclusion.}
+Every $\|e_j\|\le E_j$ and $\|r_j\|\le H_jE_j^2/2$. For a terminal continuous linear read $\ell$,
+set $\lambda_m=\ell$ and $\lambda_j=\lambda_{j+1}\circ J_j$. Then
+\begin{equation}\label{eq:path-interval}
+\begin{split}
+\ell(e_m)&=\lambda_0(e_0)+\sum_{j<m}\lambda_{j+1}(c_j+h_j+r_j),\\
+D&=\lambda_0(e_0)+\sum_{j<m}\lambda_{j+1}(c_j+h_j),\\
+R&=\sum_{j<m}\|\lambda_{j+1}\|\,H_jE_j^2/2,\qquad |\ell(e_m)-D|\le R.
+\end{split}
+\end{equation}
+If only bounds on jumps are retained, omit $h_j$ from $D$ and add
+$\sum_{j<m}\|\lambda_{j+1}\|B_j$ to $R$. Let $a$ be the reference's strict winner in a supplied
+finite candidate set. Apply (\ref{eq:path-interval}) separately to each pairwise terminal logit read, with
+nominal margin $m_{ab}$. If $m_{ab}+D_{ab}-R_{ab}>0$ for every competitor $b\ne a$, then $a$ remains
+its strict winner. This is conditional reference preservation, not reference correctness or CE improvement.
+
+\begin{proof}[Proof outline]
+For the overlap law, the smaller probability on an intersection key is
+$\frac{e^{s_i}}{\max(Z_S,Z_T)}$, while the minimum is zero elsewhere; normalized TV is one minus the sum of
+these minima. Its output transport is the triangle inequality. For the trace alternative, strict gap
+control rules out a first differing comparison by structural induction. Adding and subtracting the
+fixed-branch terms gives $e_{j+1}=J_je_j+c_j+h_j+r_j$. On the convex ball, parameterize the segment
+$x_j+t e_j$. Its remainder derivative has norm at most $H_jt\|e_j\|^2$; variable derivative comparison
+with the quadratic primitive yields the factor $H_j/2$. This uses a genuine uniform derivative
+hypothesis, not an assumed remainder estimate. Radius induction applies that estimate and the route
+alternative on the same balls, proving (\ref{eq:path-radius}) keeps each state within them. Applying
+backward linear reads to the exact recurrence telescopes; bounding only omitted residual terms gives
+(\ref{eq:path-interval}). Finally, adding each signed interval to its nominal pairwise margin proves
+strict dominance.
+\end{proof}
+
+\paragraph{Nonlinear attained witness.}
+Take $F_0(t)=t^2$, $F_1(t)=1-t$, with single-leaf routers, $x=(0,0,1)$, $y=(1/2,3/8,5/8)$, and
+corrections $c=(1/8,0)$. Radii $(1/2,3/8,3/8)$ close (\ref{eq:path-radius}) with curvatures $(2,0)$
+and zero branch jumps. For the identity terminal read, backward coefficients are $(0,-1,1)$, giving
+$D=-1/8$, $R=1/4$, and actual displacement $-3/8$: the lower interval endpoint is attained. Candidate
+reads $t$ and $0$ have nominal margin one and certified lower margin $5/8>0$. Thus the complete
+certificate permits an actual nonlinear remainder and a nonzero injected correction.
+
+\paragraph{Affine switch witness.}
+Use $F_{\rm left}(t)=t$ at $t\ge0$, $F_{\rm right}(t)=t+1$ otherwise, and inputs $x_0=0$,
+$y_0=-1/4$, with no injected correction. The branches differ and their difference at the common state
+$y_0$ is $h_0=1$. Curvature is zero, so the actual terminal displacement $3/4$ equals $-1/4+1$ exactly.
+The norm radius charges $1/4+1=5/4$, but the signed interval has zero width. This uses the actual-jump
+alternative, not stability at a zero margin. More generally, identity-transported corrections $+1,-1$
+have terminal effect zero although their norm sum is two.
+
+These explicit witnesses establish nonvacuity of the mathematical hypotheses, not their usefulness for
+Qwen. Complete program/state identification, causal implementation, informative uniform constants, and
+numerical validation remain application obligations. An attention jump must be its own stage or be
+transported through subsequent operations with additional bounds. Reference execution, union reads,
+derivatives, and all certificate work must be counted; no unconditionally cheap acceptance rule follows.
 
 \begin{thebibliography}{17}
 \bibitem{vaswani2017} A.~Vaswani et al. \emph{Attention Is All You Need.} NeurIPS, 2017.

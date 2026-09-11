@@ -1,0 +1,79 @@
+{
+  "status": "passed",
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "source_state": "Uncommitted additions identified by source hashes; old measured source dependencies unchanged",
+  "sha256": {
+    "ssa/device_coordinate_attention.py": "fb08cdf7ffa44b040fc61bd693f15abb26280ecab11c45dece8b9d2b29ca9dda",
+    "ssa/device_coordinate_experiment.py": "e29016d1bf87158a0ab772b26544ff33861712e397b5aa295ce69cf6a42e709a",
+    "ssa/device_coordinate_fixture.py": "9aca8df5616dbc03f2cd396570197bd2e5c4e5048e5bed2fef94b7158ddfd39c",
+    "ssa/partial_coordinate_gpu.py": "10436e280c403c53f2d34f29ccce41b58a7926c67f2782b0292640d1c9b10108",
+    "ssa/partial_coordinate_gpu_experiment.py": "e0e7fe9e596d11910339a7e9a797be6f9f6007e139cdeaaf6fcc7cbd16574425",
+    "ssa/partial_coordinate_fixture.py": "7aab03af041fcd3827d905bcfccf7fae00be63c3f262001af8b0cdcd415a9dac",
+    "ssa/tests/test_device_coordinate_attention.py": "f3a058eb010085acfa306dbb632a7fcb3b5bd63f9c277c6ded258e9e8bc54415",
+    "ssa/tests/test_device_coordinate_experiment.py": "91a2679d977fdca54ab816189933e9e4cf9669b2cf10d229e76e78c47b67762c",
+    "ssa/tests/test_device_coordinate_fixture.py": "e12f889333d122a1791ed918b65714c9737735a5d0bad2dc9bb09a6c4a11637b",
+    "runs/device_coordinate_attention.json": "13114f94886d3311f9a2ed822a64378dbe3025edd895d000363ddabd3cb19d41",
+    "docs/device_coordinate_attention.md": "0391877ce1f95681f72f9f46fce45d1e3a6135797f036439077acf6aec15e194"
+  },
+  "source_hashes_match_measured_run": {
+    "device_coordinate_experiment.py": true,
+    "device_coordinate_attention.py": true,
+    "partial_coordinate_gpu.py": true,
+    "partial_coordinate_gpu_experiment.py": true
+  },
+  "fixture_sha256": {
+    "/tmp/ssa_partial_fresh/article_0.npz": "ef17f1c7ca3507a482424a03a8b4e7b56cc2759329f8041f192e665bc0925b88",
+    "/tmp/ssa_partial_fresh/article_1.npz": "2fe4192c04ac48aedcb94ed72fad017da6c07d9ebf816deb634696cd206c6490",
+    "/tmp/ssa_device_growth/mixed_test_32768.npz": "9ca7a6754011d4edd3b265dd3618b0fdfd3fa9ee39c45b4b5b02c988643ddad9"
+  },
+  "device": "NVIDIA GeForce RTX 4080",
+  "audit": {
+    "interval_deficit": 0,
+    "proposal_mass_deficit": 0,
+    "final_mass_deficit": 0,
+    "output_deficit": 0,
+    "invalid_numerics": false,
+    "uncertified_final": false,
+    "false_accept": false,
+    "bad_final_selection": false,
+    "violations_above_1e_6": 0
+  },
+  "independent_checks": {
+    "head_trials": 1056,
+    "timed_two_head_setting_pairs": 528,
+    "proposal_and_fallback_key_load_accounting": true,
+    "conditional_value_load_accounting": true,
+    "all_final_masks_and_mass_targets_valid": true,
+    "proposal_mass_bounds_valid_including_rejected": true,
+    "source_and_fixture_hashes_match": true,
+    "event_wins": 0,
+    "wall_wins": 0
+  },
+  "tests": [
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests/test_device_coordinate_attention.py ssa/tests/test_device_coordinate_experiment.py ssa/tests/test_device_coordinate_fixture.py -q",
+      "output": "45 passed in 2.23s",
+      "exit_code": 0,
+      "cuda_tests_executed": 32
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q",
+      "output": "745 passed, 14 warnings in 44.19s",
+      "exit_code": 0,
+      "warnings": "existing torch.jit.script_method deprecations"
+    }
+  ],
+  "commands": [
+    "python -m ssa.device_coordinate_fixture --out-dir /tmp/ssa_device_growth",
+    "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.device_coordinate_experiment"
+  ],
+  "decision": "No speed crossover through32768; stop this in-GPU acceleration design under the agreed criterion, not a mathematical impossibility result",
+  "limits": [
+    "Engineering floating-point allowances, not verified IEEE interval arithmetic",
+    "Frozen dense-model QKV, sampled two-head groups, not complete sparse-model serving or semantic retrieval",
+    "Natural32K mixed-article stream, no repeatedgeometry; changingprefixalsochangesquery",
+    "Graph capture/preparation/build outside warmedquery latency; recorded separately",
+    "Archive scalar requests not physical DRAM traffic; summary/intermediatework included in replaytime",
+    "Device-resident control still uses multiple kernels and global sorts, no subquadratic full-prefill claim"
+  ]
+}

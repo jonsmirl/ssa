@@ -1,0 +1,87 @@
+{
+  "status": "passed",
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "source_state": "uncommitted additions on base; hashes identify measured code",
+  "fixture": "/tmp/ssa_qwen_qkv_8192.npz",
+  "fixture_sha256": "5656b2725bbdb29a09c7c13c93126ac3f2cfb44ba0c32e60768ffc49fc54895a",
+  "sha256": {
+    "ssa/partial_coordinate_attention.py": "5c9533afe5330c646d4fba33e88c8318fa294129d9d34cd3605a5cb5529794e0",
+    "ssa/partial_coordinate_experiment.py": "941df48c14dfffd4a4b6e8068a0cf17b735bd5462d8b48eb58b17ad18f0446c1",
+    "ssa/score_tail_certificate.py": "887b2134dac76a3d268674fb09189a2be0d86e4fb51000033d3790f15c02ca14",
+    "ssa/tests/test_partial_coordinate_attention.py": "eb26644de2a86f77260925c25341f0c0cfe5c51282e04771f749632691581b28",
+    "ssa/tests/test_partial_coordinate_experiment.py": "79ee8501a670e5e2027a2270de611115db9573deba1cdae535edf536bd60e06b",
+    "runs/partial_coordinate_attention.json": "7827ec75c40df11146dc0faed93a21d6994d73999222d00ff9ec907ff31382fa",
+    "docs/partial_coordinate_attention.md": "cfbcd369b91df0b8d6ab906e0d813d7f3fb8d66ab65fc5cae3fbc73b36b705dd"
+  },
+  "measured_source_hashes_match": {
+    "partial_coordinate_attention.py": true,
+    "partial_coordinate_experiment.py": true,
+    "score_tail_certificate.py": true
+  },
+  "measurement_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.partial_coordinate_experiment",
+  "tests": [
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests/test_partial_coordinate_attention.py ssa/tests/test_partial_coordinate_experiment.py -q",
+      "output": "102 passed in 0.24s",
+      "exit_code": 0
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q",
+      "output": "652 passed, 14 warnings in 46.98s",
+      "exit_code": 0,
+      "warnings": "existing torch.jit.script_method deprecations in test_batched_tail_tree.py"
+    }
+  ],
+  "case_audits": {
+    "concentrated": {
+      "interval_deficit": 5.329070518200751e-15,
+      "mass_deficit": 0,
+      "output_deficit": 0,
+      "kl_deficit": 0,
+      "false_top_certificates": 0,
+      "queries_across_modes": 176,
+      "violations_above_1e_9": 0
+    },
+    "random": {
+      "interval_deficit": 8.881784197001252e-16,
+      "mass_deficit": 0,
+      "output_deficit": 1.454066699664294e-16,
+      "kl_deficit": 0,
+      "false_top_certificates": 0,
+      "queries_across_modes": 176,
+      "violations_above_1e_9": 0
+    },
+    "adversarial": {
+      "interval_deficit": 1.7763568394002505e-15,
+      "mass_deficit": 0,
+      "output_deficit": 1.3684934336423205e-15,
+      "kl_deficit": 0,
+      "false_top_certificates": 0,
+      "queries_across_modes": 176,
+      "violations_above_1e_9": 0
+    },
+    "qwen": {
+      "interval_deficit": 7.105427357601002e-15,
+      "mass_deficit": 0,
+      "output_deficit": 1.9763891158273888e-15,
+      "kl_deficit": 0,
+      "false_top_certificates": 0,
+      "queries_across_modes": 352,
+      "violations_above_1e_9": 0
+    }
+  },
+  "independent_artifact_checks": {
+    "rows": 880,
+    "exact_unique_coordinate_ledger": true,
+    "certified_iff_mass_target": true,
+    "strict_certified_nominated_sets_match_oracle": true,
+    "qwen_top1_index0_all16": true
+  },
+  "limits": [
+    "Guarded float64 finite tests, not formal IEEE interval soundness",
+    "Logical key/value reads exclude separately reported dense builds, interval refreshes, metadata and oracles",
+    "All-key coordinate probes do not establish subquadratic work across all queries",
+    "One previously inspected head/document; no semantic retrieval, fresh model inference, training or GPU speedup test",
+    "The original learned corrective-read controller remains untrained and unused"
+  ]
+}

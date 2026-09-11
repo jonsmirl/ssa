@@ -1,0 +1,77 @@
+{
+  "date": "2026-09-10",
+  "base_commit": "35c2c0b69338d67e9301da798ea1d04361b6d6a2",
+  "implementation_status": "Uncommitted working-tree implementation; artifact source hashes identify measured code.",
+  "substrate_math_commit": "68968fc7aae0a024172288f090f25c4d61451324",
+  "commands": {
+    "analytic_reference": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m ssa.routed_certificate_experiment",
+    "qwen_endpoint": "python -m ssa.routed_acceptance_demo",
+    "full_test_suite": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest ssa/tests -q"
+  },
+  "full_test_suite": {
+    "exit_code": 0,
+    "hardware": "NVIDIA GeForce RTX 4080",
+    "output": "403 passed, 14 warnings in 40.13s",
+    "warnings": "14 torch.jit.script_method deprecation warnings in test_batched_tail_tree.py"
+  },
+  "focused_test_suites": {
+    "core_analytic_and_uniform": "38 passed in 1.37s",
+    "endpoint_and_mocked_protocol": "13 passed in 1.11s"
+  },
+  "artifact_hash_checks": {
+    "qwen_source_files": 7,
+    "qwen_source_matches": 7,
+    "qwen_gain_matches": true,
+    "analytic_provider_matches": true,
+    "analytic_core_matches": true
+  },
+  "analytic_reference": {
+    "trials": 28,
+    "algebraic_margin_passed_before_endpoint_veto": 18,
+    "accepted_nonzero": 14,
+    "observed_prediction_changes": 2,
+    "both_prediction_changes_rejected": true,
+    "endpoint_vetoes_after_algebraic_pass": 0,
+    "interval_violations": 0,
+    "interval_max_deficit": 0,
+    "taylor_max_deficit": 0,
+    "tube_max_deficit": 1.0755285551056204e-16,
+    "accepted_prediction_violations": 0
+  },
+  "qwen_endpoint": {
+    "status": "complete",
+    "hardware": "NVIDIA GeForce RTX 4080",
+    "scored_positions": 82938,
+    "reference_argmax_changes": 0,
+    "probe_reference_strict_wins": 6,
+    "probe_candidate_strict_wins": 2,
+    "probe_accepted_strict_wins": 6,
+    "probe_total": 6,
+    "full_model_forwards": 24,
+    "charged_evaluation_seconds": 603.5649553709954,
+    "peak_allocated_gb": 2.2653184,
+    "source_hashes_and_exact_per_window_results": "runs/routed_acceptance_qwen.json"
+  },
+  "fences": [
+    "Analytic reference uses small bound-friendly transformer settings, full Jacobians, and dense routing scans.",
+    "Float64 numerical verification is not a formally verified IEEE certificate.",
+    "Qwen gate is computed-endpoint comparison, not an instantiation of uniform nonlinear path bounds.",
+    "Reference prediction preservation is by construction, not reference correctness or a general CE guarantee.",
+    "Corpus uses full vocabulary; retrieval probes guarantee only four supplied candidate comparisons.",
+    "Both complete model forwards are charged; no speedup, dual-cache generation, or preserved sampling distribution.",
+    "Development validation and fixed probes are previously inspected; no new holdout claim."
+  ],
+  "sha256": {
+    "runs/routed_certificate_reference.json": "962a5fa7b669b1ecd7e754e7784bc15f5fbda860ae1ca4adebf4da79d9c4ec67",
+    "runs/routed_acceptance_qwen.json": "7a6cddf638869ec8f394284ca5290fad0e5e9080cf70e32f634277abb360e6d0",
+    "ssa/routed_correction_certificate.py": "f72165b13efa1e996644428ac2b6a39f67d63723d07a5cb7ca909d0fe35b147b",
+    "ssa/routed_certificate_experiment.py": "5f86b32e5a38d68f2f7060673e1ec96b75869d8b3465b059e3d13c6f96cd65c2",
+    "ssa/endpoint_acceptance.py": "cd4d6b980d86be60662c8831528c1528d2601b0990295d77fd4d59c3abd98ae8",
+    "ssa/routed_acceptance_demo.py": "da145243bf10b6b89a97ca92de111902280d04380ca8d34441b499b243202a12",
+    "ssa/tests/test_routed_correction_certificate.py": "fedad49e7fffba386a1c4335713ed88f872c5bb7331a1dc0035c733d6d29c88b",
+    "ssa/tests/test_routed_certificate_experiment.py": "5ec7edc307c7260338bc8d04d5b73e0d4c0a5fc1473c5efe9c9c7a9964e93835",
+    "ssa/tests/test_routed_uniform_bounds.py": "01790ff07263daaa0d8fc5efc4c87cb033687820786789e66ba161142044e9b0",
+    "ssa/tests/test_endpoint_acceptance.py": "816145b91b9acf66d782aa3bc9453d8ae81c6622384df5336858c265e98e3613",
+    "ssa/tests/test_routed_acceptance_protocol.py": "4c4aa4838a32bd6607cc5093a178ee32a09274c7970d595847eee3749b1e7fcd"
+  }
+}

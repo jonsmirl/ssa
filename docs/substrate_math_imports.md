@@ -1,13 +1,54 @@
 # Substrate math that applies to SSA — an import list
 
 This assessment maps inspected Substrate results to SSA's selection, attention error, and cost models. The
-relevant audit is through Substrate commit `1cad53d99` (2026-09-10), including the potential-store precursor
+relevant audit includes the routed comparison-path review at `68968fc7a`, the cell-mean review at
+`206193290`, and earlier review at `1cad53d99`
+(2026-09-10), including the potential-store precursor
 `88a4c7012`, the six subsequent SSA commits, the variance-sensitive mass-tree core, and its Inference
 consumer named below.
 The adaptive output certificate in `ssa/certified_attention.py` (paper §5.7) combines log-sum-exp bounds with
 restricted-read identities and value geometry. Its abstract mass, divergence, exact residual, and two output
 arms are now machine-checked; the Python instantiation remains a tested implementation rather than extracted
 Lean code.
+
+The actual-cell-mean tail now has its own formal owner at
+`206193290e5aa1b0465d518f12625c10952b0953`: `CellMeanProjection`, `SelectedCellMeanRead`,
+`ResidualStep`, appended output transport in `RestrictedReadOutputBound`, and
+`Attention/CellMeanReadRecognition`. The public [specification](coarse_read_projection.md) reproduces
+the definitions, proofs, and streaming identities without private dependencies. The central identity
+is `KL(r || p) = KL(r || q_P) + log(Z/Z_P)` for normalized nonnegative cell-uniform competitors.
+It gives a unique reverse-KL optimum, monotone partition refinement, and exact gain accounting.
+Selected singletons and actual omitted count/key/value sums realize the read; full selection is dense.
+
+`Z_P` is a **lower** mass bound. Conditional KL/TV/output transport requires a separate supplied upper
+bound `U >= Z`; it is useful only when `U/Z_P` is close to one. Residual-step theorems characterize
+improvement through alignment, and a positive normalized omitted-read counterexample rules out
+unconditional safety. The scalar movement identity applies per head or to a shared scalar step;
+independent head gates must not be commuted through the output projection. The selected experimental
+prototype-plus-cap mode is not the actual-mean variational optimum. None of these results certifies
+its floating-point implementation, improves CE by theorem, or establishes subquadratic query work.
+
+The connected route-aware certificate is formalized at
+`68968fc7aae0a024172288f090f25c4d61451324`. Its [public specification](routed_correction_certificate.md)
+includes definitions, proof arguments, and nonlinear/affine witnesses. The owners are:
+
+| Owner | What is established | Application boundary |
+|---|---|---|
+| `RestrictedReadOverlap` | `TV(p_S,p_T)=1-Z_(S∩T)/max(Z_S,Z_T)` and output/union-read bounds | Same actual logits and values at one state; nonempty selected sets; neither read is thereby dense-equivalent |
+| `ComparisonTrace` | Stability of every executed comparison and its leaf; hard-top-one discontinuity witness | Finite unrolling and all real decision functions must represent the implementation; tie-breaking alone gives no positive stability radius |
+| `QuadraticRemainder` | Sharp `H/2` vector remainder from uniformly Lipschitz derivatives | A derivative at one checkpoint is insufficient; the bound holds on the stated convex neighborhood |
+| `LinearPath` | Signed pullback identity, remainder intervals, changing state spaces, affine exactness | Signed jumps may be retained or charged by their bounds; neither is free |
+| `ComparisonPath` | One hypothesis set closes radii, trace/jump alternatives, and terminal strict margins | Include cache/summary dependence and the actual correction at the perturbed state; later nonlinear maps need their own stages/bounds |
+| `ComparisonPathWitness` | Complete nonlinear and affine route-change instances | Satisfiability examples, not evidence that Qwen bounds are useful |
+| `Attention/RoutedCorrectionRecognition` | Strict reference-winner preservation and charged attention-stage instantiation | Only the supplied candidate set, not untested vocabulary; preservation does not imply correctness |
+
+SSA implements a float64 whole-path checker and a complete small causal-transformer provider with
+analytic uniform derivative/guard bounds and charged reference/union work. See paper §5.16 and
+`runs/routed_certificate_reference.json`: 18/28 algebraic passes, 14 nonzero accepted corrections,
+and zero numerical interval violations. Useful Qwen path bounds and verified floating-point execution
+remain open. The separate Qwen experiment in §5.17 compares two computed endpoints directly; its
+reference-winner preservation is by construction, not validation of the nonlinear path hypotheses.
+No model-quality or runtime claim follows from the Lean build alone.
 
 `ssa/score_tail_certificate.py` now supplies a new concrete admissible mass cap to that same reader: exact
 unopened block counts are grouped under separately certified attention-logit upper edges and their
@@ -344,14 +385,11 @@ matched.
 
 ---
 
-## 6. The one outstanding item may now be tractable
+## 6. Read-budget impossibility is formalized under explicit access assumptions
 
-`REVIEW_FOLLOWUPS.md` §7 leaves the **randomized-selector impossibility** (average the deterministic
-planted-spike adversary over a uniform spike location — Yao) open, deferred because "no probability
-scaffold exists in Inference yet — from-scratch via bare `Finset.sum/card`."
-
-That premise has weakened: the tree now carries `Universal/Stochastic/` (e.g. `MartingaleFate.lean`,
-`SphereCoordinateMoments.lean`), `Potential/Entropy/ContinuousKL.lean`, and
-`Carrier/Quantizer/SparsityCapacity.lean`. **Whether any of them supplies the averaging step has not
-been checked** — this is a note that the blocking reason should be re-examined before the item is
-deferred again, not a claim that the scaffold fits.
+The randomized-selector item is no longer open merely for lack of probability machinery.
+`LosslessSelectionLimit` supplies the oblivious uniform-spike bound; `BoundedReadMiss` supplies
+adaptive indistinguishability and finite randomization with the grounded-output condition; `IndexReadMiss`
+accounts for a finite preprocessing index. The earlier sections give the precise hypotheses and owners.
+These results do not rule out arbitrary uncharged preprocessing, richer access models, or favorable
+learned geometry. They should not be advertised as an unconditional impossibility theorem for SSA.
